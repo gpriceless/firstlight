@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openspec.io/schemas/common.schema.json",
+  "title": "Common Definitions",
+  "description": "Shared type definitions referenced by all OpenSpec schemas",
+
+  "$defs": {
+    "geometry": {
+      "type": "object",
+      "description": "GeoJSON geometry object",
+      "required": ["type", "coordinates"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["Point", "LineString", "Polygon", "MultiPoint", "MultiLineString", "MultiPolygon"]
+        },
+        "coordinates": {
+          "type": "array"
+        }
+      }
+    },
+
+    "bbox": {
+      "type": "array",
+      "description": "Bounding box [west, south, east, north]",
+      "items": {"type": "number"},
+      "minItems": 4,
+      "maxItems": 4
+    },
+
+    "temporal_extent": {
+      "type": "object",
+      "description": "Time window with optional reference point",
+      "required": ["start", "end"],
+      "properties": {
+        "start": {"type": "string", "format": "date-time"},
+        "end": {"type": "string", "format": "date-time"},
+        "reference_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Event peak or reference timestamp"
+        }
+      }
+    },
+
+    "confidence_score": {
+      "type": "number",
+      "description": "Confidence as ratio 0-1 (NOT percentage)",
+      "minimum": 0,
+      "maximum": 1
+    },
+
+    "crs": {
+      "type": "string",
+      "description": "Coordinate reference system as EPSG code",
+      "pattern": "^EPSG:[0-9]+$",
+      "default": "EPSG:4326"
+    },
+
+    "uri": {
+      "type": "string",
+      "format": "uri",
+      "description": "Resource identifier (URL, S3 path, etc.)"
+    },
+
+    "checksum": {
+      "type": "object",
+      "description": "Data integrity checksum",
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": {"type": "string", "enum": ["md5", "sha256"]},
+        "value": {"type": "string"}
+      }
+    },
+
+    "data_type_category": {
+      "type": "string",
+      "description": "Semantic data category",
+      "enum": ["optical", "sar", "dem", "weather", "ancillary"]
+    },
+
+    "data_format": {
+      "type": "string",
+      "description": "File/data format",
+      "enum": ["geotiff", "cog", "netcdf", "zarr", "jp2", "hdf5", "grib", "geojson", "geoparquet"]
+    },
+
+    "quality_flag": {
+      "type": "string",
+      "description": "Standardized quality/status flags",
+      "enum": [
+        "HIGH_CONFIDENCE", "MEDIUM_CONFIDENCE", "LOW_CONFIDENCE", "INSUFFICIENT_CONFIDENCE",
+        "RESOLUTION_DEGRADED", "SINGLE_SENSOR_MODE", "TEMPORALLY_INTERPOLATED",
+        "HISTORICAL_PROXY", "MISSING_OBSERVABLE", "FORECAST_DISCREPANCY",
+        "SPATIAL_UNCERTAINTY", "MAGNITUDE_CONFLICT", "CONSERVATIVE_ESTIMATE"
+      ]
+    },
+
+    "band_mapping": {
+      "type": "object",
+      "description": "Maps generic band names to sensor-specific bands",
+      "properties": {
+        "blue": {"type": "array", "items": {"type": "string"}},
+        "green": {"type": "array", "items": {"type": "string"}},
+        "red": {"type": "array", "items": {"type": "string"}},
+        "nir": {"type": "array", "items": {"type": "string"}},
+        "swir1": {"type": "array", "items": {"type": "string"}},
+        "swir2": {"type": "array", "items": {"type": "string"}}
+      },
+      "examples": [
+        {"nir": ["B08", "B8A"], "swir1": ["B11"], "swir2": ["B12"]}
+      ]
+    }
+  }
+}

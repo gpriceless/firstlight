@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openspec.io/schemas/provenance.schema.json",
+  "title": "Provenance Schema",
+  "description": "Full lineage tracking from input data to final products",
+
+  "type": "object",
+  "required": ["product_id", "event_id", "lineage"],
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "description": "Unique product identifier",
+      "pattern": "^prod_[a-z0-9_]+$"
+    },
+
+    "event_id": {
+      "type": "string",
+      "description": "Associated event ID",
+      "pattern": "^evt_[a-z0-9_]+$"
+    },
+
+    "lineage": {
+      "type": "array",
+      "description": "Processing chain from inputs to outputs",
+      "items": {
+        "type": "object",
+        "required": ["step", "timestamp", "inputs", "outputs"],
+        "properties": {
+          "step": {
+            "type": "string",
+            "description": "Processing step name"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the step was executed"
+          },
+          "inputs": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Input product/dataset IDs"
+          },
+          "outputs": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Output product IDs"
+          },
+          "agent": {
+            "type": "string",
+            "description": "Agent that executed this step"
+          },
+          "processor": {
+            "type": "string",
+            "description": "Algorithm/processor used"
+          },
+          "processor_version": {
+            "type": "string",
+            "description": "Version of the processor"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Processing parameters",
+            "additionalProperties": true
+          },
+          "software_environment": {
+            "type": "object",
+            "description": "Software versions used",
+            "properties": {
+              "gdal": {"type": "string"},
+              "python": {"type": "string"},
+              "rasterio": {"type": "string"}
+            },
+            "additionalProperties": {"type": "string"}
+          },
+          "execution_time_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Wall-clock execution time"
+          },
+          "compute_resources": {
+            "type": "object",
+            "properties": {
+              "cpu_cores": {"type": "integer"},
+              "memory_gb": {"type": "number"},
+              "gpu_used": {"type": "boolean"}
+            }
+          }
+        }
+      }
+    },
+
+    "input_datasets": {
+      "type": "array",
+      "description": "Primary input datasets",
+      "items": {
+        "type": "object",
+        "properties": {
+          "dataset_id": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "data_type": {
+            "$ref": "common.schema.json#/$defs/data_type_category"
+          },
+          "acquisition_time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "processing_level": {
+            "$ref": "common.schema.json#/$defs/processing_level"
+          },
+          "uri": {
+            "$ref": "common.schema.json#/$defs/uri"
+          },
+          "checksum": {
+            "$ref": "common.schema.json#/$defs/checksum"
+          }
+        }
+      }
+    },
+
+    "algorithms_used": {
+      "type": "array",
+      "description": "All algorithms used in processing chain",
+      "items": {
+        "type": "object",
+        "properties": {
+          "algorithm_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["baseline", "advanced", "experimental"]
+          },
+          "purpose": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    "quality_summary": {
+      "type": "object",
+      "description": "Quality assessment summary",
+      "properties": {
+        "overall_confidence": {
+          "$ref": "common.schema.json#/$defs/confidence_score"
+        },
+        "uncertainty_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "plausibility_score": {
+          "$ref": "common.schema.json#/$defs/confidence_score"
+        },
+        "validation_method": {
+          "type": "string"
+        },
+        "quality_flags": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/quality_flag"
+          }
+        }
+      }
+    },
+
+    "reproducibility": {
+      "type": "object",
+      "description": "Reproducibility metadata",
+      "properties": {
+        "deterministic": {
+          "type": "boolean",
+          "description": "Whether the processing is deterministic"
+        },
+        "selection_hash": {
+          "type": "string",
+          "description": "Hash of algorithm selection decisions"
+        },
+        "random_seed": {
+          "type": "integer",
+          "description": "Random seed used (if applicable)"
+        },
+        "environment_hash": {
+          "type": "string",
+          "description": "Hash of software environment"
+        }
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_by": {
+          "type": "string"
+        },
+        "total_processing_time_seconds": {
+          "type": "number"
+        },
+        "cost_estimate_usd": {
+          "type": "number",
+          "description": "Estimated processing cost"
+        }
+      }
+    }
+  }
+}

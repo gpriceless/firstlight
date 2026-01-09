@@ -1,0 +1,52 @@
+# Example: Sentinel-1 SAR Data Source Configuration
+# Demonstrates configuration for accessing Sentinel-1 GRD products via STAC
+
+id: sentinel1_grd
+provider: ESA
+type: sar
+version: "1.0"
+
+capabilities:
+  spatial_resolution_m: 10
+  temporal_resolution_days: 6
+  coverage: global
+  polarizations:
+    - VV
+    - VH
+  acquisition_modes:
+    - IW  # Interferometric Wide Swath
+  processing_level: L1_GRD
+
+constraints:
+  spatial:
+    global: true
+  temporal:
+    start: "2014-10-03T00:00:00Z"  # Sentinel-1A launch
+    end: null  # Ongoing
+  atmospheric:
+    cloud_penetrating: true
+    all_weather: true
+
+access:
+  protocol: stac
+  endpoint: "https://earth-search.aws.element84.com/v1"
+  collection: sentinel-1-grd
+  authentication: none
+  parameters:
+    bbox_query: true
+    datetime_query: true
+    cloud_cover_filter: false  # N/A for SAR
+
+cost:
+  tier: open
+  pricing: free
+
+metadata:
+  license: "Copernicus Sentinel Data Terms"
+  documentation: "https://sentinels.copernicus.eu/web/sentinel/missions/sentinel-1"
+  citation: "ESA Copernicus Sentinel-1 Mission"
+  tags:
+    - sar
+    - sentinel-1
+    - flood-mapping
+    - change-detection

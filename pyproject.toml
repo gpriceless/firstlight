@@ -1,0 +1,123 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multiverse-dive"
+version = "0.1.0"
+description = "Geospatial event intelligence platform for converting (area, time window, event type) into decision products"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Multiverse Dive Team"}
+]
+keywords = ["geospatial", "event-intelligence", "disaster-response", "satellite-imagery"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    # Core geospatial stack
+    "gdal>=3.8.0",
+    "rasterio>=1.3.9",
+    "xarray>=2023.12.0",
+    "geopandas>=0.14.0",
+    "shapely>=2.0.2",
+    "pyproj>=3.6.1",
+    "rioxarray>=0.15.0",
+    # Cloud-native formats
+    "zarr>=2.16.1",
+    "pyarrow>=14.0.1",
+    # Web API framework
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.5.3",
+    "pydantic-settings>=2.1.0",
+    # Data discovery & access
+    "pystac>=1.9.0",
+    "pystac-client>=0.7.5",
+    "planetary-computer>=1.0.0",
+    "boto3>=1.34.0",
+    "s3fs>=2023.12.0",
+    # Scientific computing
+    "numpy>=1.26.2",
+    "scipy>=1.11.4",
+    "scikit-image>=0.22.0",
+    "scikit-learn>=1.4.0",
+    "pandas>=2.1.4",
+    # NLP for intent classification
+    "spacy>=3.7.2",
+    "nltk>=3.8.1",
+    # Parallel computing
+    "dask[complete]>=2023.12.1",
+    "distributed>=2023.12.1",
+    # Schema validation
+    "jsonschema>=4.20.0",
+    "pyyaml>=6.0.1",
+    # Utilities
+    "python-dateutil>=2.8.2",
+    "requests>=2.31.0",
+    "tqdm>=4.66.1",
+    "loguru>=0.7.2",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.2",
+    "black>=23.12.1",
+    "ruff>=0.1.9",
+    "mypy>=1.8.0",
+    "ipython>=8.19.0",
+    "jupyter>=1.0.0",
+]
+ml = [
+    "torch>=2.1.2",
+    "transformers>=4.36.2",
+]
+docs = [
+    "mkdocs>=1.5.3",
+    "mkdocs-material>=9.5.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/multiverse-dive"
+Documentation = "https://multiverse-dive.readthedocs.io"
+Repository = "https://github.com/yourusername/multiverse-dive"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["openspec*", "core*", "agents*", "api*"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true

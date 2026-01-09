@@ -1,0 +1,53 @@
+# Storm Event Class Definition
+class: storm
+name: Storm Events
+description: Storm damage assessment for various storm types
+
+taxonomy:
+  storm:
+    description: Root storm classification
+    keywords:
+      - storm
+      - weather event
+    children:
+      tropical_cyclone:
+        description: Tropical cyclones (hurricanes, typhoons)
+        keywords:
+          - hurricane
+          - typhoon
+          - tropical cyclone
+          - cyclone
+        required_data_types:
+          - optical
+          - sar
+          - weather
+        pipelines:
+          - wind_damage_optical_sar
+          - structural_damage_assessment
+      
+      severe_convective:
+        description: Severe thunderstorms and tornadoes
+        keywords:
+          - tornado
+          - severe thunderstorm
+          - hail storm
+          - derecho
+        required_data_types:
+          - optical
+        pipelines:
+          - tornado_track_mapping
+          - damage_severity_classification
+      
+      winter:
+        description: Winter storms including blizzards
+        keywords:
+          - winter storm
+          - blizzard
+          - ice storm
+          - snow storm
+        required_data_types:
+          - optical
+          - weather
+        pipelines:
+          - snow_cover_mapping
+          - ice_accumulation_estimation

@@ -1,0 +1,50 @@
+# Example: Forest Wildfire Event
+# This demonstrates event specification for a forest fire in California
+
+id: evt_2024_california_fire_042
+
+intent:
+  class: wildfire.forest
+  source: explicit
+  confidence: 1.0
+
+spatial:
+  type: Polygon
+  coordinates:
+    - [
+        [-121.5, 38.8],
+        [-121.2, 38.8],
+        [-121.2, 39.1],
+        [-121.5, 39.1],
+        [-121.5, 38.8]
+      ]
+  crs: EPSG:4326
+  bbox: [-121.5, 38.8, -121.2, 39.1]
+
+temporal:
+  start: "2024-08-10T00:00:00Z"
+  end: "2024-08-25T23:59:59Z"
+  reference_time: "2024-08-15T18:00:00Z"  # Peak fire activity
+
+constraints:
+  max_cloud_cover: 0.3
+  min_resolution_m: 10
+  required_bands:
+    - nir
+    - swir2  # Essential for NBR calculation
+  required_data_types:
+    - optical
+  optional_data_types:
+    - weather    # For fire weather conditions
+    - ancillary  # For vegetation type mapping
+
+priority: high
+
+metadata:
+  created_at: "2024-08-12T10:30:00Z"
+  created_by: "cal_fire_operations"
+  tags:
+    - wildfire
+    - forest_fire
+    - california
+    - burn_scar_mapping

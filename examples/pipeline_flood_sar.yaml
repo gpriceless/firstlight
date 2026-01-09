@@ -1,0 +1,159 @@
+# Example: SAR-based Flood Mapping Pipeline
+# Demonstrates a complete pipeline for flood extent mapping using Sentinel-1 data
+
+id: flood_mapping_sar_change
+name: SAR Change Detection Flood Mapping
+description: Detects flood extent using pre/post event SAR backscatter change detection
+version: "1.0.0"
+
+applicable_classes:
+  - flood.riverine
+  - flood.coastal.storm_surge
+  - flood.pluvial
+
+inputs:
+  - name: sar_pre_event
+    type: raster
+    source: sentinel1_grd
+    temporal_role: pre_event
+    required: true
+    constraints:
+      polarization: VV
+      max_days_before_event: 30
+
+  - name: sar_post_event
+    type: raster
+    source: sentinel1_grd
+    temporal_role: post_event
+    required: true
+    constraints:
+      polarization: VV
+      max_days_after_event: 7
+
+  - name: dem
+    type: raster
+    source: copernicus_dem
+    temporal_role: reference
+    required: true
+    constraints:
+      resolution_m: 30
+
+  - name: water_mask
+    type: raster
+    source: wsf_water_mask
+    temporal_role: reference
+    required: false
+
+steps:
+  - id: ingest_pre
+    processor: ingestion.normalize_sar
+    inputs:
+      - sar_pre_event
+    parameters:
+      target_crs: "EPSG:32618"  # Will be dynamically set based on AOI
+      target_resolution: 10
+      calibration: sigma0
+      output_db: true
+
+  - id: ingest_post
+    processor: ingestion.normalize_sar
+    inputs:
+      - sar_post_event
+    parameters:
+      target_crs: "EPSG:32618"
+      target_resolution: 10
+      calibration: sigma0
+      output_db: true
+
+  - id: speckle_filter_pre
+    processor: sar.speckle_filter
+    inputs:
+      - ingest_pre.output
+    parameters:
+      method: lee
+      window_size: 7
+
+  - id: speckle_filter_post
+    processor: sar.speckle_filter
+    inputs:
+      - ingest_post.output
+    parameters:
+      method: lee
+      window_size: 7
+
+  - id: change_detection
+    processor: flood.sar_change_detection
+    inputs:
+      - speckle_filter_pre.output
+      - speckle_filter_post.output
+    parameters:
+      method: threshold
+      threshold_db: -3.0
+      min_area_pixels: 25  # ~0.25 hectares at 10m resolution
+
+  - id: terrain_masking
+    processor: flood.terrain_mask
+    inputs:
+      - change_detection.output
+      - dem
+    parameters:
+      slope_threshold_degrees: 15
+      apply_hand_filter: true
+
+  - id: water_body_filter
+    processor: flood.permanent_water_filter
+    inputs:
+      - terrain_masking.output
+    optional_inputs:
+      - water_mask
+    parameters:
+      buffer_m: 50  # Include 50m buffer around permanent water
+
+  - id: vectorize
+    processor: raster.vectorize
+    inputs:
+      - water_body_filter.output
+    parameters:
+      simplify_tolerance_m: 10
+      min_polygon_area_m2: 2500
+
+outputs:
+  - name: flood_extent_raster
+    type: raster
+    format: cog
+    step: water_body_filter
+    description: Binary flood extent mask (1=flooded, 0=not flooded)
+
+  - name: flood_extent_vector
+    type: vector
+    format: geojson
+    step: vectorize
+    description: Flood extent polygons
+
+  - name: change_magnitude
+    type: raster
+    format: cog
+    step: change_detection
+    output_key: magnitude
+    description: Backscatter change magnitude (dB)
+
+quality_checks:
+  - type: spatial_coherence
+    parameters:
+      max_fragment_count: 1000
+  - type: temporal_consistency
+    parameters:
+      check_acquisition_dates: true
+  - type: value_range
+    parameters:
+      min_flood_area_km2: 0.01
+      max_flood_area_km2: 10000
+
+metadata:
+  author: "OpenSpec Contributors"
+  created: "2024-01-15"
+  tags:
+    - flood
+    - sar
+    - change-detection
+    - sentinel-1

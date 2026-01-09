@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openspec.io/schemas/event.schema.json",
+  "title": "Event Schema",
+  "description": "Core event specification combining area, time window, and resolved intent",
+
+  "type": "object",
+  "required": ["id", "intent", "spatial", "temporal"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique event identifier",
+      "pattern": "^evt_[a-z0-9_]+$"
+    },
+
+    "intent": {
+      "type": "object",
+      "description": "Resolved event intent",
+      "required": ["class", "source"],
+      "properties": {
+        "class": {
+          "type": "string",
+          "description": "Resolved event class",
+          "pattern": "^[a-z]+\\.[a-z_]+(\\.[a-z_]+)*$"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["explicit", "inferred"]
+        },
+        "original_input": {
+          "type": "string",
+          "description": "Original natural language input if inferred"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+
+    "spatial": {
+      "type": "object",
+      "description": "Area of interest",
+      "required": ["type", "coordinates"],
+      "properties": {
+        "type": {"type": "string", "enum": ["Polygon", "MultiPolygon"]},
+        "coordinates": {"type": "array"},
+        "crs": {
+          "type": "string",
+          "pattern": "^EPSG:[0-9]+$",
+          "default": "EPSG:4326"
+        },
+        "bbox": {
+          "type": "array",
+          "items": {"type": "number"},
+          "minItems": 4,
+          "maxItems": 4
+        }
+      }
+    },
+
+    "temporal": {
+      "type": "object",
+      "description": "Time window with optional reference point",
+      "required": ["start", "end"],
+      "properties": {
+        "start": {"type": "string", "format": "date-time"},
+        "end": {"type": "string", "format": "date-time"},
+        "reference_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Event peak or reference timestamp"
+        }
+      }
+    },
+
+    "constraints": {
+      "type": "object",
+      "description": "Data acquisition constraints",
+      "properties": {
+        "max_cloud_cover": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "min_resolution_m": {"type": "number", "minimum": 0},
+        "max_resolution_m": {"type": "number", "minimum": 0},
+        "required_bands": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Generic band names (nir, swir, etc.)"
+        },
+        "required_data_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["optical", "sar", "dem", "weather", "ancillary"]
+          }
+        },
+        "polarization": {
+          "type": "array",
+          "items": {"type": "string", "enum": ["VV", "VH", "HH", "HV"]}
+        }
+      }
+    },
+
+    "priority": {
+      "type": "string",
+      "enum": ["critical", "high", "normal", "low"],
+      "default": "normal",
+      "description": "Processing priority for time-critical events"
+    },
+
+    "metadata": {
+      "type": "object",
+      "description": "Additional event metadata",
+      "properties": {
+        "created_at": {"type": "string", "format": "date-time"},
+        "created_by": {"type": "string"},
+        "tags": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}
