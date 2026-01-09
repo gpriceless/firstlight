@@ -266,39 +266,49 @@ Your platform can now see across the data universe! Sentinel, Landsat, weather m
 
 ---
 
-### **Group E: Algorithm Foundation** ⚗️
+### **Group E: Algorithm Foundation** ⚗️ **[IN PROGRESS]**
 *"Assembling our toolkit of analytical sorcery"*
 
 **Prerequisites:** Group C complete (need event classes), but can develop in parallel with Group D
 
 **Parallel Tracks:**
 
-1. **Track 1: Registry Infrastructure**
-   - `core/analysis/library/registry.py`
-   - Algorithm metadata schema
-   - Version tracking
-   - Requirement specification
+1. **Track 1: Registry Infrastructure** ✅ **[DONE]**
+   - `core/analysis/library/registry.py` - Complete algorithm registry system (546 lines)
+   - Algorithm metadata schema with version tracking
+   - Event type wildcard matching (e.g., `flood.*` matches `flood.coastal`)
+   - Data availability and resource constraint filtering
+   - YAML loading from `openspec/definitions/algorithms/`
+   - 9 baseline algorithm definitions loaded successfully
+   - 38 comprehensive tests passing
 
-2. **Track 2: Baseline Flood Algorithms** (all parallel)
-   - `core/analysis/library/baseline/flood/threshold_sar.py`
-   - `core/analysis/library/baseline/flood/ndwi_optical.py`
-   - `core/analysis/library/baseline/flood/change_detection.py`
-   - `core/analysis/library/baseline/flood/hand_model.py`
+2. **Track 2: Baseline Flood Algorithms** (all parallel) ✅ **[DONE]**
+   - `core/analysis/library/baseline/flood/threshold_sar.py` - SAR backscatter threshold detection (v1.2.0)
+   - `core/analysis/library/baseline/flood/ndwi_optical.py` - NDWI optical flood detection (v1.1.0)
+   - `core/analysis/library/baseline/flood/change_detection.py` - Pre/post temporal change detection (v1.0.0)
+   - `core/analysis/library/baseline/flood/hand_model.py` - Height Above Nearest Drainage susceptibility (v1.0.0)
+   - `core/analysis/library/baseline/flood/__init__.py` - Module exports and algorithm registry
+   - `tests/test_flood_algorithms.py` - Comprehensive test suite (818 lines, all tests passing)
 
-3. **Track 3: Baseline Wildfire Algorithms** (all parallel)
-   - `core/analysis/library/baseline/wildfire/nbr_differenced.py`
-   - `core/analysis/library/baseline/wildfire/thermal_anomaly.py`
-   - `core/analysis/library/baseline/wildfire/ba_classifier.py`
+3. **Track 3: Baseline Wildfire Algorithms** (all parallel) ✅ **[DONE]**
+   - `core/analysis/library/baseline/wildfire/nbr_differenced.py` - Differenced NBR burn severity mapping (v1.0.0, 425 lines)
+   - `core/analysis/library/baseline/wildfire/thermal_anomaly.py` - Thermal anomaly active fire detection (v1.0.0, 511 lines)
+   - `core/analysis/library/baseline/wildfire/ba_classifier.py` - ML-based burned area classification (v1.0.0, 620 lines)
+   - `core/analysis/library/baseline/wildfire/__init__.py` - Module exports and algorithm registry (82 lines)
+   - Tests integrated into `tests/test_algorithms.py` - 37 wildfire-specific tests passing
 
-4. **Track 4: Baseline Storm Algorithms** (both parallel)
-   - `core/analysis/library/baseline/storm/wind_damage.py`
-   - `core/analysis/library/baseline/storm/structural_damage.py`
+4. **Track 4: Baseline Storm Algorithms** (both parallel) ✅ **[DONE]**
+   - `core/analysis/library/baseline/storm/wind_damage.py` - Wind damage vegetation detection (v1.0.0)
+   - `core/analysis/library/baseline/storm/structural_damage.py` - Structural damage assessment (v1.0.0)
+   - `core/analysis/library/baseline/storm/__init__.py` - Module exports and algorithm registry
 
-5. **Track 5: Algorithm Tests**
-   - `tests/test_algorithms.py`
-   - Test each algorithm with synthetic data
-   - Validate reproducibility (deterministic algorithms)
-   - Test parameter ranges
+5. **Track 5: Algorithm Tests** ✅ **[DONE]**
+   - `tests/test_algorithms.py` - Comprehensive test suite (1899 lines, 104 tests passing)
+   - Test each algorithm with synthetic data (SyntheticDataGenerator class)
+   - Validate reproducibility (deterministic algorithms) - TestAlgorithmReproducibility
+   - Test parameter ranges - TestParameterRanges
+   - Registry integration tests - TestRegistryIntegration
+   - Edge case handling - TestEdgeCases
 
 **Deliverables:**
 - Algorithm registry system
@@ -738,6 +748,161 @@ The ensemble performs! Agents coordinate autonomously, each handling their speci
 
 **Celebration Checkpoint:** 🌟
 The portal is open! External systems can now submit events, track progress, and retrieve products via clean REST APIs. Webhooks provide real-time updates. Serverless deployment means the platform scales effortlessly with demand.
+
+---
+
+---
+
+## Bug Fixes Required (Before Continuing Development)
+
+> **Full details in [FIXES.md](./FIXES.md)** - Each fix includes exact code changes, context, and verification steps.
+
+Before proceeding with Groups F-K, the following critical bugs must be fixed. These were discovered during code review and will cause runtime errors.
+
+### P0: Critical Fixes (Will Crash at Runtime)
+
+| Fix ID | File | Line | Issue | Parallel Group |
+|--------|------|------|-------|----------------|
+| **FIX-001** | `core/data/broker.py` | 455 | Calls `.get()` on Provider dataclass (not dict) | Can fix in parallel |
+| **FIX-002** | `core/data/broker.py` | 152 | References non-existent `candidates` attribute | Can fix in parallel |
+| **FIX-003** | `core/data/discovery/wms_wcs.py` | 379-380 | Duplicate dict key breaks WCS queries | Can fix in parallel |
+| **FIX-004** | `core/analysis/.../hand_model.py` | 305 | `ndimage.grey_erosion()` doesn't exist | Can fix in parallel |
+| **FIX-005** | `core/analysis/.../hand_model.py` | 378-382 | Wrong `distance_transform_edt` parameters | Fix with FIX-004 |
+| **FIX-006** | `openspec/schemas/provenance.schema.json` | 112 | Broken `$ref` to non-existent definition | Can fix in parallel |
+
+### P1: Medium Priority (Logic Bugs)
+
+| Fix ID | File | Line | Issue | Parallel Group |
+|--------|------|------|-------|----------------|
+| **FIX-007** | `core/intent/classifier.py` | 206-208 | Classification bias toward deeper classes | Can fix in parallel |
+| **FIX-008** | `core/intent/resolver.py` | 8 | Python 3.11+ only import (`datetime.UTC`) | Can fix in parallel |
+| **FIX-009** | `core/data/broker.py` | 125 | Deprecated `datetime.utcnow()` | Fix with FIX-001/002 |
+| **FIX-010** | `core/analysis/.../hand_model.py` | 310-342 | Stub D8 flow accumulation algorithm | Fix with FIX-004/005 |
+| **FIX-011** | `core/data/discovery/provider_api.py` | 250 | Import statement inside class body | Can fix in parallel |
+
+### P2: Low Priority (Style/Best Practice)
+
+| Fix ID | File | Issue |
+|--------|------|-------|
+| **FIX-012** | `core/intent/resolver.py:15-16` | Library calls `logging.basicConfig()` |
+| **FIX-013** | `core/intent/registry.py:108-109` | Hardcoded `parent.parent.parent` path |
+| **FIX-014** | Multiple discovery files | Unnecessary `hasattr(provider, "cost")` checks |
+| **FIX-015** | `core/data/providers/registry.py:68` | Empty `_load_default_providers()` stub |
+| **FIX-016** | Multiple schema files | Inconsistent `confidence_score` definitions |
+
+### Fix Execution Strategy
+
+**Parallel Batch 1** (All P0 fixes - can run simultaneously):
+```
+FIX-001, FIX-002, FIX-003 → broker.py and wms_wcs.py fixes
+FIX-004, FIX-005, FIX-010 → hand_model.py scipy fixes (do together)
+FIX-006 → Add processing_level to common.schema.json
+```
+
+**Parallel Batch 2** (P1 fixes - after Batch 1):
+```
+FIX-007 → classifier.py depth bonus adjustment
+FIX-008, FIX-009 → datetime compatibility fixes
+FIX-011 → provider_api.py import cleanup
+```
+
+**Parallel Batch 3** (P2 fixes - when convenient):
+```
+FIX-012 through FIX-016 → Style and consistency fixes
+```
+
+### Verification After Fixes
+
+```bash
+# Run full test suite after each batch
+PYTHONPATH=. .venv/bin/pytest tests/ -v
+
+# Expected: 277+ tests passing, 0 errors
+```
+
+---
+
+## Tech Debt Backlog (Ongoing)
+
+The following issues were identified during earlier reviews and should be addressed during ongoing development.
+
+### Previously Identified Critical Issues
+
+| Issue | Location | Description |
+|-------|----------|-------------|
+| Division by zero risk | `change_detection.py:293` | Ratio method doesn't properly guard against zero denominators |
+| Shell injection vulnerability | `parallel_orchestrator.sh:119-141` | Unquoted variables with `--dangerously-skip-permissions` |
+| Class name mismatches | `baseline_algorithms.yaml:59,132` | YAML `class_name` fields don't match actual Python class names |
+
+### Previously Identified High Priority
+
+| Issue | Location | Description |
+|-------|----------|-------------|
+| Thread-unsafe singleton | `registry.py:464-497` | Global registry needs `threading.Lock()` for parallel execution |
+| Lock file race conditions | `parallel_orchestrator.sh:108-110` | Multiple agents could claim same work simultaneously |
+| Unimplemented algorithms | `baseline_algorithms.yaml:257-540` | Wildfire/storm algorithms declared but code doesn't exist |
+| No registry caching | `registry.py:231` | O(n) search on every algorithm lookup |
+
+### Design Improvements
+
+| Area | Recommendation |
+|------|----------------|
+| **Shell → Python** | Migrate orchestrators to Python for safety, testability, and proper process management |
+| **Shared Utilities** | Create `core/analysis/utils/` for common functions (confidence scoring, masking, validation) |
+| **Base Algorithm Class** | Add abstract base class for algorithms to enforce interface consistency |
+| **Documentation** | Add algorithm complexity estimates, runtime requirements, and paper citations to YAML |
+
+---
+
+## Agent Code Review Checklist
+
+All agents MUST complete this checklist during the Review phase before marking work as done.
+
+### 1. Correctness & Safety
+- [ ] Division operations guarded against zero
+- [ ] Array indexing validated for bounds
+- [ ] NaN/Inf handling with `np.isnan()`, `np.isinf()`
+- [ ] Edge cases tested (empty arrays, single elements, all-same values)
+- [ ] Shell variables quoted: `"$VAR"` not `$VAR`
+- [ ] No hardcoded credentials or API keys
+
+### 2. Consistency
+- [ ] Names match across files (class names in YAML match Python)
+- [ ] Default values in code match YAML/spec defaults
+- [ ] Error handling patterns match rest of codebase
+- [ ] Import paths in registry match actual file locations
+
+### 3. Completeness
+- [ ] All declared features implemented (no YAML entries for unwritten code)
+- [ ] Every public function has at least one test
+- [ ] Error paths tested, not just happy path
+- [ ] Docstrings present on public classes/functions
+- [ ] Type hints on function signatures
+
+### 4. Robustness
+- [ ] Specific exceptions caught (no bare `except:`)
+- [ ] Resources cleaned up in finally blocks
+- [ ] Thread safety considered for global state
+- [ ] Atomic operations for locks (`fcntl.flock()` not pid files)
+- [ ] Graceful degradation for partial failures
+
+### 5. Performance
+- [ ] No O(n²) loops on large data without justification
+- [ ] Expensive computations cached if reused
+- [ ] Large arrays processed in chunks if memory-constrained
+- [ ] Lazy loading where appropriate
+
+### 6. Security
+- [ ] External input validated before use
+- [ ] No dangerous flags (`--dangerously-skip-permissions` removed for production)
+- [ ] Minimal permissions requested
+- [ ] Secrets not logged in debug output
+
+### 7. Maintainability
+- [ ] Magic numbers extracted to named constants
+- [ ] No code duplication (shared logic extracted)
+- [ ] Single responsibility per function
+- [ ] Clear naming (variables describe content, functions describe action)
 
 ---
 

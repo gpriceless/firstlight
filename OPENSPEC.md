@@ -3525,6 +3525,163 @@ provenance_extensions:
 - `api/models/*.py`
 - `deploy/serverless.yml`
 
+## Parallelized Execution Plan
+
+The implementation phases can be reorganized for parallel execution:
+
+```
+Timeline (Work Streams)
+═══════════════════════════════════════════════════════════════════════════
+
+Stream A          Stream B          Stream C          Integration
+────────          ────────          ────────          ───────────
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    PHASE 1: Foundation                          │
+│            (All schemas, validator, event classes)              │
+│                    [SEQUENTIAL - Required First]                │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+┌───────────────┐   ┌─────────────────┐   ┌─────────────────┐
+│   PHASE 2:    │   │    PHASE 3:     │   │   PHASE 4a:     │
+│    Intent     │   │   Data Broker   │   │ Algorithm Lib   │
+│  Resolution   │   │   & Ingestion   │   │   (Registry)    │
+│               │   │                 │   │                 │
+│ - Registry    │   │ - Broker core   │   │ - Library arch  │
+│ - Classifier  │   │ - Providers     │   │ - Baseline algs │
+│ - Resolver    │   │ - Evaluation    │   │ - Selection eng │
+│               │   │ - Selection     │   │                 │
+│               │   │ - Cache         │   │                 │
+│               │   │ - Ingestion     │   │                 │
+└───────┬───────┘   └────────┬────────┘   └────────┬────────┘
+        │                    │                     │
+        │                    ▼                     │
+        │           ┌─────────────────┐            │
+        │           │   PHASE 4b:     │◄───────────┘
+        │           │ Pipeline Engine │
+        │           │                 │
+        │           │ - Assembler     │
+        │           │ - Fusion engine │
+        │           │ - Forecast intg │
+        │           │ - Execution     │
+        │           └────────┬────────┘
+        │                    │
+        │                    ▼
+        │           ┌─────────────────┐   ┌─────────────────┐
+        │           │    PHASE 5:     │   │   PHASE 5a:     │
+        │           │  QC & Validation│◄──│  QC Framework   │
+        │           │                 │   │  (can start     │
+        │           │ - Sanity checks │   │   with Phase 1) │
+        │           │ - Cross-valid   │   └─────────────────┘
+        │           │ - Consensus     │
+        │           │ - Uncertainty   │
+        │           │ - Gating        │
+        │           └────────┬────────┘
+        │                    │
+        └────────────────────┼────────────────────────────────┐
+                             ▼                                │
+                    ┌─────────────────────────────────────────┴──┐
+                    │              PHASE 6: Agent Orchestration  │
+                    │                                            │
+                    │ - Base agent class                         │
+                    │ - Orchestrator (integrates all components) │
+                    │ - Discovery agent (wraps Phase 3)          │
+                    │ - Pipeline agent (wraps Phase 4)           │
+                    │ - Quality agent (wraps Phase 5)            │
+                    │ - Reporting agent                          │
+                    │                                            │
+                    │         [INTEGRATION POINT]                │
+                    └────────────────────┬───────────────────────┘
+                                         │
+                                         ▼
+                    ┌────────────────────────────────────────────┐
+                    │              PHASE 7: API & Deployment     │
+                    │                                            │
+                    │ - FastAPI application                      │
+                    │ - Routes & models                          │
+                    │ - Serverless config                        │
+                    │                                            │
+                    │         [FINAL INTEGRATION]                │
+                    └────────────────────────────────────────────┘
+```
+
+### Parallel Execution Summary
+
+| Work Stream | Components | Dependencies | Team Skills |
+|-------------|-----------|--------------|-------------|
+| **Stream A** | Intent Resolution | Phase 1 schemas | NLP, Python |
+| **Stream B** | Data Broker & Ingestion | Phase 1 schemas | Geospatial, STAC, APIs |
+| **Stream C** | Algorithm Library | Phase 1 schemas | Remote Sensing, ML |
+| **Integration** | Agents, API | All streams complete | Architecture, DevOps |
+
+### Critical Path
+
+The critical path runs through:
+1. Phase 1 (Foundation) →
+2. Phase 3 (Data Broker) →
+3. Phase 4b (Pipeline Engine) →
+4. Phase 5 (QC) →
+5. Phase 6 (Agents) →
+6. Phase 7 (API)
+
+**Optimization opportunity**: Phase 2 (Intent) and Phase 4a (Algorithm Library) can be developed entirely off the critical path.
+
+### Sub-Phase Parallelization
+
+Within each phase, further parallelization is possible:
+
+**Phase 3 internal parallelization:**
+```
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│ Provider plugins │  │ Constraint eval  │  │  Cache system    │
+│ (sentinel2.py)   │  │ (ranking.py)     │  │  (manager.py)    │
+│ (sentinel1.py)   │  │ (tradeoffs.py)   │  │  (index.py)      │
+│ (landsat.py)     │  │                  │  │                  │
+└────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘
+         └──────────────────────┼──────────────────────┘
+                                ▼
+                    ┌──────────────────────┐
+                    │    broker.py         │
+                    │  (integration layer) │
+                    └──────────────────────┘
+```
+
+**Phase 5 internal parallelization:**
+```
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│  Sanity checks   │  │ Cross-validation │  │   Uncertainty    │
+│  (spatial.py)    │  │ (cross_model.py) │  │ (quantification) │
+│  (values.py)     │  │ (cross_sensor.py)│  │ (propagation.py) │
+│  (temporal.py)   │  │                  │  │                  │
+└────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘
+         └──────────────────────┼──────────────────────┘
+                                ▼
+                    ┌──────────────────────┐
+                    │   consensus.py       │
+                    │   gating.py          │
+                    └──────────────────────┘
+```
+
+### Recommended Team Allocation (3-Team Setup)
+
+| Team | Primary Focus | Secondary Focus |
+|------|---------------|-----------------|
+| **Team 1** | Phase 1 (lead), Phase 2 | Phase 6 (integration) |
+| **Team 2** | Phase 3, Phase 4b | Phase 7 |
+| **Team 3** | Phase 4a, Phase 5 | Testing & validation |
+
+### Handoff Points
+
+| From | To | Interface | Artifact |
+|------|-----|-----------|----------|
+| Phase 1 | Phases 2,3,4a | JSON Schemas | `openspec/schemas/*.json` |
+| Phase 3 | Phase 4b | Broker Response | `broker_response.schema.json` |
+| Phase 4b | Phase 5 | Pipeline Output | Analysis results + metadata |
+| Phase 5 | Phase 6 | QA Report | `qa_report.schema.json` |
+| All | Phase 6 | Agent Interfaces | `agent_message.schema.json` |
+
 ## Verification
 
 1. **Schema validation**:
