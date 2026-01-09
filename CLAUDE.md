@@ -30,6 +30,9 @@ Situation-agnostic specifications enable the same agent-orchestrated pipelines t
 **Push regularly after completing work.** The repo is configured for GitHub.
 
 ```bash
+# Load SSH keychain (required before push)
+source ~/.keychain/*-sh
+
 # Stage and commit
 git add <files>
 git commit -m "$(cat <<'EOF'
