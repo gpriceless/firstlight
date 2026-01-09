@@ -25,6 +25,29 @@ Situation-agnostic specifications enable the same agent-orchestrated pipelines t
 2. **Check ROADMAP.md** for current progress and what can be parallelized
 3. Run tests: `PYTHONPATH=. .venv/bin/pytest tests/ -v`
 
+## Git Workflow
+
+**Push regularly after completing work.** The repo is configured for GitHub.
+
+```bash
+# Stage and commit
+git add <files>
+git commit -m "$(cat <<'EOF'
+Short description of changes
+
+- Detail 1
+- Detail 2
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+EOF
+)"
+
+# Push to GitHub
+git push origin main
+```
+
+**Note:** Email is configured as `gpriceless@users.noreply.github.com` for GitHub privacy compliance.
+
 ## Current Status
 
 - Groups A-D: Complete (schemas, validator, intent, data discovery)
