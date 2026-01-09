@@ -948,6 +948,68 @@ Once the core multiverse is stable, consider these expansion packs:
 
 ---
 
+## Test Runner Guide
+
+A modular test runner is available for quick, targeted testing during development.
+
+### Quick Start
+
+```bash
+./run_tests.py --list             # Show all categories and options
+./run_tests.py                    # Run all tests (518 total)
+```
+
+### By Hazard Type
+
+```bash
+./run_tests.py flood              # Flood detection tests (~52 tests)
+./run_tests.py wildfire           # Wildfire/burn tests (~86 tests)
+./run_tests.py storm              # Storm damage tests (~62 tests)
+```
+
+### By Component
+
+```bash
+./run_tests.py schemas            # JSON schema validation
+./run_tests.py intent             # Intent resolution & classification
+./run_tests.py providers          # Data provider implementations
+./run_tests.py registry           # Algorithm registry
+```
+
+### By Specific Algorithm
+
+```bash
+./run_tests.py --algorithm sar        # SAR backscatter threshold
+./run_tests.py --algorithm ndwi       # NDWI optical flood detection
+./run_tests.py --algorithm hand       # Height Above Nearest Drainage
+./run_tests.py --algorithm dnbr       # Differenced NBR burn severity
+./run_tests.py --algorithm thermal    # Thermal anomaly detection
+./run_tests.py --algorithm wind       # Wind damage assessment
+./run_tests.py --algorithm structural # Structural damage assessment
+```
+
+### Development Workflow
+
+When implementing a new feature:
+
+1. **Start with tests**: `./run_tests.py <hazard> --quick` to verify baseline
+2. **Develop iteratively**: Run specific algorithm tests as you code
+3. **Verify no regressions**: `./run_tests.py` full suite before committing
+
+### Adding New Tests
+
+Tests are auto-marked based on file and test names:
+- File named `test_wildfire_*.py` → automatically gets `@pytest.mark.wildfire`
+- Test named `test_flood_*` → automatically gets `@pytest.mark.flood`
+
+Common fixtures available in `tests/conftest.py`:
+- `sample_dem` - 100x100 terrain with river valley
+- `sample_sar_image` - SAR backscatter with water region
+- `sample_optical_bands` - Green/NIR bands for NDWI
+- `sample_event_spec` - Valid event specification dict
+
+---
+
 ## Verification Checkpoints Throughout the Journey
 
 As you progress through each group:
@@ -960,58 +1022,58 @@ As you progress through each group:
 
 2. **After Group B:**
    ```bash
-   pytest tests/test_schemas.py -v
+   ./run_tests.py schemas
    python -m openspec.validator examples/flood_event.yaml
    ```
 
 3. **After Group C:**
    ```bash
-   pytest tests/test_intent.py -v
+   ./run_tests.py intent
    python -m core.intent.resolver "flooding after hurricane in Miami"
    ```
 
 4. **After Group D:**
    ```bash
-   pytest tests/test_broker.py -v
+   ./run_tests.py providers
    python -m core.data.broker --event examples/flood_event.yaml
    ```
 
 5. **After Group E:**
    ```bash
-   pytest tests/test_algorithms.py -v
-   python -m core.analysis.library.registry --list-algorithms
+   ./run_tests.py flood wildfire storm    # All hazard algorithms
+   ./run_tests.py registry                 # Algorithm registry
    ```
 
 6. **After Group F:**
    ```bash
-   pytest tests/test_selection.py -v
+   ./run_tests.py --file selection
    ```
 
 7. **After Group G:**
    ```bash
-   pytest tests/test_ingestion.py -v
+   ./run_tests.py --file ingestion
    gdalinfo output.tif  # Verify COG structure
    ```
 
 8. **After Group H:**
    ```bash
-   pytest tests/test_fusion.py -v
+   ./run_tests.py --file fusion
    ```
 
 9. **After Group I:**
    ```bash
-   pytest tests/test_quality.py -v
+   ./run_tests.py --file quality
    ```
 
 10. **After Group J:**
     ```bash
-    pytest tests/test_agents.py -v
+    ./run_tests.py --file agents
     python -m agents.orchestrator.main examples/flood_event.yaml
     ```
 
 11. **After Group K (Full System!):**
     ```bash
-    pytest tests/ -v  # All tests
+    ./run_tests.py                        # All 518+ tests
     uvicorn api.main:app --reload &
     curl -X POST http://localhost:8000/events \
       -H "Content-Type: application/yaml" \
