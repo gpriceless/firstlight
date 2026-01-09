@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openspec.io/schemas/ingestion.schema.json",
+  "title": "Ingestion Specification Schema",
+  "description": "Schema for data ingestion, normalization, and conversion to cloud-native formats",
+
+  "type": "object",
+  "required": ["job_id", "source", "target_format", "normalization"],
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "description": "Unique ingestion job identifier",
+      "pattern": "^ingest_[a-z0-9_]+$"
+    },
+
+    "event_id": {
+      "type": "string",
+      "description": "Associated event ID",
+      "pattern": "^evt_[a-z0-9_]+$"
+    },
+
+    "source": {
+      "type": "object",
+      "description": "Source data specification",
+      "required": ["uri", "format"],
+      "properties": {
+        "uri": {
+          "$ref": "common.schema.json#/$defs/uri",
+          "description": "Source data location"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["geotiff", "netcdf", "jp2", "hdf5", "grib", "shapefile"],
+          "description": "Source data format"
+        },
+        "checksum": {
+          "$ref": "common.schema.json#/$defs/checksum"
+        },
+        "data_type": {
+          "$ref": "common.schema.json#/$defs/data_type_category"
+        }
+      }
+    },
+
+    "target_format": {
+      "type": "string",
+      "enum": ["cog", "zarr", "geoparquet"],
+      "description": "Target cloud-native format"
+    },
+
+    "normalization": {
+      "type": "object",
+      "description": "Normalization parameters",
+      "properties": {
+        "target_crs": {
+          "type": "string"
+        },
+        "resolution_m": {
+          "type": "number"
+        },
+        "resampling": {
+          "type": "string",
+          "enum": ["nearest", "bilinear", "cubic"]
+        }
+      }
+    },
+
+    "validation": {
+      "type": "object",
+      "properties": {
+        "integrity_checks": {
+          "type": "boolean",
+          "default": true
+        },
+        "anomaly_detection": {
+          "type": "boolean",
+          "default": true
+        },
+        "fail_on_anomaly": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+
+    "enrichment": {
+      "type": "object",
+      "properties": {
+        "generate_overviews": {
+          "type": "boolean",
+          "default": true
+        },
+        "compute_statistics": {
+          "type": "boolean",
+          "default": true
+        },
+        "quality_summary": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+
+    "lineage": {
+      "type": "object",
+      "properties": {
+        "parent_products": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "processing_step": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

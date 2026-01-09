@@ -1,0 +1,53 @@
+# Example: Tornado Damage Assessment Event
+# This demonstrates event specification for severe convective storm damage
+
+id: evt_2024_midwest_tornado_015
+
+intent:
+  class: storm.severe_convective
+  source: inferred
+  original_input: "tornado damage assessment in Oklahoma"
+  confidence: 0.88
+
+spatial:
+  type: Polygon
+  coordinates:
+    - [
+        [-97.6, 35.4],
+        [-97.3, 35.4],
+        [-97.3, 35.6],
+        [-97.6, 35.6],
+        [-97.6, 35.4]
+      ]
+  crs: EPSG:4326
+  bbox: [-97.6, 35.4, -97.3, 35.6]
+
+temporal:
+  start: "2024-05-18T00:00:00Z"
+  end: "2024-05-22T23:59:59Z"
+  reference_time: "2024-05-19T20:30:00Z"  # Tornado touchdown
+
+constraints:
+  max_cloud_cover: 0.2
+  min_resolution_m: 3  # High resolution needed for structural damage
+  required_data_types:
+    - optical
+  optional_data_types:
+    - sar        # For all-weather capability
+    - ancillary  # For building footprints
+  required_bands:
+    - red
+    - green
+    - blue
+    - nir
+
+priority: high
+
+metadata:
+  created_at: "2024-05-20T08:00:00Z"
+  created_by: "nws_damage_survey_team"
+  tags:
+    - tornado
+    - severe_weather
+    - damage_assessment
+    - oklahoma

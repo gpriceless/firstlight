@@ -1,0 +1,83 @@
+# Flood Event Class Definition
+class: flood
+name: Flood Events
+description: Flooding events including riverine, coastal, flash, and urban flooding
+
+taxonomy:
+  flood:
+    description: Root flood classification
+    keywords:
+      - flood
+      - flooding
+      - inundation
+    children:
+      riverine:
+        description: River flooding from prolonged precipitation or snowmelt
+        keywords:
+          - river flood
+          - fluvial flood
+          - overflow
+        required_data_types:
+          - sar
+          - dem
+        optional_data_types:
+          - optical
+        pipelines:
+          - flood_extent_sar
+      
+      coastal:
+        description: Coastal flooding events
+        keywords:
+          - coastal flood
+          - coastal flooding
+        children:
+          storm_surge:
+            description: Storm surge flooding from tropical cyclones
+            keywords:
+              - storm surge
+              - hurricane flooding
+              - typhoon flooding
+            required_data_types:
+              - sar
+              - dem
+              - weather
+            pipelines:
+              - flood_extent_sar
+              - surge_modeling
+          
+          tidal:
+            description: Tidal flooding and king tides
+            keywords:
+              - tidal flooding
+              - king tide
+            required_data_types:
+              - sar
+              - optical
+            pipelines:
+              - flood_extent_sar
+      
+      flash:
+        description: Flash flooding from intense precipitation
+        keywords:
+          - flash flood
+          - sudden flood
+          - rapid onset flood
+        required_data_types:
+          - sar
+          - weather
+        pipelines:
+          - flood_extent_sar
+          - rapid_assessment
+      
+      urban:
+        description: Urban flooding from overwhelmed drainage
+        keywords:
+          - urban flood
+          - pluvial flood
+          - street flooding
+        required_data_types:
+          - sar
+          - ancillary
+        pipelines:
+          - flood_extent_sar
+          - urban_exposure_analysis

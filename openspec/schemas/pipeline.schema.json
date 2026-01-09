@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openspec.io/schemas/pipeline.schema.json",
+  "title": "Pipeline Schema",
+  "description": "Composable analytical workflow definition",
+
+  "type": "object",
+  "required": ["id", "name", "applicable_classes", "inputs", "steps", "outputs"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+
+    "name": {"type": "string"},
+    "description": {"type": "string"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+
+    "applicable_classes": {
+      "type": "array",
+      "description": "Event classes this pipeline applies to (supports wildcards)",
+      "items": {"type": "string"}
+    },
+
+    "inputs": {
+      "type": "array",
+      "description": "Required input data",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": {"type": "string", "description": "Logical input name for reference in steps"},
+          "type": {"type": "string", "enum": ["raster", "vector", "table", "scalar"]},
+          "source": {"type": "string", "description": "Data source ID (e.g., sentinel1_grd)"},
+          "temporal_role": {
+            "type": "string",
+            "enum": ["pre_event", "post_event", "reference", "any"],
+            "description": "Temporal relationship to event"
+          },
+          "required": {"type": "boolean", "default": true}
+        }
+      }
+    },
+
+    "steps": {
+      "type": "array",
+      "description": "Processing steps (executed as DAG)",
+      "items": {
+        "type": "object",
+        "required": ["id", "processor"],
+        "properties": {
+          "id": {"type": "string", "description": "Unique step identifier"},
+          "processor": {
+            "type": "string",
+            "description": "Algorithm ID from registry (e.g., flood.change_detection)"
+          },
+          "inputs": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Input references: 'input_name' or 'step_id.output_name'"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Algorithm parameters (override defaults)",
+            "additionalProperties": true
+          },
+          "outputs": {
+            "type": "object",
+            "description": "Named outputs from this step",
+            "additionalProperties": {"type": "string"}
+          },
+          "qc_gate": {
+            "type": "object",
+            "description": "QC check after this step",
+            "properties": {
+              "enabled": {"type": "boolean", "default": false},
+              "checks": {"type": "array", "items": {"type": "string"}},
+              "on_fail": {"type": "string", "enum": ["continue", "warn", "abort"]}
+            }
+          }
+        }
+      }
+    },
+
+    "outputs": {
+      "type": "array",
+      "description": "Final pipeline outputs",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"type": "string", "enum": ["raster", "vector", "table", "report"]},
+          "format": {
+            "type": "string",
+            "enum": ["geotiff", "cog", "netcdf", "zarr", "jp2", "hdf5", "grib", "geojson", "geoparquet"]
+          },
+          "source_step": {"type": "string", "description": "Step ID that produces this output"}
+        }
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "author": {"type": "string"},
+        "created": {"type": "string", "format": "date-time"},
+        "validated_regions": {"type": "array", "items": {"type": "string"}},
+        "citations": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

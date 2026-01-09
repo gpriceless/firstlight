@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openspec.io/schemas/intent.schema.json",
+  "title": "Intent Schema",
+  "description": "Handles event type resolution from natural language or explicit classification",
+
+  "type": "object",
+  "required": ["input", "output"],
+  "properties": {
+    "input": {
+      "type": "object",
+      "description": "Intent resolution input",
+      "properties": {
+        "natural_language": {
+          "type": "string",
+          "description": "Free-text event description for NLP inference"
+        },
+        "explicit_class": {
+          "type": ["string", "null"],
+          "description": "User-specified event class override",
+          "pattern": "^[a-z]+\\.[a-z_]+(\\.[a-z_]+)*$"
+        }
+      },
+      "anyOf": [
+        {"required": ["natural_language"]},
+        {"required": ["explicit_class"]}
+      ]
+    },
+
+    "resolution": {
+      "type": "object",
+      "description": "NLP inference results (populated by classifier)",
+      "properties": {
+        "inferred_class": {
+          "type": "string",
+          "pattern": "^[a-z]+\\.[a-z_]+(\\.[a-z_]+)*$"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["class", "confidence"],
+            "properties": {
+              "class": {"type": "string"},
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "output": {
+      "type": "object",
+      "description": "Final resolved intent",
+      "required": ["resolved_class", "source"],
+      "properties": {
+        "resolved_class": {
+          "type": "string",
+          "description": "Final event class (explicit override or inferred)",
+          "pattern": "^[a-z]+\\.[a-z_]+(\\.[a-z_]+)*$"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["explicit", "inferred"],
+          "description": "Whether class was user-specified or NLP-inferred"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Event-class-specific parameters extracted from input",
+          "additionalProperties": {"type": "string"}
+        }
+      }
+    }
+  }
+}

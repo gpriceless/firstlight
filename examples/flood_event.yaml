@@ -1,0 +1,52 @@
+# Example: Coastal Flood Event from Hurricane
+# This demonstrates event specification for a storm surge flood in Miami area
+
+id: evt_2024_atlantic_flood_001
+
+intent:
+  class: flood.coastal.storm_surge
+  source: inferred
+  original_input: "flooding after hurricane in Miami area"
+  confidence: 0.92
+
+spatial:
+  type: Polygon
+  coordinates:
+    - [
+        [-80.3, 25.7],
+        [-80.1, 25.7],
+        [-80.1, 25.9],
+        [-80.3, 25.9],
+        [-80.3, 25.7]
+      ]
+  crs: EPSG:4326
+  bbox: [-80.3, 25.7, -80.1, 25.9]
+
+temporal:
+  start: "2024-09-15T00:00:00Z"
+  end: "2024-09-20T23:59:59Z"
+  reference_time: "2024-09-17T12:00:00Z"  # Hurricane landfall
+
+constraints:
+  max_cloud_cover: 0.4
+  min_resolution_m: 10
+  required_data_types:
+    - sar        # Essential for flood mapping through clouds
+    - dem        # For flood depth estimation
+    - weather    # For storm surge modeling
+  optional_data_types:
+    - optical    # If available for validation
+  polarization:
+    - VV
+    - VH
+
+priority: critical
+
+metadata:
+  created_at: "2024-09-15T06:00:00Z"
+  created_by: "emergency_operations_center"
+  tags:
+    - hurricane
+    - storm_surge
+    - coastal_flooding
+    - miami

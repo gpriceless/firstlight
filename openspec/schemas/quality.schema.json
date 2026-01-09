@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openspec.io/schemas/quality.schema.json",
+  "title": "Quality Assurance Schema",
+  "description": "Schema for quality control, validation, and uncertainty quantification",
+
+  "type": "object",
+  "required": ["event_id", "product_id", "timestamp", "overall_status"],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "pattern": "^evt_[a-z0-9_]+$"
+    },
+
+    "product_id": {
+      "type": "string",
+      "description": "Product being validated"
+    },
+
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When QC was performed"
+    },
+
+    "overall_status": {
+      "type": "string",
+      "enum": ["PASS", "PASS_WITH_WARNINGS", "REVIEW_REQUIRED", "BLOCKED"],
+      "description": "Overall QC status"
+    },
+
+    "confidence_score": {
+      "$ref": "common.schema.json#/$defs/confidence_score",
+      "description": "Overall confidence in results"
+    },
+
+    "checks": {
+      "type": "array",
+      "description": "Individual QC checks performed",
+      "items": {
+        "type": "object",
+        "required": ["check_name", "category", "status"],
+        "properties": {
+          "check_name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["spatial", "value", "temporal", "historical", "artifact", "cross_validation"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "warning", "soft_fail", "hard_fail"]
+          },
+          "details": {
+            "type": "string"
+          },
+          "metric_value": {
+            "type": "number"
+          },
+          "threshold": {
+            "type": "number"
+          },
+          "spatial_extent": {
+            "$ref": "common.schema.json#/$defs/geometry",
+            "description": "Where the issue was detected"
+          }
+        }
+      }
+    },
+
+    "cross_validation": {
+      "type": "object",
+      "description": "Cross-validation results",
+      "properties": {
+        "methods_compared": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "agreement_metrics": {
+          "type": "object",
+          "properties": {
+            "iou": {"type": "number"},
+            "kappa": {"type": "number"},
+            "disagreement_area_km2": {"type": "number"}
+          }
+        },
+        "consensus_method_used": {
+          "type": "string"
+        },
+        "alternatives_preserved": {
+          "type": "boolean"
+        }
+      }
+    },
+
+    "uncertainty_summary": {
+      "type": "object",
+      "description": "Uncertainty quantification",
+      "properties": {
+        "mean_uncertainty": {
+          "type": "number"
+        },
+        "max_uncertainty": {
+          "type": "number"
+        },
+        "high_uncertainty_area_km2": {
+          "type": "number"
+        },
+        "high_uncertainty_percent": {
+          "type": "number"
+        }
+      }
+    },
+
+    "quality_flags": {
+      "type": "array",
+      "description": "Quality flags applied",
+      "items": {
+        "$ref": "common.schema.json#/$defs/quality_flag"
+      }
+    },
+
+    "actions_taken": {
+      "type": "array",
+      "description": "Automated actions taken",
+      "items": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["flagged", "clipped", "downgraded", "blocked", "routed_to_review"]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "affected_area": {
+            "$ref": "common.schema.json#/$defs/geometry"
+          }
+        }
+      }
+    },
+
+    "expert_review": {
+      "type": "object",
+      "description": "Expert review requirements",
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reviewer_assigned": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in_progress", "completed", "overridden"]
+        }
+      }
+    },
+
+    "degraded_mode": {
+      "type": "object",
+      "description": "Degraded mode information",
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "confidence_modifier": {
+          "$ref": "common.schema.json#/$defs/confidence_score"
+        }
+      }
+    }
+  }
+}

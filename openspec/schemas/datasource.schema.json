@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openspec.io/schemas/datasource.schema.json",
+  "title": "Data Source Schema",
+  "description": "Extensible provider framework for data source configurations",
+
+  "type": "object",
+  "required": ["id", "provider", "type", "capabilities", "access"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Unique data source identifier"
+    },
+
+    "provider": {
+      "type": "string",
+      "description": "Provider name (e.g., copernicus, usgs, nasa)"
+    },
+
+    "type": {
+      "type": "string",
+      "enum": ["optical", "sar", "dem", "weather", "ancillary"],
+      "description": "Data type category"
+    },
+
+    "capabilities": {
+      "type": "object",
+      "description": "Data source capabilities and specifications",
+      "properties": {
+        "bands": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Available spectral bands"
+        },
+        "polarizations": {
+          "type": "array",
+          "items": {"type": "string", "enum": ["VV", "VH", "HH", "HV"]},
+          "description": "SAR polarizations"
+        },
+        "resolution_m": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Native spatial resolution in meters"
+        },
+        "revisit_days": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Revisit time in days"
+        },
+        "temporal_coverage": {
+          "type": "object",
+          "properties": {
+            "start": {"type": "string", "format": "date"},
+            "end": {"type": ["string", "null"], "format": "date"}
+          }
+        },
+        "spatial_coverage": {
+          "type": "string",
+          "enum": ["global", "regional", "local"],
+          "default": "global"
+        }
+      }
+    },
+
+    "access": {
+      "type": "object",
+      "description": "Data access configuration",
+      "required": ["protocol", "endpoint"],
+      "properties": {
+        "protocol": {
+          "type": "string",
+          "enum": ["stac", "wms", "wcs", "s3", "http", "api"],
+          "description": "Access protocol"
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri",
+          "description": "Service endpoint URL"
+        },
+        "authentication": {
+          "type": "string",
+          "enum": ["none", "api_key", "oauth2", "bearer"],
+          "default": "none"
+        },
+        "rate_limit": {
+          "type": "object",
+          "properties": {
+            "requests_per_second": {"type": "number"},
+            "requests_per_day": {"type": "number"}
+          }
+        }
+      }
+    },
+
+    "applicability": {
+      "type": "object",
+      "description": "Event class applicability rules",
+      "properties": {
+        "event_classes": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Applicable event classes (supports wildcards like flood.*)"
+        },
+        "constraints": {
+          "type": "object",
+          "properties": {
+            "requires_clear_sky": {
+              "type": "boolean",
+              "default": false
+            },
+            "max_cloud_cover": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        }
+      }
+    },
+
+    "cost": {
+      "type": "object",
+      "description": "Data acquisition cost information",
+      "properties": {
+        "tier": {
+          "type": "string",
+          "enum": ["open", "open_restricted", "commercial"]
+        },
+        "unit_cost": {"type": "number", "minimum": 0},
+        "currency": {"type": "string", "default": "USD"}
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "documentation_url": {"type": "string", "format": "uri"},
+        "license": {"type": "string"},
+        "citation": {"type": "string"}
+      }
+    }
+  }
+}

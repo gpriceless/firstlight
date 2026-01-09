@@ -1,0 +1,51 @@
+# Wildfire Event Class Definition
+class: wildfire
+name: Wildfire Events
+description: Wildfire and burn scar mapping
+
+taxonomy:
+  wildfire:
+    description: Root wildfire classification
+    keywords:
+      - wildfire
+      - wild fire
+      - forest fire
+      - fire
+    children:
+      forest:
+        description: Forest and woodland fires
+        keywords:
+          - forest fire
+          - woodland fire
+          - timber fire
+        required_data_types:
+          - optical
+        pipelines:
+          - nbr_differenced
+          - burn_severity_classification
+      
+      grassland:
+        description: Grassland and savanna fires
+        keywords:
+          - grassland fire
+          - prairie fire
+          - savanna fire
+          - brush fire
+        required_data_types:
+          - optical
+        pipelines:
+          - nbr_differenced
+          - grassland_burn_mapping
+      
+      interface:
+        description: Wildland-Urban Interface (WUI) fires
+        keywords:
+          - wui fire
+          - wildland urban interface
+          - urban wildfire
+        required_data_types:
+          - optical
+          - ancillary
+        pipelines:
+          - nbr_differenced
+          - structural_damage_assessment
