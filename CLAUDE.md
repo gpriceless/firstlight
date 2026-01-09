@@ -16,3 +16,18 @@ Situation-agnostic specifications enable the same agent-orchestrated pipelines t
 ## Key Files
 
 - `OPENSPEC.md` - Complete system design specification
+- `ROADMAP.md` - Prioritized implementation roadmap with parallel work groups
+- `FIXES.md` - **Required bug fixes** with exact code changes (check before implementing new features)
+
+## Before Starting New Work
+
+1. **Check FIXES.md** for any P0 (critical) bugs that must be fixed first
+2. **Check ROADMAP.md** for current progress and what can be parallelized
+3. Run tests: `PYTHONPATH=. .venv/bin/pytest tests/ -v`
+
+## Current Status
+
+- Groups A-D: Complete (schemas, validator, intent, data discovery)
+- Group E: ~60% complete (flood algorithms done, wildfire/storm pending)
+- Groups F-K: Not started
+- **16 bugs documented** in FIXES.md (6 critical, 5 medium, 5 low priority)
