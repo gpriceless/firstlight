@@ -67,7 +67,8 @@ git push origin main
 
 ## Current Status
 
-- Groups A-D: Complete (schemas, validator, intent, data discovery)
-- Group E: ~60% complete (flood algorithms done, wildfire/storm pending)
-- Groups F-K: Not started
+- Groups A-E: Complete (schemas, validator, intent, data discovery, algorithms)
+- Group F: In progress (intelligent selection systems)
+- Groups G-L: Not started (ingestion, fusion, quality, agents, API, CLI)
+- Groups M-N: Planned (resilience/fallbacks, containerization)
 - **16 bugs documented** in FIXES.md (6 critical, 5 medium, 5 low priority)

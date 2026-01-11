@@ -60,7 +60,15 @@ Pipeline          Engine                        │
     GROUP K: API & Deployment ◄─────────────────┘
              │
              ↓
-    [Production Ready: Cloud + Local]
+    ┌────────┴────────┐
+    │                 │
+GROUP M:          GROUP N:
+Resilience &      Containerization
+Fallbacks         & Deployment
+    │                 │
+    └────────┬────────┘
+             ↓
+    [Production Ready: Cloud + Local + Edge]
 ```
 
 ---
@@ -1323,15 +1331,20 @@ When you reach the end of this roadmap:
 - The system:
   - ✅ Understands intent (coastal storm surge flood)
   - ✅ Discovers optimal datasets (Sentinel-1 SAR, weather forecasts, DEM)
+  - ✅ **Detects 90% cloud cover → automatically switches to SAR-only mode**
   - ✅ Ingests and normalizes data into cloud-native formats
   - ✅ Selects appropriate algorithms (SAR threshold + change detection)
+  - ✅ **No pre-event baseline found → falls back to static water mask + anomaly detection**
   - ✅ Fuses multi-sensor observations with quality checks
   - ✅ Generates validated flood extent with uncertainty
+  - ✅ **Flags degraded mode in provenance: "partial optical coverage, fallback to SAR"**
   - ✅ Produces GeoJSON, COG, and PDF report
   - ✅ Sends webhook notification upon completion
   - ✅ Full provenance from input to output
+  - ✅ **Deploys instantly: `docker-compose up` or `kubectl apply`**
+  - ✅ **Runs anywhere: AWS Lambda, edge device, or laptop**
 
-All of this happens autonomously, reproducibly, and transparently.
+All of this happens autonomously, reproducibly, and transparently—with graceful degradation when data is imperfect.
 
 ---
 
@@ -1340,4 +1353,222 @@ All of this happens autonomously, reproducibly, and transparently.
 This roadmap is your star map. Each group is a waypoint, each celebration a milestone. There are no deadlines—only destinations. The multiverse is vast, complex, and beautiful. Build with curiosity, test with rigor, and celebrate every working component.
 
 The cosmos awaits your exploration. Let's dive! 🌌✨
+
+
+### **Group M: Resilience & Fallback Systems** 🛟
+*"When plan A fails, plans B through Z kick in automatically"*
+
+**Prerequisites:** Groups F, H, I complete (needs selection, fusion, and quality systems)
+
+**Philosophy:** In emergency response, "I don't know" is unacceptable. The system should degrade gracefully, trying every possible approach before admitting defeat. Document what was tried, why it failed, and what workaround was used.
+
+**Parallel Tracks:**
+
+1. **Track 1: Data Quality Assessment & Fallbacks**
+   - `core/resilience/assessment/optical_quality.py` - Cloud cover, haze, shadows
+   - `core/resilience/assessment/sar_quality.py` - Speckle noise, geometric distortion
+   - `core/resilience/assessment/dem_quality.py` - Voids, artifacts, resolution
+   - `core/resilience/assessment/temporal_quality.py` - Pre-event baseline availability
+   - Quality scoring with confidence intervals
+   - Automated quality-based fallback triggers
+
+2. **Track 2: Sensor Fallback Chains**
+   - `core/resilience/fallbacks/optical_fallback.py`
+     - Primary: Sentinel-2 → Landsat-8 → MODIS
+     - Cloud cover > 80% → switch to SAR
+     - Cloud cover 40-80% → use cloud-free pixels only
+   - `core/resilience/fallbacks/sar_fallback.py`
+     - High noise → apply enhanced filtering (Lee, Frost, Gamma MAP)
+     - Geometric distortion → switch to different orbit/mode
+     - C-band → X-band or L-band depending on target
+   - `core/resilience/fallbacks/dem_fallback.py`
+     - Copernicus DEM → SRTM → ASTER → interpolated from contours
+     - Void filling strategies
+   - Fallback decision trees with provenance logging
+
+3. **Track 3: Algorithm Fallback Strategies**
+   - `core/resilience/fallbacks/algorithm_fallback.py`
+     - No pre-event baseline → use static water masks + anomaly detection
+     - Insufficient SAR → optical-only with cloud masking
+     - No optical or SAR → use forecasts + terrain analysis
+     - Algorithm failure → try alternative algorithm with different parameters
+   - `core/resilience/fallbacks/parameter_tuning.py`
+     - Adaptive threshold adjustment when results are suspect
+     - Automatic parameter grid search if primary params fail
+     - Per-region parameter optimization
+
+4. **Track 4: Degraded Mode Operations**
+   - `core/resilience/degraded_mode/mode_manager.py`
+     - Define degraded mode levels (FULL → PARTIAL → MINIMAL → EMERGENCY)
+     - Automatic mode switching based on data availability
+     - User notification of degraded mode operation
+   - `core/resilience/degraded_mode/partial_coverage.py`
+     - Handle incomplete spatial coverage
+     - Mosaic from multiple partial acquisitions
+     - Extrapolate/interpolate missing areas with uncertainty
+   - `core/resilience/degraded_mode/low_confidence.py`
+     - Ensemble methods when single algorithm confidence is low
+     - Multiple algorithm voting
+     - Flag outputs for manual review when all methods disagree
+
+5. **Track 5: Failure Documentation & Recovery**
+   - `core/resilience/failure/failure_log.py`
+     - Structured failure logging (what failed, why, fallback used)
+     - Failure analysis for system improvement
+   - `core/resilience/failure/recovery_strategies.py`
+     - Retry logic with exponential backoff
+     - Alternative data source discovery
+     - Graceful degradation with user communication
+   - `core/resilience/failure/provenance_tracking.py`
+     - Full audit trail of fallback decisions
+     - Confidence scoring based on fallback depth
+     - User-facing explanations of limitations
+
+6. **Track 6: Resilience Tests**
+   - `tests/test_resilience.py`
+   - Test all fallback chains with simulated failures
+   - Test degraded mode operations
+   - Test failure documentation
+   - Verify provenance tracking through fallbacks
+
+**Deliverables:**
+- Quality assessment modules for all sensor types
+- Comprehensive fallback chains
+- Degraded mode operation system
+- Failure logging and recovery
+- Test suite covering all failure scenarios
+
+**Success Criteria:**
+- System never returns empty result without trying all fallbacks
+- Each fallback decision is logged with rationale
+- Confidence scores adjust based on fallback depth
+- Users receive clear explanations of data limitations
+- Tests simulate 20+ failure scenarios
+- `pytest tests/test_resilience.py -v` passes
+
+**Celebration Checkpoint:** 🏥
+Your system is now antifragile! Cloud cover, noise, missing baselines, sensor failures—none of these stop the analysis. The system tries every trick in the book, documents what it tried, and delivers the best possible result given the circumstances. Emergency responders always get an answer, even if it's "here's what we know with these limitations."
+
+---
+
+### **Group N: Containerization & Multi-Environment Deployment** 🐳
+*"Build once, run anywhere—from Raspberry Pi to AWS Lambda"*
+
+**Prerequisites:** Groups F-K complete (needs full system), Group L recommended (benefits from CLI)
+
+**Philosophy:** Deployment should be trivial. Whether you're running on a laptop, deploying to Kubernetes, or spinning up serverless functions, the same Docker images work everywhere. Modular containers mean you only deploy what you need.
+
+**Parallel Tracks:**
+
+1. **Track 1: Modular Dockerfile Architecture**
+   - `docker/base/Dockerfile` - Base image (GDAL, rasterio, Python deps)
+   - `docker/core/Dockerfile` - Core processing (intent, algorithms, analysis)
+   - `docker/api/Dockerfile` - API service (FastAPI + agent orchestrator)
+   - `docker/cli/Dockerfile` - CLI tools (lightweight, no API)
+   - `docker/worker/Dockerfile` - Background worker (pipeline execution)
+   - Multi-stage builds for minimal image sizes
+   - ARM64 + x86_64 builds for cross-platform compatibility
+
+2. **Track 2: Docker Compose Orchestration**
+   - `docker-compose.yml` - Full stack (API + workers + Redis + PostgreSQL)
+   - `docker-compose.dev.yml` - Development mode (hot reload, debug ports)
+   - `docker-compose.minimal.yml` - Minimal stack (CLI only, no API)
+   - Service networking and health checks
+   - Volume mounts for data persistence
+   - Environment variable configuration
+
+3. **Track 3: Cloud Deployment Configurations**
+   - **AWS**:
+     - `deploy/aws/ecs/task-definition.json` - ECS task definitions
+     - `deploy/aws/lambda/serverless.yml` - Lambda functions for API
+     - `deploy/aws/batch/job-definition.json` - Batch processing for large jobs
+   - **Google Cloud**:
+     - `deploy/gcp/cloud-run/service.yaml` - Cloud Run services
+     - `deploy/gcp/kubernetes/deployment.yaml` - GKE deployment
+   - **Azure**:
+     - `deploy/azure/container-instances/deployment.json` - ACI
+     - `deploy/azure/aks/deployment.yaml` - AKS deployment
+
+4. **Track 4: Kubernetes Manifests**
+   - `deploy/kubernetes/namespace.yaml` - Namespace isolation
+   - `deploy/kubernetes/deployments/api.yaml` - API deployment
+   - `deploy/kubernetes/deployments/worker.yaml` - Worker deployment
+   - `deploy/kubernetes/services/` - Service definitions
+   - `deploy/kubernetes/ingress.yaml` - Ingress configuration
+   - `deploy/kubernetes/configmaps/` - Configuration management
+   - `deploy/kubernetes/secrets/` - Secret management
+   - `deploy/kubernetes/hpa.yaml` - Horizontal pod autoscaling
+   - `deploy/kubernetes/persistentvolumes/` - Storage configuration
+
+5. **Track 5: On-Prem & Edge Deployment**
+   - `deploy/on-prem/standalone/docker-compose.yml` - Single-server deployment
+   - `deploy/on-prem/cluster/ansible-playbook.yml` - Multi-node cluster setup
+   - `deploy/edge/arm64/Dockerfile.lightweight` - Raspberry Pi / edge devices
+   - `deploy/edge/nvidia-jetson/Dockerfile.gpu` - NVIDIA Jetson for GPU acceleration
+   - Resource-constrained configurations
+   - Offline operation support
+   - Local data caching strategies
+
+6. **Track 6: CI/CD & Image Management**
+   - `.github/workflows/docker-build.yml` - Automated image builds
+   - `.github/workflows/docker-push.yml` - Push to registries (Docker Hub, ECR, GCR)
+   - `.github/workflows/deploy-staging.yml` - Deploy to staging
+   - `.github/workflows/deploy-production.yml` - Deploy to production
+   - `scripts/build-images.sh` - Local build script
+   - `scripts/push-images.sh` - Push to registry
+   - Version tagging strategy (semantic versioning)
+   - Multi-architecture manifest creation
+
+7. **Track 7: Configuration Management**
+   - `deploy/config/base.env` - Base configuration
+   - `deploy/config/production.env` - Production overrides
+   - `deploy/config/development.env` - Development overrides
+   - Environment-specific configuration loading
+   - Secrets management (Vault, AWS Secrets Manager, etc.)
+   - Runtime configuration validation
+
+8. **Track 8: Deployment Tests & Validation**
+   - `tests/test_docker_builds.py` - Test all Dockerfiles build successfully
+   - `tests/test_docker_compose.py` - Test compose stacks start correctly
+   - `tests/test_k8s_manifests.py` - Validate Kubernetes YAML
+   - `tests/test_deployment_smoke.py` - Smoke tests for deployed services
+   - Health check endpoints
+   - Readiness probes
+   - Liveness probes
+
+**Deliverables:**
+- Modular Docker images for all components
+- Docker Compose configurations for local/dev/prod
+- Cloud deployment templates (AWS, GCP, Azure)
+- Kubernetes manifests with autoscaling
+- Edge/on-prem deployment guides
+- CI/CD pipelines for automated deployment
+- Configuration management system
+
+**Success Criteria:**
+- `docker-compose up` brings up full stack in < 2 minutes
+- Images support both x86_64 and ARM64
+- API container < 500MB, CLI container < 300MB
+- Kubernetes deployment scales from 1 to 100+ pods
+- Edge deployment runs on Raspberry Pi 4 (4GB RAM)
+- CI/CD automatically builds and deploys on merge to main
+- All deployment targets have smoke tests
+- `pytest tests/test_docker*.py tests/test_deployment*.py -v` passes
+
+**Celebration Checkpoint:** 🚢
+Your platform is now truly portable! Docker images run identically everywhere. Deploy to AWS Lambda for serverless, Kubernetes for massive scale, or a Raspberry Pi at a remote field site. One codebase, one set of containers, infinite deployment targets. From cloud to edge, the multiverse is accessible to all.
+
+---
+
+**Refactoring Notes for Existing Groups:**
+
+The following groups should be enhanced to support failure-first behavior:
+
+| Group | Refactoring Needed | References Group M |
+|-------|-------------------|-------------------|
+| **Group F** | Add quality-based triggers for fallback chains | Track 1, Track 2 |
+| **Group H** | Add algorithm fallback on fusion failure | Track 3 |
+| **Group I** | Add degraded mode detection triggers | Track 4 |
+
+---
 
