@@ -5,6 +5,12 @@ This package provides the FastAPI-based REST API for the Multiverse Dive
 geospatial event intelligence platform.
 
 Modules:
+    main: FastAPI application entry point
+    config: Pydantic Settings for configuration management
+    dependencies: Dependency injection for routes
+    middleware: Request processing middleware (timing, logging, errors)
+    models: Pydantic models for requests, responses, and errors
+    routes: API route handlers for all endpoints
     auth: API key authentication, JWT support, and permission checking
     rate_limit: Rate limiting middleware with Redis/memory backend
     cors: CORS configuration
@@ -12,6 +18,11 @@ Modules:
     notifications: Multi-channel notification dispatcher
 
 Usage:
+    from api.main import app, create_application
+    from api.config import get_settings, Settings
+    from api.dependencies import get_db_session, require_auth
+    from api.models import EventSubmitRequest, EventResponse, APIError
+    from api.routes import api_router
     from api.auth import authenticate, require_permissions, Permission
     from api.rate_limit import RateLimitMiddleware, rate_limit
     from api.cors import setup_cors
