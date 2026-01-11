@@ -491,22 +491,22 @@ Your system can now make intelligent decisions! It knows when to use optical vs 
    - 55 comprehensive tests in tests/test_validation.py
 
 6. **Track 6: Persistence** ✅ **[DONE]**
-   - `core/data/ingestion/persistence/storage.py` - Storage backends (1194 lines)
+   - `core/data/ingestion/persistence/storage.py` - Storage backends (1212 lines)
      - LocalStorageBackend with checksum verification
      - S3StorageBackend with boto3 integration
      - Factory function and URI parsing utilities
-   - `core/data/ingestion/persistence/intermediate.py` - Product management (1040 lines)
+   - `core/data/ingestion/persistence/intermediate.py` - Product management (1039 lines)
      - ProductManager with SQLite-backed tracking
      - Lifecycle management (creation, access, expiration, cleanup)
      - Content deduplication via checksum indexing
      - Dependency tracking between products
-   - `core/data/ingestion/persistence/lineage.py` - Lineage tracking (1053 lines)
+   - `core/data/ingestion/persistence/lineage.py` - Lineage tracking (1052 lines)
      - LineageTracker with provenance.schema.json compliance
      - TrackingContext and StepContext for pipeline tracking
      - Input dataset, algorithm, and quality summary tracking
      - Reproducibility hashes and environment capture
-   - `core/data/ingestion/persistence/__init__.py` - Module exports
-   - 108 comprehensive tests in `tests/test_persistence.py`
+   - `core/data/ingestion/persistence/__init__.py` - Module exports (105 lines)
+   - 108 comprehensive tests in `tests/test_persistence.py` (1430 lines)
 
 7. **Track 7: Cache System** (can develop in parallel with above)
    - `core/data/cache/manager.py` - Lifecycle management
