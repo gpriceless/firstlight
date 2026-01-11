@@ -24,6 +24,7 @@ from core.resilience.fallbacks.sar_fallback import (
     SARFallbackResult,
     SARFallbackDecision,
     SARBand,
+    SARSensor,
     FilterStrategy,
 )
 
@@ -43,6 +44,7 @@ from core.resilience.fallbacks.algorithm_fallback import (
     AlgorithmFallbackDecision,
     FallbackTrigger,
     AlternativeAlgorithm,
+    DataRequirement,
 )
 
 from core.resilience.fallbacks.parameter_tuning import (
@@ -67,6 +69,7 @@ __all__ = [
     "SARFallbackResult",
     "SARFallbackDecision",
     "SARBand",
+    "SARSensor",
     "FilterStrategy",
     # DEM fallback
     "DEMFallbackChain",
@@ -82,6 +85,7 @@ __all__ = [
     "AlgorithmFallbackDecision",
     "FallbackTrigger",
     "AlternativeAlgorithm",
+    "DataRequirement",
     # Parameter tuning
     "AdaptiveParameterTuner",
     "ParameterTuningConfig",
