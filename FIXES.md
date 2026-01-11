@@ -519,6 +519,23 @@ PYTHONPATH=. .venv/bin/pytest tests/test_flood_algorithms.py -v
 
 | Date | Fix ID | Status | Notes |
 |------|--------|--------|-------|
+| 2026-01-11 | NEW-030 | Fixed | Track 1 (I): Performance optimization in artifacts.py _calculate_block_score - replaced O(n²) nested loop with vectorized numpy operations using boundary mask |
+| 2026-01-11 | NEW-029 | Fixed | Track 1 (I): Division by zero in artifacts.py _detect_saturation - added guard for zero finite pixel count |
+| 2026-01-11 | NEW-028 | Fixed | Track 1 (I): Division by zero in artifacts.py _detect_hot_pixels (hot and cold) - added guard for zero finite pixel count |
+| 2026-01-11 | NEW-027 | Fixed | Track 1 (I): Division by zero in values.py _check_nan and _check_inf - added guards for empty arrays with size == 0 |
+| 2026-01-11 | NEW-026 | Fixed | Track 4 (I): TypeError in routing.py check_escalations - used list `|` list which fails, changed to set union `|` before converting to list |
+| 2026-01-11 | NEW-025 | Fixed | Track 2 (I): Percentile calculation edge cases in historical.py _calculate_percentile - values below min returned negative percentiles, values above max returned >100, NaN/Inf crashed. Fixed with bounds clamping and NaN/Inf handling |
+| 2026-01-11 | NEW-024 | Fixed | Track 2 (I): Division by zero in cross_model.py get_ensemble_consensus when weights sum to zero - added guard to fall back to equal weights |
+| 2026-01-11 | NEW-023 | Fixed | Track 4 (I): Division by zero in flagging.py get_pixel_quality_mask when mask dimensions are zero - added guard to skip empty masks |
+| 2026-01-11 | NEW-022 | Fixed | Track 4 (I): NaN handling in flagging.py AppliedFlag.to_dict when pixel_mask is empty - np.mean on empty array returns NaN, added size check |
+| 2026-01-11 | NEW-021 | Fixed | Track 3 (I): Division by zero in harmonic mean propagation when value is exactly 0.0 - np.sign(0)==0 caused zero guard to fail. Fixed by explicit handling of zero values |
+| 2026-01-11 | NEW-020 | Fixed | Track 5 (H): Division by zero in _calculate_confidence when threshold=0.0 or 1.0 - added guard for max_distance < 1e-10 in unet_segmentation.py and ensemble_fusion.py |
+| 2026-01-11 | NEW-019 | Fixed | Track 2 (H): Missing numpy import in tests/test_fusion.py - tests using np.array() were failing with NameError |
+| 2026-01-10 | NEW-018 | Fixed | Track 4 (H): Array dimension handling in scenarios.py _compute_exceedance_duration - added support for 1D and 2D arrays, not just 3D |
+| 2026-01-10 | NEW-017 | Fixed | Track 4 (H): Empty probability_field shape in scenarios.py - changed np.array([]) to np.zeros((0, 0)) for consistent 2D shape |
+| 2026-01-10 | NEW-016 | Fixed | Track 4 (H): Division by zero in validation.py _compute_ensemble_metrics - added guard for mean_skill < 1e-10 |
+| 2026-01-10 | NEW-015 | Fixed | Track 4 (H): FSS edge cases in validation.py - added guards for empty arrays, all-NaN arrays, zero resolution, and NaN mse values |
+| 2026-01-10 | NEW-014 | Fixed | Track 1 (H): IndexError in assembler.py when step_outputs is empty - added guards in _resolve_input_reference and _resolve_output_source to raise InputNotFoundError instead of IndexError |
 | 2026-01-10 | NEW-013 | Fixed | Track 7 (G): NaN/Inf/negative resolution_m validation in IndexEntry - added __post_init__ to normalize invalid resolution values to 0.0 |
 | 2026-01-10 | NEW-012 | Fixed | Track 7 (G): SpatiotemporalIndex in-memory database bug in index.py - each _get_connection() call created a separate in-memory db, causing "no such table" errors. Fixed by keeping persistent connection for :memory: databases |
 | 2026-01-10 | NEW-011 | Fixed | Track 8 (G): Deprecated datetime.utcnow() in zarr.py - replaced with datetime.now(timezone.utc) for Python 3.12+ compatibility |

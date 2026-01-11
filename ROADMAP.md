@@ -687,11 +687,11 @@ Your analytical engine roars to life! Multiple sensors combine their perspective
    - `core/quality/actions/__init__.py` - Module exports (130 lines)
    - `tests/test_quality.py` - Comprehensive test suite (74 tests passing)
 
-5. **Track 5: Reporting**
+5. **Track 5: Reporting** 🔄 **[IN PROGRESS]**
    - `core/quality/reporting/qa_report.py` - QA report generation
    - `core/quality/reporting/diagnostics.py` - Diagnostic outputs
 
-6. **Track 6: Quality Tests**
+6. **Track 6: Quality Tests** 🔄 **[IN PROGRESS]**
    - `tests/test_quality.py`
    - Test sanity check detection
    - Test cross-validation metrics

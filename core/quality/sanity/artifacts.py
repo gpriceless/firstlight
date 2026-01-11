@@ -616,7 +616,8 @@ class ArtifactDetector:
         sat_count = sat_mask.sum()
 
         if sat_count >= self.config.min_artifact_pixels:
-            pct = 100.0 * sat_count / np.isfinite(data).sum()
+            finite_count = np.isfinite(data).sum()
+            pct = 100.0 * sat_count / finite_count if finite_count > 0 else 0.0
 
             if pct > 10:
                 severity = ArtifactSeverity.HIGH
@@ -677,23 +678,22 @@ class ArtifactDetector:
         gy, gx = np.gradient(np.nan_to_num(data, nan=0.0))
         gradient_mag = np.sqrt(gx**2 + gy**2)
 
-        # Calculate gradient at block boundaries vs elsewhere
-        block_boundary_grads = []
-        non_boundary_grads = []
+        # Create boundary mask using vectorized operations (more efficient than nested loop)
+        rows = np.arange(height)[:, np.newaxis]
+        cols = np.arange(width)[np.newaxis, :]
+        boundary_mask = (rows % block_size == 0) | (cols % block_size == 0)
 
-        for row in range(height):
-            for col in range(width):
-                g = gradient_mag[row, col]
-                if np.isfinite(g):
-                    if row % block_size == 0 or col % block_size == 0:
-                        block_boundary_grads.append(g)
-                    else:
-                        non_boundary_grads.append(g)
+        # Get finite mask
+        finite_mask = np.isfinite(gradient_mag)
 
-        if not block_boundary_grads or not non_boundary_grads:
+        # Extract boundary and non-boundary gradients
+        boundary_grads = gradient_mag[boundary_mask & finite_mask]
+        non_boundary_grads = gradient_mag[~boundary_mask & finite_mask]
+
+        if len(boundary_grads) == 0 or len(non_boundary_grads) == 0:
             return 0.0
 
-        boundary_mean = np.mean(block_boundary_grads)
+        boundary_mean = np.mean(boundary_grads)
         non_boundary_mean = np.mean(non_boundary_grads)
 
         if non_boundary_mean < 1e-10:
