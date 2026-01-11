@@ -5,14 +5,12 @@ event intent from natural language or explicit specifications.
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from .classifier import EventClassifier, get_classifier
 from .registry import EventClassRegistry, get_registry
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -184,7 +182,7 @@ class IntentResolver:
             original_input=original_input,
             parameters=parameters,
             metadata={
-                "resolved_at": datetime.now(UTC).isoformat(),
+                "resolved_at": datetime.now(timezone.utc).isoformat(),
                 "resolution_method": "explicit",
             },
         )
@@ -239,7 +237,7 @@ class IntentResolver:
             alternatives=classification.alternatives,
             parameters=parameters,
             metadata={
-                "resolved_at": datetime.now(UTC).isoformat(),
+                "resolved_at": datetime.now(timezone.utc).isoformat(),
                 "resolution_method": "nlp_classification",
                 "matched_keywords": classification.matched_keywords,
             },

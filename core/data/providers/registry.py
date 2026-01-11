@@ -5,9 +5,12 @@ Central registry for all data providers with preference ordering,
 capability metadata, and applicability rules.
 """
 
+import logging
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 import fnmatch
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -63,9 +66,8 @@ class ProviderRegistry:
 
     def _load_default_providers(self):
         """Load default provider configurations."""
-        # This will be populated with actual provider instances
-        # For now, we initialize an empty registry
-        pass
+        # TODO: Implement default provider loading from YAML configs
+        logger.debug("Default provider loading not yet implemented")
 
     def register(self, provider: Provider):
         """Register a provider."""

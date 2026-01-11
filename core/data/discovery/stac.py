@@ -253,7 +253,7 @@ class STACAdapter(DiscoveryAdapter):
         quality_flag = self._determine_quality_flag(properties)
 
         # Cost tier
-        cost_tier = provider.cost.get("tier", "open") if hasattr(provider, "cost") else "open"
+        cost_tier = provider.cost.get("tier", "open")
 
         # Checksum (if available)
         checksum = None

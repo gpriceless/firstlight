@@ -204,7 +204,7 @@ class EventClassifier:
             base_confidence = match_count / max(max_matches, num_keywords)
 
             # Boost confidence for more specific classes (longer paths)
-            depth_bonus = class_path.count(".") * 0.1
+            depth_bonus = class_path.count(".") * 0.02
             confidence = min(base_confidence + depth_bonus, 0.99)
 
             # Reduce confidence if only partial match
