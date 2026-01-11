@@ -1,0 +1,162 @@
+# Docker Compose Development Overrides
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Features:
+#   - Hot reload for Python code
+#   - Debug ports exposed
+#   - Local volume mounts
+#   - Relaxed resource limits
+#   - Development-friendly settings
+
+version: "3.8"
+
+services:
+  # ==========================================================================
+  # API Service - Development overrides
+  # ==========================================================================
+  api:
+    build:
+      target: development
+    image: multiverse-dive/api:dev
+    container_name: multiverse-dive-api-dev
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # debugpy port
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=debug
+      - PYTHONDONTWRITEBYTECODE=1
+
+      # Disable HTTPS requirement for local dev
+      - AUTH_REQUIRE_HTTPS=false
+
+      # Allow anonymous for testing
+      - AUTH_ALLOW_ANONYMOUS=true
+
+      # Relaxed rate limits for development
+      - RATE_LIMIT_RPM=1000
+      - RATE_LIMIT_RPH=10000
+
+      # CORS - allow all origins in dev
+      - CORS_ALLOW_ALL_ORIGINS=true
+
+      # Webhook settings for local testing
+      - WEBHOOK_TIMEOUT=60
+      - WEBHOOK_MAX_RETRIES=2
+
+    volumes:
+      # Mount source code for hot reload
+      - ../:/app
+      # Mount local data directory
+      - ../data:/data
+      # Exclude virtual env and cache
+      - /app/.venv
+      - /app/__pycache__
+      - /app/.pytest_cache
+    command: >
+      uvicorn api.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/api
+      --reload-dir /app/core
+      --reload-dir /app/agents
+      --log-level debug
+    # No health check in dev to allow startup debugging
+    healthcheck:
+      disable: true
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+
+  # ==========================================================================
+  # Redis - Development overrides
+  # ==========================================================================
+  redis:
+    ports:
+      - "6379:6379"
+    # Disable persistence in dev for faster startup
+    command: >
+      redis-server
+      --appendonly no
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --loglevel verbose
+
+  # ==========================================================================
+  # PostgreSQL - Development overrides
+  # ==========================================================================
+  postgres:
+    # Always start postgres in dev mode
+    profiles: []
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=multiverse
+      - POSTGRES_PASSWORD=dev_password
+      - POSTGRES_DB=multiverse_dive_dev
+
+  # ==========================================================================
+  # Worker - Development overrides
+  # ==========================================================================
+  worker:
+    # Always start worker in dev mode
+    profiles: []
+    image: multiverse-dive/worker:dev
+    container_name: multiverse-dive-worker-dev
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=debug
+      - WORKER_CONCURRENCY=2
+    volumes:
+      - ../:/app
+      - ../data:/data
+      - /app/.venv
+      - /app/__pycache__
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+
+  # ==========================================================================
+  # Additional Development Tools
+  # ==========================================================================
+
+  # Redis Commander - Redis GUI
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: multiverse-dive-redis-commander
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+    networks:
+      - multiverse-network
+
+  # pgAdmin - PostgreSQL GUI
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: multiverse-dive-pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - multiverse-network
+
+volumes:
+  pgadmin-data:
+    driver: local

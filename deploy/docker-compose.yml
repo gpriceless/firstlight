@@ -1,0 +1,222 @@
+# Docker Compose configuration for Multiverse Dive
+# Full stack deployment with API, Redis, and optional PostgreSQL
+#
+# Usage:
+#   docker-compose up -d              # Start all services
+#   docker-compose up -d api          # Start API only
+#   docker-compose logs -f api        # Follow API logs
+#   docker-compose down               # Stop all services
+#
+# For development, use docker-compose.dev.yml as override:
+#   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: "3.8"
+
+services:
+  # ==========================================================================
+  # API Service - Main FastAPI application
+  # ==========================================================================
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: api
+    image: multiverse-dive/api:${VERSION:-latest}
+    container_name: multiverse-dive-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      # Application
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PYTHONUNBUFFERED=1
+
+      # API Configuration
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_WORKERS=${API_WORKERS:-4}
+
+      # Authentication
+      - AUTH_JWT_ENABLED=${AUTH_JWT_ENABLED:-false}
+      - AUTH_JWT_SECRET_KEY=${AUTH_JWT_SECRET_KEY:-}
+      - AUTH_ALLOW_ANONYMOUS=${AUTH_ALLOW_ANONYMOUS:-false}
+      - AUTH_REQUIRE_HTTPS=${AUTH_REQUIRE_HTTPS:-true}
+
+      # Rate Limiting
+      - RATE_LIMIT_RPM=${RATE_LIMIT_RPM:-60}
+      - RATE_LIMIT_RPH=${RATE_LIMIT_RPH:-1000}
+      - REDIS_URL=redis://redis:6379/0
+
+      # CORS
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-}
+      - CORS_ALLOW_CREDENTIALS=${CORS_ALLOW_CREDENTIALS:-true}
+
+      # Webhooks
+      - WEBHOOK_MAX_RETRIES=${WEBHOOK_MAX_RETRIES:-5}
+      - WEBHOOK_TIMEOUT=${WEBHOOK_TIMEOUT:-30}
+
+      # Database (optional)
+      - DATABASE_URL=${DATABASE_URL:-}
+
+      # Storage
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
+      - STORAGE_PATH=/data/products
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_REGION=${S3_REGION:-us-east-1}
+
+    volumes:
+      # Data persistence
+      - api-data:/data
+      # Optional: mount local specs for development
+      - ${OPENSPEC_PATH:-./openspec}:/app/openspec:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - multiverse-network
+    deploy:
+      resources:
+        limits:
+          cpus: "${API_CPU_LIMIT:-2}"
+          memory: ${API_MEMORY_LIMIT:-4G}
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  # ==========================================================================
+  # Redis - Rate limiting, caching, and job queue
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: multiverse-dive-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory ${REDIS_MAXMEMORY:-256mb}
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - multiverse-network
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+  # ==========================================================================
+  # PostgreSQL - State storage (optional)
+  # ==========================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: multiverse-dive-postgres
+    restart: unless-stopped
+    profiles:
+      - database  # Only start with: docker-compose --profile database up
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-multiverse}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-multiverse_dev}
+      - POSTGRES_DB=${POSTGRES_DB:-multiverse_dive}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-multiverse}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - multiverse-network
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+
+  # ==========================================================================
+  # Worker - Background job processing
+  # ==========================================================================
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: worker
+    image: multiverse-dive/worker:${VERSION:-latest}
+    container_name: multiverse-dive-worker
+    restart: unless-stopped
+    profiles:
+      - worker  # Only start with: docker-compose --profile worker up
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PYTHONUNBUFFERED=1
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-}
+
+      # Worker configuration
+      - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-4}
+      - WORKER_QUEUE=${WORKER_QUEUE:-default}
+
+      # Storage
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
+      - STORAGE_PATH=/data/products
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_REGION=${S3_REGION:-us-east-1}
+
+    volumes:
+      - api-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - multiverse-network
+    deploy:
+      resources:
+        limits:
+          cpus: "${WORKER_CPU_LIMIT:-4}"
+          memory: ${WORKER_MEMORY_LIMIT:-8G}
+        reservations:
+          cpus: "1"
+          memory: 1G
+
+# ==========================================================================
+# Networks
+# ==========================================================================
+networks:
+  multiverse-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# ==========================================================================
+# Volumes
+# ==========================================================================
+volumes:
+  api-data:
+    driver: local
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
