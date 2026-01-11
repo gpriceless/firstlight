@@ -5,6 +5,7 @@ and metadata lookup for event types.
 """
 
 import fnmatch
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
@@ -105,7 +106,10 @@ class EventClassRegistry:
         """
         if definitions_dir is None:
             # Default to openspec/definitions/event_classes relative to project root
-            project_root = Path(__file__).parent.parent.parent
+            project_root = Path(os.environ.get(
+                "MULTIVERSE_DIVE_ROOT",
+                Path(__file__).parent.parent.parent
+            ))
             definitions_dir = project_root / "openspec" / "definitions" / "event_classes"
 
         self.definitions_dir = Path(definitions_dir)

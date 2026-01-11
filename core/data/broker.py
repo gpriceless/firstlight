@@ -5,7 +5,7 @@ Main entry point for data discovery. Coordinates discovery adapters,
 evaluates constraints, ranks candidates, and returns selection decisions.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -122,7 +122,7 @@ class DataBroker:
         Returns:
             BrokerResponse with selected datasets and metadata
         """
-        query_timestamp = datetime.utcnow()
+        query_timestamp = datetime.now(timezone.utc)
 
         # Get applicable providers for this event class
         applicable_providers = self.provider_registry.get_applicable_providers(

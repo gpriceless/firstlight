@@ -36,9 +36,7 @@
           "pattern": "^[a-z]+\\.[a-z_]+(\\.[a-z_]+)*$"
         },
         "confidence": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
+          "$ref": "common.schema.json#/$defs/confidence_score"
         },
         "alternatives": {
           "type": "array",
@@ -48,9 +46,7 @@
             "properties": {
               "class": {"type": "string"},
               "confidence": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 1
+                "$ref": "common.schema.json#/$defs/confidence_score"
               }
             }
           }
@@ -74,9 +70,7 @@
           "description": "Whether class was user-specified or NLP-inferred"
         },
         "confidence": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
+          "$ref": "common.schema.json#/$defs/confidence_score"
         },
         "parameters": {
           "type": "object",

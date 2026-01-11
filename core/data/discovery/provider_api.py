@@ -5,6 +5,7 @@ Generic adapter for custom provider APIs that don't conform to STAC or OGC stand
 Providers can implement custom discovery logic here.
 """
 
+from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import aiohttp
@@ -211,7 +212,7 @@ class ProviderAPIAdapter(DiscoveryAdapter):
             quality_flag = item.get("quality", "good")
 
             # Cost tier
-            cost_tier = provider.cost.get("tier", "open") if hasattr(provider, "cost") else "open"
+            cost_tier = provider.cost.get("tier", "open")
 
             return DiscoveryResult(
                 dataset_id=dataset_id,
@@ -246,8 +247,6 @@ class ProviderStrategy(ABC):
     Providers with unique APIs can implement this interface for
     custom discovery logic.
     """
-
-    from abc import ABC, abstractmethod
 
     @abstractmethod
     async def discover(
