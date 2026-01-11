@@ -216,6 +216,22 @@ class IntegrityValidator:
                 duration_seconds=time.time() - start_time,
             )
 
+        # Check it's a file, not a directory
+        if path.is_dir():
+            return IntegrityResult(
+                is_valid=False,
+                file_path=path,
+                file_size_bytes=0,
+                issues=[
+                    IntegrityIssue(
+                        check_type=IntegrityCheckType.FORMAT,
+                        severity=IntegritySeverity.ERROR,
+                        message=f"Path is a directory, not a file: {path}",
+                    )
+                ],
+                duration_seconds=time.time() - start_time,
+            )
+
         # Get file size
         file_size = path.stat().st_size
         metadata["file_size_bytes"] = file_size
