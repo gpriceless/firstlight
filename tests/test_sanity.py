@@ -1095,5 +1095,348 @@ class TestDivisionByZeroGuards:
         assert result is not None
 
 
+class TestEmptyArrayEdgeCases:
+    """Tests for empty array handling - ensures no crashes."""
+
+    def test_values_empty_array(self):
+        """Test value check with empty array."""
+        from core.quality.sanity.values import check_value_plausibility
+
+        data = np.array([]).reshape(0, 0)
+        result = check_value_plausibility(data)
+        assert result is not None
+        # Empty array should report no valid data
+
+    def test_values_1d_array(self):
+        """Test value check with 1D array (edge case)."""
+        from core.quality.sanity.values import check_value_plausibility
+
+        data = np.random.rand(100)
+        result = check_value_plausibility(data)
+        assert result is not None
+
+    def test_artifact_empty_array(self):
+        """Test artifact detection with empty 2D array."""
+        from core.quality.sanity.artifacts import detect_artifacts
+
+        data = np.array([]).reshape(0, 0)
+        result = detect_artifacts(data)
+        assert result is not None
+
+    def test_artifact_small_1d_like(self):
+        """Test artifact detection with very thin array."""
+        from core.quality.sanity.artifacts import detect_artifacts
+
+        data = np.random.randn(1, 100)
+        result = detect_artifacts(data)
+        assert result is not None
+
+
+class TestCompressionDetection:
+    """Tests for compression artifact detection."""
+
+    def test_compression_clean_gradient(self):
+        """Test compression detection on smooth gradient (no artifacts)."""
+        from core.quality.sanity.artifacts import ArtifactDetector, ArtifactDetectionConfig
+
+        x = np.linspace(0, 1, 100)
+        y = np.linspace(0, 1, 100)
+        xx, yy = np.meshgrid(x, y)
+        data = xx + yy
+
+        config = ArtifactDetectionConfig(detect_compression=True)
+        detector = ArtifactDetector(config)
+        result = detector.detect(data)
+        assert result is not None
+
+    def test_compression_block_pattern(self):
+        """Test compression detection with artificial block boundaries."""
+        from core.quality.sanity.artifacts import ArtifactDetector, ArtifactDetectionConfig
+
+        # Create data with block boundaries
+        data = np.random.randn(128, 128) * 0.1
+        # Add discontinuities at 8-pixel boundaries
+        for i in range(0, 128, 8):
+            data[i, :] += 0.5
+            data[:, i] += 0.5
+
+        config = ArtifactDetectionConfig(detect_compression=True)
+        detector = ArtifactDetector(config)
+        result = detector.detect(data)
+        assert result is not None
+
+    def test_compression_small_image(self):
+        """Test compression detection on image smaller than block size."""
+        from core.quality.sanity.artifacts import ArtifactDetector, ArtifactDetectionConfig
+
+        data = np.random.randn(5, 5)
+        config = ArtifactDetectionConfig(detect_compression=True)
+        detector = ArtifactDetector(config)
+        result = detector.detect(data)
+        assert result is not None
+
+
+class TestRasterTemporalConsistency:
+    """Tests for raster time series checking."""
+
+    def test_raster_series_basic(self):
+        """Test checking a basic raster time series."""
+        from core.quality.sanity.temporal import check_raster_temporal_consistency
+
+        # 5 timesteps of 50x50 images
+        rasters = [np.random.rand(50, 50) * i + 0.1 for i in range(5)]
+        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        timestamps = [base_time + timedelta(hours=i) for i in range(5)]
+
+        result = check_raster_temporal_consistency(rasters, timestamps)
+        assert result is not None
+        assert hasattr(result, 'is_consistent')
+
+    def test_raster_series_mismatched_shapes(self):
+        """Test raster series with mismatched shapes."""
+        from core.quality.sanity.temporal import check_raster_temporal_consistency
+
+        rasters = [
+            np.random.rand(50, 50),
+            np.random.rand(60, 50),  # Different height
+            np.random.rand(50, 50),
+        ]
+        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        timestamps = [base_time + timedelta(hours=i) for i in range(3)]
+
+        result = check_raster_temporal_consistency(rasters, timestamps)
+        assert result is not None
+        assert result.is_consistent is False
+
+    def test_raster_series_all_nan_timestep(self):
+        """Test raster series where one timestep is all NaN."""
+        from core.quality.sanity.temporal import check_raster_temporal_consistency
+
+        rasters = [
+            np.random.rand(50, 50),
+            np.full((50, 50), np.nan),  # All NaN
+            np.random.rand(50, 50),
+        ]
+        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        timestamps = [base_time + timedelta(hours=i) for i in range(3)]
+
+        result = check_raster_temporal_consistency(rasters, timestamps)
+        assert result is not None
+
+    def test_raster_series_empty(self):
+        """Test raster series with empty list."""
+        from core.quality.sanity.temporal import check_raster_temporal_consistency
+
+        result = check_raster_temporal_consistency([], [])
+        assert result is not None
+        assert result.is_consistent is True  # Empty is trivially consistent
+
+
+class TestSpatialWithTileBoundaries:
+    """Tests for spatial checks with tile boundary detection."""
+
+    def test_spatial_with_tile_boundaries(self):
+        """Test spatial check with explicit tile boundaries."""
+        from core.quality.sanity.spatial import check_spatial_coherence, SpatialCoherenceConfig
+
+        # Create data with artifacts at tile boundaries
+        data = np.random.rand(100, 100) * 0.1 + 5.0
+        # Add discontinuities at tile boundaries
+        data[50, :] += 1.0
+        data[:, 50] += 1.0
+
+        config = SpatialCoherenceConfig(check_boundaries=True)
+        result = check_spatial_coherence(
+            data,
+            tile_boundaries=[50],
+            config=config
+        )
+        assert result is not None
+
+    def test_spatial_no_tile_boundaries(self):
+        """Test spatial check when no tile boundaries specified."""
+        from core.quality.sanity.spatial import check_spatial_coherence, SpatialCoherenceConfig
+
+        data = np.random.rand(100, 100)
+        config = SpatialCoherenceConfig(check_boundaries=True)
+        result = check_spatial_coherence(data, tile_boundaries=None, config=config)
+        assert result is not None
+        # Should skip boundary check when no boundaries specified
+
+    def test_spatial_empty_tile_boundaries(self):
+        """Test spatial check with empty tile boundary list."""
+        from core.quality.sanity.spatial import check_spatial_coherence, SpatialCoherenceConfig
+
+        data = np.random.rand(100, 100)
+        config = SpatialCoherenceConfig(check_boundaries=True)
+        result = check_spatial_coherence(data, tile_boundaries=[], config=config)
+        assert result is not None
+
+
+class TestTopologyConnectedComponents:
+    """Tests for topology/connected component analysis."""
+
+    def test_topology_single_large_region(self):
+        """Test topology check with single connected region."""
+        from core.quality.sanity.spatial import SpatialCoherenceChecker
+
+        data = np.zeros((100, 100))
+        data[20:80, 20:80] = 1.0  # Single large square
+
+        checker = SpatialCoherenceChecker()
+        result = checker.check(data)
+        assert result is not None
+        assert 'topology' in result.metrics
+
+    def test_topology_many_small_regions(self):
+        """Test topology check with many small fragmented regions."""
+        from core.quality.sanity.spatial import SpatialCoherenceChecker, SpatialCoherenceConfig
+
+        data = np.zeros((100, 100))
+        # Create many isolated single pixels
+        for i in range(0, 100, 5):
+            for j in range(0, 100, 5):
+                data[i, j] = 1.0
+
+        config = SpatialCoherenceConfig(min_region_size_pixels=4)
+        checker = SpatialCoherenceChecker(config)
+        result = checker.check(data)
+        assert result is not None
+        # Should detect fragmentation
+
+    def test_topology_no_features(self):
+        """Test topology check with no features (all zeros)."""
+        from core.quality.sanity.spatial import SpatialCoherenceChecker
+
+        data = np.zeros((50, 50))
+        checker = SpatialCoherenceChecker()
+        result = checker.check(data)
+        assert result is not None
+
+
+class TestIsolatedPixelDetection:
+    """Tests for isolated pixel (salt-and-pepper noise) detection."""
+
+    def test_isolated_pixels_heavy(self):
+        """Test detecting heavy isolated pixel noise."""
+        from core.quality.sanity.spatial import SpatialCoherenceChecker, SpatialCoherenceConfig
+
+        # Background of zeros with many isolated pixels
+        data = np.zeros((100, 100))
+        np.random.seed(42)
+        for _ in range(500):
+            r, c = np.random.randint(0, 100, 2)
+            data[r, c] = 1.0
+
+        config = SpatialCoherenceConfig(max_isolated_pixel_pct=5.0)
+        checker = SpatialCoherenceChecker(config)
+        result = checker.check(data)
+        assert result is not None
+        # Should detect high isolated pixel ratio
+
+    def test_isolated_pixels_none(self):
+        """Test with no isolated pixels (solid block)."""
+        from core.quality.sanity.spatial import SpatialCoherenceChecker
+
+        data = np.zeros((100, 100))
+        data[30:70, 30:70] = 1.0  # Solid block, no isolated pixels
+
+        checker = SpatialCoherenceChecker()
+        result = checker.check(data)
+        assert result is not None
+
+
+class TestValueDistributionChecks:
+    """Tests for value distribution analysis."""
+
+    def test_distribution_bimodal(self):
+        """Test distribution check on bimodal data."""
+        from core.quality.sanity.values import ValuePlausibilityChecker
+
+        # Bimodal distribution
+        data = np.concatenate([
+            np.random.randn(50, 50) * 0.1,
+            np.random.randn(50, 50) * 0.1 + 5.0,
+        ])
+
+        checker = ValuePlausibilityChecker()
+        result = checker.check(data.reshape(100, 50))
+        assert result is not None
+
+    def test_distribution_uniform(self):
+        """Test distribution check on uniform data."""
+        from core.quality.sanity.values import ValuePlausibilityChecker
+
+        data = np.random.rand(100, 100)  # Uniform [0, 1]
+
+        checker = ValuePlausibilityChecker()
+        result = checker.check(data)
+        assert result is not None
+
+    def test_distribution_exponential_like(self):
+        """Test distribution check on highly skewed data."""
+        from core.quality.sanity.values import ValuePlausibilityChecker
+
+        # Exponential-like distribution (highly skewed)
+        data = np.random.exponential(1.0, (100, 100))
+
+        checker = ValuePlausibilityChecker()
+        result = checker.check(data)
+        assert result is not None
+
+
+class TestEventTimingValidation:
+    """Tests for event timing validation in temporal checks."""
+
+    def test_event_timing_pre_after_event(self):
+        """Test event timing when pre-event is after event time."""
+        from core.quality.sanity.temporal import TemporalConsistencyChecker, TemporalConsistencyConfig
+
+        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        config = TemporalConsistencyConfig(
+            event_time=base_time,
+            pre_event_time=base_time + timedelta(hours=1),  # Pre is after event
+        )
+
+        checker = TemporalConsistencyChecker(config)
+        values = [1.0, 2.0, 3.0]
+        timestamps = [base_time - timedelta(hours=1), base_time, base_time + timedelta(hours=1)]
+        result = checker.check_time_series(values, timestamps)
+        assert result is not None
+        assert result.is_consistent is False  # Should flag timing issue
+
+    def test_event_timing_post_before_event(self):
+        """Test event timing when post-event is before event time."""
+        from core.quality.sanity.temporal import TemporalConsistencyChecker, TemporalConsistencyConfig
+
+        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        config = TemporalConsistencyConfig(
+            event_time=base_time,
+            post_event_time=base_time - timedelta(hours=1),  # Post is before event
+        )
+
+        checker = TemporalConsistencyChecker(config)
+        values = [1.0, 2.0, 3.0]
+        timestamps = [base_time - timedelta(hours=1), base_time, base_time + timedelta(hours=1)]
+        result = checker.check_time_series(values, timestamps)
+        assert result is not None
+        assert result.is_consistent is False  # Should flag timing issue
+
+    def test_event_timing_all_observations_after(self):
+        """Test when all observations are after the event (no baseline)."""
+        from core.quality.sanity.temporal import TemporalConsistencyChecker, TemporalConsistencyConfig
+
+        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        config = TemporalConsistencyConfig(event_time=base_time)
+
+        checker = TemporalConsistencyChecker(config)
+        values = [1.0, 2.0, 3.0]
+        # All observations are after event
+        timestamps = [base_time + timedelta(hours=i) for i in range(1, 4)]
+        result = checker.check_time_series(values, timestamps)
+        assert result is not None
+        # Should flag no baseline issue
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

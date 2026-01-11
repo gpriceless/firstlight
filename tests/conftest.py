@@ -7,11 +7,13 @@ Markers:
     @pytest.mark.storm - Storm-related tests
     @pytest.mark.slow - Tests that take longer to run
     @pytest.mark.integration - Integration tests requiring external resources
+    @pytest.mark.quality - Quality control and uncertainty tests
 
 Usage:
     pytest -m flood              # Run only flood tests
     pytest -m "not slow"         # Skip slow tests
     pytest -m "flood and not slow"  # Fast flood tests only
+    pytest -m quality            # Run quality control tests
 """
 
 import pytest
@@ -34,6 +36,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "schema: JSON schema tests")
     config.addinivalue_line("markers", "intent: Intent resolution tests")
     config.addinivalue_line("markers", "provider: Data provider tests")
+    config.addinivalue_line("markers", "quality: Quality control tests")
 
 
 def pytest_collection_modifyitems(config, items):
