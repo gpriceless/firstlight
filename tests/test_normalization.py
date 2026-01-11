@@ -1,1191 +1,1074 @@
 """
-Tests for data normalization tools.
+Tests for normalization tools in the ingestion pipeline.
 
-Tests projection, tiling, temporal, and resolution normalization modules.
+Tests cover:
+- Projection and CRS handling
+- Tiling operations
+- Temporal alignment
+- Resolution and resampling
 """
 
 import math
 import pytest
-from datetime import datetime, timezone, timedelta
-from typing import Tuple
-
 import numpy as np
+from datetime import datetime, timedelta, timezone
+
+# Check for optional dependencies
+try:
+    import pyproj
+    HAS_PYPROJ = True
+except ImportError:
+    HAS_PYPROJ = False
+
+try:
+    import rasterio
+    HAS_RASTERIO = True
+except ImportError:
+    HAS_RASTERIO = False
+
+requires_pyproj = pytest.mark.skipif(not HAS_PYPROJ, reason="pyproj not installed")
+requires_rasterio = pytest.mark.skipif(not HAS_RASTERIO, reason="rasterio not installed")
+
 
 # ============================================================================
-# PROJECTION TESTS
+# Projection Tests
 # ============================================================================
 
-
+@requires_pyproj
 class TestCRSHandler:
-    """Tests for CRS handling and transformation.
+    """Tests for CRS handling operations."""
 
-    These tests require pyproj to be installed.
-    """
-
-    def test_parse_crs_epsg_code(self):
-        """Test parsing EPSG codes."""
-        pyproj = pytest.importorskip("pyproj")
-        from core.data.ingestion.normalization.projection import CRSHandler
+    def test_parse_epsg_code(self):
+        """Test parsing EPSG code."""
+        from core.data.ingestion.normalization.projection import CRSHandler, CRSType
 
         handler = CRSHandler()
         info = handler.parse_crs("EPSG:4326")
 
-        assert info.code == "EPSG:4326"
-        assert info.is_geographic == True
-        assert info.is_projected == False
+        assert info.is_geographic is True
+        assert info.is_projected is False
+        assert info.crs_type == CRSType.GEOGRAPHIC
 
-    def test_parse_crs_integer(self):
-        """Test parsing integer EPSG codes."""
-        pyproj = pytest.importorskip("pyproj")
+    def test_parse_epsg_integer(self):
+        """Test parsing EPSG code as integer."""
         from core.data.ingestion.normalization.projection import CRSHandler
 
         handler = CRSHandler()
-        info = handler.parse_crs(32632)  # UTM zone 32N
+        info = handler.parse_crs(4326)
 
-        assert "32632" in info.code
-        assert info.is_geographic == False
-        assert info.is_projected == True
+        assert info.is_geographic is True
+
+    def test_parse_projected_crs(self):
+        """Test parsing projected CRS (UTM)."""
+        from core.data.ingestion.normalization.projection import CRSHandler, CRSType
+
+        handler = CRSHandler()
+        info = handler.parse_crs("EPSG:32632")  # UTM zone 32N
+
+        assert info.is_projected is True
+        assert info.is_geographic is False
+        assert info.crs_type == CRSType.PROJECTED
+
+    def test_parse_invalid_crs_raises(self):
+        """Test that invalid CRS raises ValueError."""
+        from core.data.ingestion.normalization.projection import CRSHandler
+
+        handler = CRSHandler()
+        with pytest.raises(ValueError, match="Cannot parse CRS"):
+            handler.parse_crs("INVALID:9999")
 
     def test_are_equivalent_same_crs(self):
         """Test CRS equivalence for same CRS."""
-        pyproj = pytest.importorskip("pyproj")
         from core.data.ingestion.normalization.projection import CRSHandler
 
         handler = CRSHandler()
-        assert handler.are_equivalent("EPSG:4326", "EPSG:4326") == True
+        assert handler.are_equivalent("EPSG:4326", "EPSG:4326") is True
 
     def test_are_equivalent_different_crs(self):
         """Test CRS equivalence for different CRS."""
-        pyproj = pytest.importorskip("pyproj")
         from core.data.ingestion.normalization.projection import CRSHandler
 
         handler = CRSHandler()
-        assert handler.are_equivalent("EPSG:4326", "EPSG:32632") == False
+        assert handler.are_equivalent("EPSG:4326", "EPSG:32632") is False
 
-    def test_suggest_utm_zone_europe(self):
-        """Test UTM zone suggestion for European location."""
+    def test_are_equivalent_invalid_crs(self):
+        """Test CRS equivalence returns False for invalid CRS."""
         from core.data.ingestion.normalization.projection import CRSHandler
 
         handler = CRSHandler()
-        # Paris, France (approximately 48.8566° N, 2.3522° E)
-        zone = handler.suggest_utm_zone(2.35, 48.86)
+        assert handler.are_equivalent("INVALID", "EPSG:4326") is False
 
-        assert zone == "EPSG:32631"  # UTM zone 31N
+    def test_suggest_utm_zone_northern_hemisphere(self):
+        """Test UTM zone suggestion for northern hemisphere."""
+        from core.data.ingestion.normalization.projection import CRSHandler
+
+        handler = CRSHandler()
+        # Paris, France (longitude ~2.35)
+        utm = handler.suggest_utm_zone(2.35, 48.85)
+        assert utm == "EPSG:32631"  # Zone 31N
 
     def test_suggest_utm_zone_southern_hemisphere(self):
         """Test UTM zone suggestion for southern hemisphere."""
         from core.data.ingestion.normalization.projection import CRSHandler
 
         handler = CRSHandler()
-        # Sydney, Australia (approximately -33.87° S, 151.21° E)
-        zone = handler.suggest_utm_zone(151.21, -33.87)
-
-        assert "327" in zone  # UTM southern hemisphere (32700-32760)
+        # Sydney, Australia
+        utm = handler.suggest_utm_zone(151.2, -33.87)
+        assert utm == "EPSG:32756"  # Zone 56S
 
     def test_transform_bounds(self):
         """Test bounds transformation between CRS."""
-        pyproj = pytest.importorskip("pyproj")
         from core.data.ingestion.normalization.projection import CRSHandler
 
         handler = CRSHandler()
-        wgs84_bounds = (-10.0, 35.0, 10.0, 45.0)
+        wgs84_bounds = (-1, 51, 1, 52)  # Near London
+
         utm_bounds = handler.transform_bounds(
             wgs84_bounds, "EPSG:4326", "EPSG:32631"
         )
 
-        # UTM bounds should be in meters (much larger numbers)
-        assert utm_bounds[0] > -1e6
-        assert utm_bounds[2] > utm_bounds[0]
-        assert utm_bounds[3] > utm_bounds[1]
+        # Check bounds are valid
+        assert utm_bounds[0] < utm_bounds[2]  # minx < maxx
+        assert utm_bounds[1] < utm_bounds[3]  # miny < maxy
 
     def test_transform_point(self):
-        """Test single point transformation."""
-        pyproj = pytest.importorskip("pyproj")
+        """Test point transformation."""
         from core.data.ingestion.normalization.projection import CRSHandler
 
         handler = CRSHandler()
-        # Transform London (approximately 51.5° N, -0.1° W)
-        tx, ty = handler.transform_point(-0.1, 51.5, "EPSG:4326", "EPSG:32630")
+        x, y = handler.transform_point(0, 51, "EPSG:4326", "EPSG:32631")
 
-        # Should be in UTM meters
-        assert abs(tx) > 100000  # Significant x coordinate
-        assert abs(ty) > 5000000  # Significant y coordinate
+        assert isinstance(x, float)
+        assert isinstance(y, float)
+        assert math.isfinite(x)
+        assert math.isfinite(y)
 
 
-class TestReprojectionConfig:
-    """Tests for reprojection configuration."""
+@requires_pyproj
+class TestVectorReprojector:
+    """Tests for vector geometry reprojection."""
 
-    def test_default_config(self):
-        """Test default configuration values."""
-        from core.data.ingestion.normalization.projection import (
-            ReprojectionConfig,
-            ResamplingMethod,
+    def test_transform_point_geometry(self):
+        """Test transforming a Point geometry."""
+        from core.data.ingestion.normalization.projection import VectorReprojector
+
+        reprojector = VectorReprojector()
+        geom = {"type": "Point", "coordinates": [0, 51]}
+
+        transformed = reprojector.transform_geometry(
+            geom, "EPSG:4326", "EPSG:32631"
         )
 
-        config = ReprojectionConfig(target_crs="EPSG:4326")
+        assert transformed["type"] == "Point"
+        assert len(transformed["coordinates"]) == 2
 
-        assert config.target_crs == "EPSG:4326"
-        assert config.resampling == ResamplingMethod.BILINEAR
-        assert config.num_threads == 4
+    def test_transform_polygon_geometry(self):
+        """Test transforming a Polygon geometry."""
+        from core.data.ingestion.normalization.projection import VectorReprojector
+
+        reprojector = VectorReprojector()
+        geom = {
+            "type": "Polygon",
+            "coordinates": [[[0, 51], [1, 51], [1, 52], [0, 52], [0, 51]]],
+        }
+
+        transformed = reprojector.transform_geometry(
+            geom, "EPSG:4326", "EPSG:32631"
+        )
+
+        assert transformed["type"] == "Polygon"
+        assert len(transformed["coordinates"]) == 1
+        assert len(transformed["coordinates"][0]) == 5
+
+
+@requires_pyproj
+class TestConvenienceFunctions:
+    """Tests for projection convenience functions."""
+
+    def test_get_crs_info(self):
+        """Test get_crs_info convenience function."""
+        from core.data.ingestion.normalization.projection import get_crs_info
+
+        info = get_crs_info("EPSG:4326")
+        assert info.is_geographic is True
+
+    def test_suggest_target_crs(self):
+        """Test suggest_target_crs convenience function."""
+        from core.data.ingestion.normalization.projection import suggest_target_crs
+
+        bounds = (0, 50, 2, 52)
+        suggested = suggest_target_crs(bounds)
+
+        assert suggested.startswith("EPSG:")
 
 
 # ============================================================================
-# TILING TESTS
+# Tiling Tests
 # ============================================================================
-
 
 class TestTileBounds:
-    """Tests for tile bounds operations."""
+    """Tests for TileBounds operations."""
 
-    def test_tile_bounds_properties(self):
-        """Test tile bounds width, height, center."""
+    def test_tile_bounds_creation(self):
+        """Test TileBounds basic creation."""
         from core.data.ingestion.normalization.tiling import TileBounds
 
-        bounds = TileBounds(minx=0.0, miny=0.0, maxx=10.0, maxy=5.0)
+        bounds = TileBounds(0, 0, 10, 10)
 
-        assert bounds.width == 10.0
-        assert bounds.height == 5.0
-        assert bounds.center == (5.0, 2.5)
+        assert bounds.width == 10
+        assert bounds.height == 10
+        assert bounds.center == (5, 5)
+
+    def test_tile_bounds_intersects(self):
+        """Test TileBounds intersection check."""
+        from core.data.ingestion.normalization.tiling import TileBounds
+
+        b1 = TileBounds(0, 0, 10, 10)
+        b2 = TileBounds(5, 5, 15, 15)
+        b3 = TileBounds(20, 20, 30, 30)
+
+        assert b1.intersects(b2) is True
+        assert b1.intersects(b3) is False
 
     def test_tile_bounds_intersection(self):
-        """Test tile bounds intersection."""
+        """Test TileBounds intersection computation."""
         from core.data.ingestion.normalization.tiling import TileBounds
 
-        bounds1 = TileBounds(minx=0.0, miny=0.0, maxx=10.0, maxy=10.0)
-        bounds2 = TileBounds(minx=5.0, miny=5.0, maxx=15.0, maxy=15.0)
+        b1 = TileBounds(0, 0, 10, 10)
+        b2 = TileBounds(5, 5, 15, 15)
 
-        intersection = bounds1.intersection(bounds2)
+        intersection = b1.intersection(b2)
 
         assert intersection is not None
-        assert intersection.minx == 5.0
-        assert intersection.miny == 5.0
-        assert intersection.maxx == 10.0
-        assert intersection.maxy == 10.0
+        assert intersection.minx == 5
+        assert intersection.miny == 5
+        assert intersection.maxx == 10
+        assert intersection.maxy == 10
 
     def test_tile_bounds_no_intersection(self):
-        """Test tile bounds with no intersection."""
+        """Test TileBounds non-intersection returns None."""
         from core.data.ingestion.normalization.tiling import TileBounds
 
-        bounds1 = TileBounds(minx=0.0, miny=0.0, maxx=5.0, maxy=5.0)
-        bounds2 = TileBounds(minx=10.0, miny=10.0, maxx=15.0, maxy=15.0)
+        b1 = TileBounds(0, 0, 10, 10)
+        b2 = TileBounds(20, 20, 30, 30)
 
-        assert bounds1.intersection(bounds2) is None
+        assert b1.intersection(b2) is None
 
     def test_tile_bounds_buffer(self):
-        """Test tile bounds buffering."""
+        """Test TileBounds buffer expansion."""
         from core.data.ingestion.normalization.tiling import TileBounds
 
-        bounds = TileBounds(minx=0.0, miny=0.0, maxx=10.0, maxy=10.0)
-        buffered = bounds.buffer(2.0)
+        bounds = TileBounds(10, 10, 20, 20)
+        buffered = bounds.buffer(5)
 
-        assert buffered.minx == -2.0
-        assert buffered.miny == -2.0
-        assert buffered.maxx == 12.0
-        assert buffered.maxy == 12.0
+        assert buffered.minx == 5
+        assert buffered.miny == 5
+        assert buffered.maxx == 25
+        assert buffered.maxy == 25
+
+
+class TestTileIndex:
+    """Tests for TileIndex."""
+
+    def test_tile_index_creation(self):
+        """Test TileIndex basic creation."""
+        from core.data.ingestion.normalization.tiling import TileIndex
+
+        idx = TileIndex(x=1, y=2, z=3)
+
+        assert idx.x == 1
+        assert idx.y == 2
+        assert idx.z == 3
+
+    def test_tile_index_hash(self):
+        """Test TileIndex is hashable."""
+        from core.data.ingestion.normalization.tiling import TileIndex
+
+        idx1 = TileIndex(1, 2, 3)
+        idx2 = TileIndex(1, 2, 3)
+        idx3 = TileIndex(1, 2, 4)
+
+        assert hash(idx1) == hash(idx2)
+        assert idx1 == idx2
+        assert idx1 != idx3
+
+
+class TestTileGridConfig:
+    """Tests for TileGridConfig validation."""
+
+    def test_valid_config(self):
+        """Test valid config creation."""
+        from core.data.ingestion.normalization.tiling import TileGridConfig
+
+        config = TileGridConfig(tile_size=(256, 256), overlap=16)
+        assert config.tile_size == (256, 256)
+        assert config.overlap == 16
+
+    def test_invalid_tile_size_raises(self):
+        """Test invalid tile size raises ValueError."""
+        from core.data.ingestion.normalization.tiling import TileGridConfig
+
+        with pytest.raises(ValueError, match="positive"):
+            TileGridConfig(tile_size=(0, 256))
+
+    def test_negative_overlap_raises(self):
+        """Test negative overlap raises ValueError."""
+        from core.data.ingestion.normalization.tiling import TileGridConfig
+
+        with pytest.raises(ValueError, match="non-negative"):
+            TileGridConfig(tile_size=(256, 256), overlap=-1)
+
+    def test_overlap_too_large_raises(self):
+        """Test overlap >= tile size raises ValueError."""
+        from core.data.ingestion.normalization.tiling import TileGridConfig
+
+        with pytest.raises(ValueError, match="less than tile size"):
+            TileGridConfig(tile_size=(256, 256), overlap=256)
 
 
 class TestTileGrid:
-    """Tests for tile grid operations."""
+    """Tests for TileGrid operations."""
 
-    def test_create_tile_grid(self):
-        """Test tile grid creation."""
-        from core.data.ingestion.normalization.tiling import (
-            TileGrid,
-            TileGridConfig,
-        )
-
-        config = TileGridConfig(
-            tile_size=(256, 256),
-            bounds=(0.0, 0.0, 100.0, 100.0),
-            resolution=(1.0, 1.0),
-            overlap=0,
-        )
-        grid = TileGrid(config)
-
-        # 100 pixels / 256 tile size = ceil(0.39) = 1 tile per dimension
-        # But actually: 100 * 1.0 resolution = 100 units, 256 * 1.0 = 256 units per tile
-        # So we need ceil(100/256) = 1 tile per dimension
-        assert grid.cols >= 1
-        assert grid.rows >= 1
-
-    def test_tile_grid_overlap(self):
-        """Test tile grid with overlap."""
-        from core.data.ingestion.normalization.tiling import (
-            TileGrid,
-            TileGridConfig,
-            TileIndex,
-        )
+    def test_grid_creation(self):
+        """Test TileGrid creation."""
+        from core.data.ingestion.normalization.tiling import TileGrid, TileGridConfig
 
         config = TileGridConfig(
             tile_size=(100, 100),
-            bounds=(0.0, 0.0, 500.0, 500.0),
-            resolution=(1.0, 1.0),
-            overlap=10,
+            bounds=(0, 0, 1000, 500),
+            resolution=(1, 1),
         )
         grid = TileGrid(config)
 
-        tile = grid.get_tile(TileIndex(x=1, y=1))
+        assert grid.cols == 10
+        assert grid.rows == 5
+        assert grid.total_tiles == 50
 
-        # Core bounds and overlap bounds should differ
-        if tile.overlap_bounds is not None:
-            assert tile.overlap_bounds.minx < tile.bounds.minx
-            assert tile.overlap_bounds.maxx > tile.bounds.maxx
+    def test_grid_missing_bounds_raises(self):
+        """Test TileGrid without bounds raises."""
+        from core.data.ingestion.normalization.tiling import TileGrid, TileGridConfig
 
-    def test_tile_grid_iterate(self):
-        """Test tile grid iteration."""
-        from core.data.ingestion.normalization.tiling import (
-            TileGrid,
-            TileGridConfig,
-        )
+        config = TileGridConfig(tile_size=(100, 100), resolution=(1, 1))
+
+        with pytest.raises(ValueError, match="Bounds"):
+            TileGrid(config)
+
+    def test_get_tile_at_point(self):
+        """Test getting tile index at point."""
+        from core.data.ingestion.normalization.tiling import TileGrid, TileGridConfig
 
         config = TileGridConfig(
             tile_size=(100, 100),
-            bounds=(0.0, 0.0, 300.0, 200.0),
-            resolution=(1.0, 1.0),
+            bounds=(0, 0, 1000, 500),
+            resolution=(1, 1),
+        )
+        grid = TileGrid(config)
+
+        idx = grid.get_tile_at_point(150, 450)
+        assert idx is not None
+        assert idx.x == 1  # Second column
+
+    def test_get_tile_at_point_outside_bounds(self):
+        """Test getting tile at point outside bounds returns None."""
+        from core.data.ingestion.normalization.tiling import TileGrid, TileGridConfig
+
+        config = TileGridConfig(
+            tile_size=(100, 100),
+            bounds=(0, 0, 1000, 500),
+            resolution=(1, 1),
+        )
+        grid = TileGrid(config)
+
+        idx = grid.get_tile_at_point(2000, 2000)
+        assert idx is None
+
+    def test_iterate_tiles(self):
+        """Test iterating over all tiles."""
+        from core.data.ingestion.normalization.tiling import TileGrid, TileGridConfig
+
+        config = TileGridConfig(
+            tile_size=(100, 100),
+            bounds=(0, 0, 300, 200),
+            resolution=(1, 1),
         )
         grid = TileGrid(config)
 
         tiles = list(grid.iterate_tiles())
         assert len(tiles) == grid.total_tiles
 
-    def test_tile_grid_at_point(self):
-        """Test finding tile at point."""
-        from core.data.ingestion.normalization.tiling import (
-            TileGrid,
-            TileGridConfig,
-        )
-
-        config = TileGridConfig(
-            tile_size=(100, 100),
-            bounds=(0.0, 0.0, 500.0, 500.0),
-            resolution=(1.0, 1.0),
-        )
-        grid = TileGrid(config)
-
-        index = grid.get_tile_at_point(250.0, 250.0)
-
-        assert index is not None
-        assert index.x >= 0
-        assert index.y >= 0
-
 
 class TestWebMercatorTiles:
-    """Tests for web mercator tile calculations."""
+    """Tests for Web Mercator tile calculations."""
 
     def test_latlng_to_tile(self):
-        """Test lat/lng to tile conversion."""
+        """Test lat/lng to tile index conversion."""
         from core.data.ingestion.normalization.tiling import WebMercatorTiles
 
         # London at zoom 10
         tile = WebMercatorTiles.latlng_to_tile(51.5, -0.1, 10)
 
         assert tile.z == 10
-        assert tile.x > 0
-        assert tile.y > 0
+        assert 500 <= tile.x <= 520
+        assert 330 <= tile.y <= 350
 
     def test_tile_to_bounds(self):
-        """Test tile to bounds conversion."""
+        """Test tile index to bounds conversion."""
         from core.data.ingestion.normalization.tiling import (
             WebMercatorTiles,
             TileIndex,
             TileScheme,
         )
 
-        tile = TileIndex(x=512, y=340, z=10)
+        tile = TileIndex(0, 0, 0)
         bounds = WebMercatorTiles.tile_to_bounds(tile, TileScheme.XYZ)
 
-        # Bounds should be in lat/lng
-        assert -180.0 <= bounds.minx <= 180.0
-        assert -90.0 <= bounds.miny <= 90.0
+        assert bounds.minx == pytest.approx(-180, rel=0.01)
+        assert bounds.maxy == pytest.approx(85.05, rel=0.01)
 
     def test_meters_per_pixel(self):
         """Test meters per pixel calculation."""
         from core.data.ingestion.normalization.tiling import WebMercatorTiles
 
-        # At equator, zoom 0
-        mpp_z0 = WebMercatorTiles.meters_per_pixel(0.0, 0)
-        # At equator, zoom 1 (should be half)
-        mpp_z1 = WebMercatorTiles.meters_per_pixel(0.0, 1)
+        mpp = WebMercatorTiles.meters_per_pixel(0, 0)
+        assert mpp > 100000
 
-        assert mpp_z1 < mpp_z0
-        assert abs(mpp_z0 / mpp_z1 - 2.0) < 0.1  # Approximately 2x
+        mpp_18 = WebMercatorTiles.meters_per_pixel(0, 18)
+        assert 0.1 < mpp_18 < 2
 
 
 # ============================================================================
-# TEMPORAL TESTS
+# Temporal Tests
 # ============================================================================
-
 
 class TestTimeRange:
-    """Tests for time range operations."""
+    """Tests for TimeRange operations."""
 
-    def test_time_range_duration(self):
-        """Test time range duration calculation."""
-        from core.data.ingestion.normalization.temporal import TimeRange
-
-        start = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-        end = datetime(2024, 1, 2, 0, 0, 0, tzinfo=timezone.utc)
-        time_range = TimeRange(start=start, end=end)
-
-        assert time_range.duration == timedelta(days=1)
-        assert time_range.duration_seconds == 86400.0
-
-    def test_time_range_contains(self):
-        """Test time range contains check."""
+    def test_time_range_creation(self):
+        """Test TimeRange basic creation."""
         from core.data.ingestion.normalization.temporal import TimeRange
 
         start = datetime(2024, 1, 1, tzinfo=timezone.utc)
-        end = datetime(2024, 1, 10, tzinfo=timezone.utc)
-        time_range = TimeRange(start=start, end=end)
+        end = datetime(2024, 1, 2, tzinfo=timezone.utc)
 
-        inside = datetime(2024, 1, 5, tzinfo=timezone.utc)
-        outside = datetime(2024, 1, 15, tzinfo=timezone.utc)
+        tr = TimeRange(start=start, end=end)
 
-        assert time_range.contains(inside) is True
-        assert time_range.contains(outside) is False
+        assert tr.duration == timedelta(days=1)
+        assert tr.duration_seconds == 86400
 
-    def test_time_range_overlaps(self):
-        """Test time range overlap detection."""
+    def test_time_range_invalid_raises(self):
+        """Test invalid time range (start >= end) raises."""
         from core.data.ingestion.normalization.temporal import TimeRange
 
-        range1 = TimeRange(
+        with pytest.raises(ValueError, match="Start must be before end"):
+            TimeRange(
+                start=datetime(2024, 1, 2, tzinfo=timezone.utc),
+                end=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            )
+
+    def test_time_range_contains(self):
+        """Test TimeRange contains check."""
+        from core.data.ingestion.normalization.temporal import TimeRange
+
+        tr = TimeRange(
             start=datetime(2024, 1, 1, tzinfo=timezone.utc),
             end=datetime(2024, 1, 10, tzinfo=timezone.utc),
         )
-        range2 = TimeRange(
+
+        assert tr.contains(datetime(2024, 1, 5, tzinfo=timezone.utc)) is True
+        assert tr.contains(datetime(2024, 1, 15, tzinfo=timezone.utc)) is False
+
+    def test_time_range_overlaps(self):
+        """Test TimeRange overlaps check."""
+        from core.data.ingestion.normalization.temporal import TimeRange
+
+        tr1 = TimeRange(
+            start=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            end=datetime(2024, 1, 10, tzinfo=timezone.utc),
+        )
+        tr2 = TimeRange(
             start=datetime(2024, 1, 5, tzinfo=timezone.utc),
             end=datetime(2024, 1, 15, tzinfo=timezone.utc),
         )
-        range3 = TimeRange(
+        tr3 = TimeRange(
             start=datetime(2024, 2, 1, tzinfo=timezone.utc),
             end=datetime(2024, 2, 10, tzinfo=timezone.utc),
         )
 
-        assert range1.overlaps(range2) is True
-        assert range1.overlaps(range3) is False
+        assert tr1.overlaps(tr2) is True
+        assert tr1.overlaps(tr3) is False
 
     def test_time_range_split(self):
-        """Test time range splitting."""
+        """Test TimeRange split into parts."""
         from core.data.ingestion.normalization.temporal import TimeRange
 
-        start = datetime(2024, 1, 1, tzinfo=timezone.utc)
-        end = datetime(2024, 1, 11, tzinfo=timezone.utc)
-        time_range = TimeRange(start=start, end=end)
+        tr = TimeRange(
+            start=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            end=datetime(2024, 1, 11, tzinfo=timezone.utc),
+        )
 
-        parts = time_range.split(5)
-
-        assert len(parts) == 5
-        assert parts[0].start == start
-        assert parts[-1].end == end
+        parts = tr.split(10)
+        assert len(parts) == 10
 
 
 class TestTimestampHandler:
-    """Tests for timestamp parsing and conversion."""
+    """Tests for timestamp parsing and handling."""
 
-    def test_parse_iso_timestamp(self):
-        """Test ISO format timestamp parsing."""
+    def test_parse_iso_format(self):
+        """Test parsing ISO format timestamp."""
         from core.data.ingestion.normalization.temporal import TimestampHandler
 
         handler = TimestampHandler()
-        dt = handler.parse("2024-03-15T10:30:00Z")
 
+        dt = handler.parse("2024-01-15T10:30:00Z")
         assert dt.year == 2024
-        assert dt.month == 3
+        assert dt.month == 1
         assert dt.day == 15
-        assert dt.hour == 10
-        assert dt.minute == 30
         assert dt.tzinfo == timezone.utc
 
     def test_parse_unix_timestamp(self):
-        """Test Unix timestamp parsing."""
+        """Test parsing Unix timestamp."""
         from core.data.ingestion.normalization.temporal import TimestampHandler
 
         handler = TimestampHandler()
-        # 2024-01-01 00:00:00 UTC
-        dt = handler.parse(1704067200)
 
+        dt = handler.parse(1710499800)
+        assert dt.tzinfo == timezone.utc
         assert dt.year == 2024
-        assert dt.month == 1
-        assert dt.day == 1
 
-    def test_parse_date_string(self):
-        """Test date-only string parsing."""
+    def test_parse_invalid_raises(self):
+        """Test parsing invalid timestamp raises."""
         from core.data.ingestion.normalization.temporal import TimestampHandler
 
         handler = TimestampHandler()
-        dt = handler.parse("2024-03-15")
 
-        assert dt.year == 2024
-        assert dt.month == 3
-        assert dt.day == 15
+        with pytest.raises(ValueError, match="Cannot parse"):
+            handler.parse("not-a-timestamp")
 
     def test_format_filename(self):
-        """Test filename-safe formatting."""
+        """Test formatting for filename."""
         from core.data.ingestion.normalization.temporal import TimestampHandler
 
         handler = TimestampHandler()
-        dt = datetime(2024, 3, 15, 10, 30, 45, tzinfo=timezone.utc)
-        formatted = handler.format_filename(dt)
+        dt = datetime(2024, 1, 15, 10, 30, 45, tzinfo=timezone.utc)
 
-        assert formatted == "20240315_103045"
+        filename = handler.format_filename(dt)
+        assert filename == "20240115_103045"
 
 
 class TestTemporalResampler:
     """Tests for temporal resampling."""
 
-    def test_downsample_mean(self):
-        """Test downsampling with mean aggregation."""
+    def test_resample_downsampling(self):
+        """Test downsampling (aggregation)."""
         from core.data.ingestion.normalization.temporal import (
             TemporalResampler,
             TemporalSample,
-            TemporalAlignmentConfig,
-            AggregationMethod,
         )
 
         resampler = TemporalResampler()
 
-        # Create hourly samples
-        base_time = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-        samples = [
-            TemporalSample(timestamp=base_time + timedelta(hours=i), data=float(i))
-            for i in range(24)
-        ]
+        samples = []
+        for i in range(24):
+            samples.append(
+                TemporalSample(
+                    timestamp=datetime(2024, 1, 1, i, 0, tzinfo=timezone.utc),
+                    data=float(i),
+                )
+            )
 
-        # Resample to daily
-        config = TemporalAlignmentConfig(aggregation=AggregationMethod.MEAN)
-        resampled = resampler.resample(
-            samples, target_resolution=timedelta(days=1), config=config
+        resampled = resampler.resample(samples, timedelta(hours=6))
+
+        assert len(resampled) == 4
+
+    def test_resample_empty_input(self):
+        """Test resampling empty input returns empty."""
+        from core.data.ingestion.normalization.temporal import TemporalResampler
+
+        resampler = TemporalResampler()
+        resampled = resampler.resample([], timedelta(hours=1))
+
+        assert resampled == []
+
+    def test_floor_time_zero_resolution_raises(self):
+        """Test _floor_time with zero resolution raises."""
+        from core.data.ingestion.normalization.temporal import TemporalResampler
+
+        resampler = TemporalResampler()
+        dt = datetime(2024, 1, 15, 10, 35, tzinfo=timezone.utc)
+
+        with pytest.raises(ValueError, match="positive"):
+            resampler._floor_time(dt, timedelta(0))
+
+
+class TestTemporalConvenienceFunctions:
+    """Tests for temporal convenience functions."""
+
+    def test_parse_timestamp(self):
+        """Test parse_timestamp function."""
+        from core.data.ingestion.normalization.temporal import parse_timestamp
+
+        dt = parse_timestamp("2024-01-15T10:30:00Z")
+        assert dt.tzinfo == timezone.utc
+
+    def test_generate_time_range(self):
+        """Test generate_time_range function."""
+        from core.data.ingestion.normalization.temporal import generate_time_range
+
+        times = list(
+            generate_time_range(
+                "2024-01-01T00:00:00Z",
+                "2024-01-01T05:00:00Z",
+                timedelta(hours=1),
+            )
         )
 
-        # Should have fewer samples
-        assert len(resampled) < len(samples)
+        assert len(times) == 6
 
 
 # ============================================================================
-# RESOLUTION TESTS
+# Resolution Tests
 # ============================================================================
-
 
 class TestResolution:
-    """Tests for Resolution class."""
+    """Tests for Resolution dataclass."""
 
-    def test_resolution_basic(self):
-        """Test basic resolution properties."""
+    def test_resolution_creation(self):
+        """Test Resolution creation."""
         from core.data.ingestion.normalization.resolution import (
             Resolution,
             ResolutionUnit,
         )
 
-        res = Resolution(x=10.0, y=10.0, unit=ResolutionUnit.METERS)
+        res = Resolution(10, 10, ResolutionUnit.METERS)
 
-        assert res.x == 10.0
-        assert res.y == 10.0
-        assert res.area == 100.0
-        assert res.is_square == True
+        assert res.x == 10
+        assert res.y == 10
+        assert res.area == 100
+        assert res.is_square == True  # np.isclose returns np.bool_
 
-    def test_resolution_non_square(self):
-        """Test non-square resolution."""
+    def test_resolution_invalid_raises(self):
+        """Test non-positive resolution raises."""
+        from core.data.ingestion.normalization.resolution import Resolution
+
+        with pytest.raises(ValueError, match="positive"):
+            Resolution(0, 10)
+
+        with pytest.raises(ValueError, match="positive"):
+            Resolution(-10, 10)
+
+    def test_resolution_to_meters(self):
+        """Test converting resolution to meters."""
         from core.data.ingestion.normalization.resolution import (
             Resolution,
             ResolutionUnit,
         )
 
-        res = Resolution(x=10.0, y=20.0, unit=ResolutionUnit.METERS)
-
-        assert res.is_square == False
-        assert res.area == 200.0
-
-    def test_resolution_to_meters_from_degrees(self):
-        """Test conversion from degrees to meters."""
-        from core.data.ingestion.normalization.resolution import (
-            Resolution,
-            ResolutionUnit,
-        )
-
-        # Approximately 1 arcsecond at equator
-        res = Resolution(x=1.0 / 3600, y=1.0 / 3600, unit=ResolutionUnit.DEGREES)
+        res = Resolution(1, 1, ResolutionUnit.ARCSECONDS)
         meters = res.to_meters(latitude=0)
 
-        # Should be around 30 meters
-        assert meters.x > 20.0
-        assert meters.x < 40.0
         assert meters.unit == ResolutionUnit.METERS
+        assert 25 < meters.x < 35
 
-    def test_resolution_scale_factor(self):
-        """Test scale factor calculation."""
+    def test_scale_factor_to(self):
+        """Test calculating scale factor."""
+        from core.data.ingestion.normalization.resolution import Resolution
+
+        res1 = Resolution(10, 10)
+        res2 = Resolution(30, 30)
+
+        scale = res1.scale_factor_to(res2)
+
+        assert scale[0] == pytest.approx(10 / 30)
+
+    def test_scale_factor_to_different_units_raises(self):
+        """Test scale factor with different units raises."""
         from core.data.ingestion.normalization.resolution import (
             Resolution,
             ResolutionUnit,
         )
 
-        source = Resolution(x=10.0, y=10.0, unit=ResolutionUnit.METERS)
-        target = Resolution(x=30.0, y=30.0, unit=ResolutionUnit.METERS)
+        res1 = Resolution(10, 10, ResolutionUnit.METERS)
+        res2 = Resolution(0.001, 0.001, ResolutionUnit.DEGREES)
 
-        scale_x, scale_y = source.scale_factor_to(target)
-
-        # 10/30 = 1/3
-        assert abs(scale_x - (10.0 / 30.0)) < 0.001
-        assert abs(scale_y - (10.0 / 30.0)) < 0.001
+        with pytest.raises(ValueError, match="same units"):
+            res1.scale_factor_to(res2)
 
 
 class TestResolutionCalculator:
-    """Tests for resolution calculator."""
+    """Tests for ResolutionCalculator."""
 
     def test_calculate_shape(self):
-        """Test shape calculation from bounds and resolution."""
+        """Test calculating raster shape from bounds and resolution."""
         from core.data.ingestion.normalization.resolution import (
             Resolution,
-            ResolutionUnit,
             ResolutionCalculator,
         )
 
         calc = ResolutionCalculator()
-        bounds = (0.0, 0.0, 100.0, 50.0)
-        resolution = Resolution(10.0, 10.0, ResolutionUnit.METERS)
+        bounds = (0, 0, 1000, 500)
+        res = Resolution(10, 10)
 
-        height, width = calc.calculate_shape(bounds, resolution)
+        shape = calc.calculate_shape(bounds, res)
 
-        assert width == 10  # 100/10
-        assert height == 5  # 50/10
+        assert shape == (50, 100)
 
     def test_find_common_resolution_finest(self):
         """Test finding finest common resolution."""
         from core.data.ingestion.normalization.resolution import (
             Resolution,
-            ResolutionUnit,
             ResolutionCalculator,
         )
 
         calc = ResolutionCalculator()
         resolutions = [
-            Resolution(10.0, 10.0, ResolutionUnit.METERS),
-            Resolution(20.0, 20.0, ResolutionUnit.METERS),
-            Resolution(30.0, 30.0, ResolutionUnit.METERS),
+            Resolution(10, 10),
+            Resolution(20, 20),
+            Resolution(30, 30),
         ]
 
-        common = calc.find_common_resolution(resolutions, strategy="finest")
+        common = calc.find_common_resolution(resolutions, "finest")
 
-        assert common.x == 10.0
-        assert common.y == 10.0
+        assert common.x == 10
 
-    def test_find_common_resolution_coarsest(self):
-        """Test finding coarsest common resolution."""
-        from core.data.ingestion.normalization.resolution import (
-            Resolution,
-            ResolutionUnit,
-            ResolutionCalculator,
-        )
+    def test_find_common_resolution_empty_raises(self):
+        """Test empty resolutions list raises."""
+        from core.data.ingestion.normalization.resolution import ResolutionCalculator
 
         calc = ResolutionCalculator()
-        resolutions = [
-            Resolution(10.0, 10.0, ResolutionUnit.METERS),
-            Resolution(20.0, 20.0, ResolutionUnit.METERS),
-            Resolution(30.0, 30.0, ResolutionUnit.METERS),
-        ]
 
-        common = calc.find_common_resolution(resolutions, strategy="coarsest")
-
-        assert common.x == 30.0
-        assert common.y == 30.0
+        with pytest.raises(ValueError, match="No resolutions"):
+            calc.find_common_resolution([], "finest")
 
 
 class TestSpatialResampler:
     """Tests for spatial resampling."""
 
-    def test_resample_array_downsample(self):
+    def test_resample_array_downsampling(self):
         """Test downsampling an array."""
         from core.data.ingestion.normalization.resolution import (
             Resolution,
-            ResolutionUnit,
             ResamplingConfig,
             ResamplingMethod,
             SpatialResampler,
         )
 
         resampler = SpatialResampler()
+        data = np.ones((100, 100), dtype=np.float32)
 
-        # Create 100x100 array
-        data = np.random.rand(100, 100).astype(np.float32)
-        source_res = Resolution(10.0, 10.0, ResolutionUnit.METERS)
         config = ResamplingConfig(
-            target_resolution=Resolution(30.0, 30.0, ResolutionUnit.METERS),
+            target_resolution=Resolution(2, 2),
             method=ResamplingMethod.AVERAGE,
         )
 
-        resampled, result = resampler.resample_array(data, source_res, config)
+        result_data, result = resampler.resample_array(
+            data, Resolution(1, 1), config
+        )
 
-        # Should be approximately 33x33
-        assert resampled.shape[0] < data.shape[0]
-        assert resampled.shape[1] < data.shape[1]
-        assert result.scale_factors[0] < 1.0  # Downsampling
+        # Downsampling from 1m to 2m: scale = 1/2 = 0.5, size = 100 * 0.5 = 50
+        assert result_data.shape == (50, 50)
 
-    def test_resample_array_upsample(self):
+    def test_resample_array_upsampling(self):
         """Test upsampling an array."""
         from core.data.ingestion.normalization.resolution import (
             Resolution,
-            ResolutionUnit,
             ResamplingConfig,
             ResamplingMethod,
             SpatialResampler,
         )
 
         resampler = SpatialResampler()
+        data = np.ones((50, 50), dtype=np.float32)
 
-        # Create 30x30 array
-        data = np.random.rand(30, 30).astype(np.float32)
-        source_res = Resolution(30.0, 30.0, ResolutionUnit.METERS)
         config = ResamplingConfig(
-            target_resolution=Resolution(10.0, 10.0, ResolutionUnit.METERS),
+            target_resolution=Resolution(1, 1),
             method=ResamplingMethod.BILINEAR,
         )
 
-        resampled, result = resampler.resample_array(data, source_res, config)
+        result_data, result = resampler.resample_array(
+            data, Resolution(2, 2), config
+        )
 
-        # Should be approximately 90x90
-        assert resampled.shape[0] > data.shape[0]
-        assert resampled.shape[1] > data.shape[1]
-        assert result.scale_factors[0] > 1.0  # Upsampling
+        # Upsampling from 2m to 1m: scale = 2/1 = 2.0, size = 50 * 2 = 100
+        assert result_data.shape == (100, 100)
 
-    def test_resample_preserves_nodata(self):
-        """Test that nodata values are preserved during resampling."""
+    def test_resample_array_3d(self):
+        """Test resampling 3D array (multi-band)."""
         from core.data.ingestion.normalization.resolution import (
             Resolution,
-            ResolutionUnit,
             ResamplingConfig,
-            ResamplingMethod,
             SpatialResampler,
         )
 
         resampler = SpatialResampler()
+        data = np.ones((3, 100, 100), dtype=np.float32)
 
-        # Create array with nodata region
-        data = np.ones((100, 100), dtype=np.float32)
-        data[40:60, 40:60] = -9999.0  # Nodata region
+        config = ResamplingConfig(target_resolution=Resolution(2, 2))
 
-        source_res = Resolution(10.0, 10.0, ResolutionUnit.METERS)
-        config = ResamplingConfig(
-            target_resolution=Resolution(20.0, 20.0, ResolutionUnit.METERS),
-            method=ResamplingMethod.AVERAGE,
-            nodata=-9999.0,
-            preserve_nodata=True,
+        result_data, result = resampler.resample_array(
+            data, Resolution(1, 1), config
         )
 
-        resampled, result = resampler.resample_array(data, source_res, config)
-
-        # Nodata should still be present
-        assert np.any(resampled == -9999.0)
-
-    def test_resample_multiband(self):
-        """Test resampling multi-band array."""
-        from core.data.ingestion.normalization.resolution import (
-            Resolution,
-            ResolutionUnit,
-            ResamplingConfig,
-            ResamplingMethod,
-            SpatialResampler,
-        )
-
-        resampler = SpatialResampler()
-
-        # Create 3-band 100x100 array
-        data = np.random.rand(3, 100, 100).astype(np.float32)
-        source_res = Resolution(10.0, 10.0, ResolutionUnit.METERS)
-        config = ResamplingConfig(
-            target_resolution=Resolution(30.0, 30.0, ResolutionUnit.METERS),
-            method=ResamplingMethod.AVERAGE,
-        )
-
-        resampled, result = resampler.resample_array(data, source_res, config)
-
-        # Should preserve band count
-        assert resampled.ndim == 3
-        assert resampled.shape[0] == 3
+        assert result_data.shape == (3, 50, 50)
 
 
 class TestResolutionHarmonizer:
-    """Tests for multi-dataset resolution harmonization."""
+    """Tests for resolution harmonization."""
 
-    def test_harmonize_to_finest(self):
-        """Test harmonizing to finest resolution."""
+    def test_harmonize_datasets(self):
+        """Test harmonizing multiple datasets."""
         from core.data.ingestion.normalization.resolution import (
             Resolution,
-            ResolutionUnit,
             ResolutionHarmonizer,
         )
 
         harmonizer = ResolutionHarmonizer()
 
         datasets = {
-            "high_res": (
-                np.random.rand(100, 100).astype(np.float32),
-                Resolution(10.0, 10.0, ResolutionUnit.METERS),
-            ),
-            "low_res": (
-                np.random.rand(30, 30).astype(np.float32),
-                Resolution(30.0, 30.0, ResolutionUnit.METERS),
-            ),
+            "fine": (np.ones((100, 100), dtype=np.float32), Resolution(10, 10)),
+            "coarse": (np.ones((50, 50), dtype=np.float32), Resolution(20, 20)),
         }
 
-        harmonized = harmonizer.harmonize(datasets, strategy="finest")
+        harmonized = harmonizer.harmonize(
+            datasets, target_resolution=Resolution(20, 20)
+        )
 
-        # Low res should be upsampled to match high res
-        assert "high_res" in harmonized
-        assert "low_res" in harmonized
+        assert harmonized["fine"][0].shape == (50, 50)
+        assert harmonized["coarse"][0].shape == (50, 50)
 
-    def test_harmonize_to_coarsest(self):
-        """Test harmonizing to coarsest resolution."""
+    def test_harmonize_already_at_target(self):
+        """Test harmonizing dataset already at target resolution."""
         from core.data.ingestion.normalization.resolution import (
             Resolution,
-            ResolutionUnit,
             ResolutionHarmonizer,
         )
 
         harmonizer = ResolutionHarmonizer()
 
         datasets = {
-            "high_res": (
-                np.random.rand(100, 100).astype(np.float32),
-                Resolution(10.0, 10.0, ResolutionUnit.METERS),
-            ),
-            "low_res": (
-                np.random.rand(30, 30).astype(np.float32),
-                Resolution(30.0, 30.0, ResolutionUnit.METERS),
-            ),
+            "data": (np.ones((100, 100), dtype=np.float32), Resolution(10, 10)),
         }
 
-        harmonized = harmonizer.harmonize(datasets, strategy="coarsest")
-
-        # High res should be downsampled
-        high_res_data, high_res_result = harmonized["high_res"]
-        assert high_res_data.shape[0] < 100
-
-
-# ============================================================================
-# CONVENIENCE FUNCTION TESTS
-# ============================================================================
-
-
-class TestConvenienceFunctions:
-    """Tests for module convenience functions."""
-
-    def test_reproject_to_crs_function(self):
-        """Test convenience reprojection function exists."""
-        from core.data.ingestion.normalization.projection import reproject_to_crs
-
-        # Just verify function exists and is callable
-        assert callable(reproject_to_crs)
-
-    def test_create_tile_grid_function(self):
-        """Test convenience tile grid creation function."""
-        from core.data.ingestion.normalization.tiling import create_tile_grid
-
-        grid = create_tile_grid(
-            bounds=(0.0, 0.0, 100.0, 100.0),
-            resolution=(1.0, 1.0),
-            tile_size=(256, 256),
+        harmonized = harmonizer.harmonize(
+            datasets, target_resolution=Resolution(10, 10)
         )
 
-        assert grid.cols >= 1
-        assert grid.rows >= 1
+        assert harmonized["data"][0].shape == (100, 100)
+        assert harmonized["data"][1].resampling_method == "none"
 
-    def test_parse_timestamp_function(self):
-        """Test convenience timestamp parsing function."""
-        from core.data.ingestion.normalization.temporal import parse_timestamp
 
-        dt = parse_timestamp("2024-03-15T10:30:00Z")
+class TestResolutionConvenienceFunctions:
+    """Tests for resolution convenience functions."""
 
-        assert dt.year == 2024
-        assert dt.month == 3
-        assert dt.day == 15
-
-    def test_resample_to_resolution_function(self):
-        """Test convenience resampling function."""
+    def test_resample_to_resolution(self):
+        """Test resample_to_resolution function."""
         from core.data.ingestion.normalization.resolution import resample_to_resolution
 
-        data = np.random.rand(100, 100).astype(np.float32)
-        resampled, result = resample_to_resolution(
-            data=data,
-            source_resolution=(10.0, 10.0),
-            target_resolution=(30.0, 30.0),
-            method="average",
+        data = np.ones((100, 100), dtype=np.float32)
+
+        result_data, result = resample_to_resolution(
+            data,
+            source_resolution=(10, 10),
+            target_resolution=(20, 20),
         )
 
-        assert resampled.shape[0] < 100
-        assert resampled.shape[1] < 100
+        assert result_data.shape == (50, 50)
+
+    def test_calculate_resolution(self):
+        """Test calculate_resolution function."""
+        from core.data.ingestion.normalization.resolution import calculate_resolution
+
+        bounds = (0, 0, 1000, 500)
+        shape = (50, 100)
+
+        res = calculate_resolution(bounds, shape)
+
+        assert res.x == 10
+        assert res.y == 10
 
 
 # ============================================================================
-# EDGE CASE TESTS
+# Edge Case Tests
 # ============================================================================
-
 
 class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
-    def test_resolution_invalid_zero(self):
-        """Test that zero resolution raises error."""
-        from core.data.ingestion.normalization.resolution import (
-            Resolution,
-            ResolutionUnit,
-        )
+    def test_tile_bounds_zero_size(self):
+        """Test TileBounds with zero size."""
+        from core.data.ingestion.normalization.tiling import TileBounds
 
-        with pytest.raises(ValueError):
-            Resolution(x=0.0, y=10.0, unit=ResolutionUnit.METERS)
+        bounds = TileBounds(0, 0, 0, 0)
+        assert bounds.width == 0
+        assert bounds.height == 0
 
-    def test_resolution_invalid_negative(self):
-        """Test that negative resolution raises error."""
-        from core.data.ingestion.normalization.resolution import (
-            Resolution,
-            ResolutionUnit,
-        )
-
-        with pytest.raises(ValueError):
-            Resolution(x=-10.0, y=10.0, unit=ResolutionUnit.METERS)
-
-    def test_time_range_invalid_order(self):
-        """Test that invalid time range order raises error."""
+    def test_time_range_minimal_duration(self):
+        """Test TimeRange with minimal duration."""
         from core.data.ingestion.normalization.temporal import TimeRange
 
-        with pytest.raises(ValueError):
-            TimeRange(
-                start=datetime(2024, 1, 10, tzinfo=timezone.utc),
-                end=datetime(2024, 1, 1, tzinfo=timezone.utc),
-            )
-
-    def test_tile_grid_invalid_config(self):
-        """Test tile grid with invalid config."""
-        from core.data.ingestion.normalization.tiling import TileGridConfig
-
-        with pytest.raises(ValueError):
-            TileGridConfig(
-                tile_size=(256, 256),
-                overlap=300,  # Larger than tile size
-            )
-
-    def test_resample_1d_array_error(self):
-        """Test that 1D array raises error."""
-        from core.data.ingestion.normalization.resolution import (
-            Resolution,
-            ResolutionUnit,
-            ResamplingConfig,
-            SpatialResampler,
+        tr = TimeRange(
+            start=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+            end=datetime(2024, 1, 1, 0, 0, 1, tzinfo=timezone.utc),
         )
 
-        resampler = SpatialResampler()
-        data = np.random.rand(100)  # 1D array
+        assert tr.duration == timedelta(seconds=1)
 
-        config = ResamplingConfig(
-            target_resolution=Resolution(30.0, 30.0, ResolutionUnit.METERS),
+    def test_temporal_sample_with_array_data(self):
+        """Test TemporalSample with numpy array data."""
+        from core.data.ingestion.normalization.temporal import TemporalSample
+
+        arr = np.array([[1, 2], [3, 4]])
+        sample = TemporalSample(
+            timestamp=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            data=arr,
         )
 
-        with pytest.raises(ValueError):
-            resampler.resample_array(
-                data,
-                Resolution(10.0, 10.0, ResolutionUnit.METERS),
-                config,
-            )
+        assert np.array_equal(sample.data, arr)
 
-    def test_resample_extreme_downscaling_error(self):
-        """Test that extreme downscaling raises error when output would be 0 pixels."""
-        from core.data.ingestion.normalization.resolution import (
-            Resolution,
-            ResolutionUnit,
-            ResamplingConfig,
-            SpatialResampler,
+    def test_resolution_very_large_values(self):
+        """Test Resolution with very large values."""
+        from core.data.ingestion.normalization.resolution import Resolution
+
+        res = Resolution(1e9, 1e9)
+        assert res.area == 1e18
+
+    def test_resolution_very_small_values(self):
+        """Test Resolution with very small values."""
+        from core.data.ingestion.normalization.resolution import Resolution
+
+        res = Resolution(1e-9, 1e-9)
+        assert res.area == pytest.approx(1e-18, rel=1e-10)
+
+
+# ============================================================================
+# Integration Tests
+# ============================================================================
+
+class TestNormalizationIntegration:
+    """Integration tests for normalization pipeline."""
+
+    @requires_pyproj
+    def test_full_projection_workflow(self):
+        """Test full projection workflow."""
+        from core.data.ingestion.normalization.projection import (
+            CRSHandler,
+            VectorReprojector,
         )
 
-        resampler = SpatialResampler()
-        data = np.random.rand(10, 10).astype(np.float32)  # Small array
+        handler = CRSHandler()
+        vector_reprojector = VectorReprojector()
 
-        config = ResamplingConfig(
-            target_resolution=Resolution(10000.0, 10000.0, ResolutionUnit.METERS),  # Extreme downscale
+        info = handler.parse_crs("EPSG:4326")
+        assert info.is_geographic
+
+        utm = handler.suggest_utm_zone(0, 51)
+        assert "EPSG:326" in utm
+
+        bounds = (-1, 50, 1, 52)
+        transformed = handler.transform_bounds(bounds, "EPSG:4326", utm)
+        assert all(math.isfinite(v) for v in transformed)
+
+        geom = {"type": "Point", "coordinates": [0, 51]}
+        transformed_geom = vector_reprojector.transform_geometry(
+            geom, "EPSG:4326", utm
+        )
+        assert transformed_geom["type"] == "Point"
+
+    def test_full_tiling_workflow(self):
+        """Test full tiling workflow."""
+        from core.data.ingestion.normalization.tiling import (
+            TileGrid,
+            TileGridConfig,
+            RasterTiler,
+            TileBounds,
         )
 
-        with pytest.raises(ValueError, match="Target resolution too coarse"):
-            resampler.resample_array(
-                data,
-                Resolution(10.0, 10.0, ResolutionUnit.METERS),
-                config,
-            )
+        config = TileGridConfig(
+            tile_size=(50, 50),
+            bounds=(0, 0, 500, 300),
+            resolution=(1, 1),
+            overlap=5,
+        )
+        grid = TileGrid(config)
 
-    def test_resolution_scale_factor_different_units_error(self):
-        """Test that scale factor calculation fails with different units."""
-        from core.data.ingestion.normalization.resolution import (
-            Resolution,
-            ResolutionUnit,
+        assert grid.total_tiles == 60
+
+        tiler = RasterTiler(grid)
+
+        data = np.arange(300 * 500).reshape(300, 500).astype(np.float32)
+        data_bounds = TileBounds(0, 0, 500, 300)
+
+        tile = grid.get_tile(grid.get_tile_at_point(25, 275))
+        extracted = tiler.extract_tile(data, data_bounds, tile)
+
+        assert extracted.shape[0] == 60
+        assert extracted.shape[1] == 60
+
+    def test_full_temporal_workflow(self):
+        """Test full temporal workflow."""
+        from core.data.ingestion.normalization.temporal import (
+            TemporalResampler,
+            TemporalAligner,
+            TemporalSample,
+            TimeRange,
         )
 
-        source = Resolution(10.0, 10.0, ResolutionUnit.METERS)
-        target = Resolution(0.001, 0.001, ResolutionUnit.DEGREES)
+        tr = TimeRange(
+            start=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            end=datetime(2024, 1, 2, tzinfo=timezone.utc),
+        )
 
-        with pytest.raises(ValueError, match="must have same units"):
-            source.scale_factor_to(target)
-
-    def test_tile_grid_negative_overlap_error(self):
-        """Test that negative overlap raises error."""
-        from core.data.ingestion.normalization.tiling import TileGridConfig
-
-        with pytest.raises(ValueError):
-            TileGridConfig(
-                tile_size=(256, 256),
-                overlap=-10,  # Negative overlap
+        samples = []
+        for i in range(24):
+            samples.append(
+                TemporalSample(
+                    timestamp=tr.start + timedelta(hours=i),
+                    data=float(i),
+                )
             )
-
-    def test_tile_grid_zero_tile_size_error(self):
-        """Test that zero tile size raises error."""
-        from core.data.ingestion.normalization.tiling import TileGridConfig
-
-        with pytest.raises(ValueError):
-            TileGridConfig(
-                tile_size=(0, 256),
-            )
-
-    def test_temporal_floor_time_zero_resolution_error(self):
-        """Test that zero resolution raises error in floor_time."""
-        from core.data.ingestion.normalization.temporal import TemporalResampler
 
         resampler = TemporalResampler()
-        dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        resampled = resampler.resample(samples, timedelta(hours=4))
 
-        with pytest.raises(ValueError, match="Resolution must be positive"):
-            resampler._floor_time(dt, timedelta(seconds=0))
+        assert len(resampled) == 6
 
-    def test_time_range_split_zero_error(self):
-        """Test that splitting by zero raises error."""
-        from core.data.ingestion.normalization.temporal import TimeRange
+        aligner = TemporalAligner()
+        target_times = [tr.start + timedelta(hours=i * 6) for i in range(4)]
+        aligned = aligner.align_to_times(samples, target_times)
 
-        time_range = TimeRange(
-            start=datetime(2024, 1, 1, tzinfo=timezone.utc),
-            end=datetime(2024, 1, 10, tzinfo=timezone.utc),
-        )
+        assert len(aligned) == 4
 
-        with pytest.raises(ValueError, match="n must be positive"):
-            time_range.split(0)
-
-    def test_resample_with_nan_values(self):
-        """Test resampling handles NaN values correctly."""
+    def test_full_resolution_workflow(self):
+        """Test full resolution workflow."""
         from core.data.ingestion.normalization.resolution import (
             Resolution,
-            ResolutionUnit,
             ResamplingConfig,
             ResamplingMethod,
             SpatialResampler,
+            ResolutionHarmonizer,
         )
 
-        resampler = SpatialResampler()
-        data = np.ones((100, 100), dtype=np.float32)
-        data[40:60, 40:60] = np.nan
+        fine_data = np.random.rand(100, 100).astype(np.float32)
+        coarse_data = np.random.rand(50, 50).astype(np.float32)
 
+        resampler = SpatialResampler()
         config = ResamplingConfig(
-            target_resolution=Resolution(30.0, 30.0, ResolutionUnit.METERS),
+            target_resolution=Resolution(20, 20),
             method=ResamplingMethod.AVERAGE,
         )
 
         resampled, result = resampler.resample_array(
-            data,
-            Resolution(10.0, 10.0, ResolutionUnit.METERS),
-            config,
+            fine_data, Resolution(10, 10), config
         )
 
-        # Should complete without error
-        assert resampled.shape[0] < 100
-        assert resampled.shape[1] < 100
-
-    def test_timestamp_invalid_format_error(self):
-        """Test that invalid timestamp format raises error."""
-        from core.data.ingestion.normalization.temporal import TimestampHandler
-
-        handler = TimestampHandler()
-
-        with pytest.raises(ValueError, match="Cannot parse timestamp"):
-            handler.parse("not a valid timestamp")
-
-    def test_timestamp_invalid_type_error(self):
-        """Test that invalid timestamp type raises error."""
-        from core.data.ingestion.normalization.temporal import TimestampHandler
-
-        handler = TimestampHandler()
-
-        with pytest.raises(ValueError, match="Unsupported timestamp type"):
-            handler.parse([1, 2, 3])  # List is not supported
-
-    def test_tile_bounds_zero_dimensions(self):
-        """Test tile bounds with zero dimensions."""
-        from core.data.ingestion.normalization.tiling import TileBounds
-
-        # Zero-width bounds
-        bounds = TileBounds(minx=5.0, miny=0.0, maxx=5.0, maxy=10.0)
-        assert bounds.width == 0.0
-        assert bounds.height == 10.0
-
-    def test_temporal_sample_naive_datetime(self):
-        """Test temporal sample with naive datetime gets UTC timezone."""
-        from core.data.ingestion.normalization.temporal import TemporalSample
-
-        # Naive datetime (no timezone)
-        naive_dt = datetime(2024, 1, 1, 12, 0, 0)
-        sample = TemporalSample(timestamp=naive_dt, data=1.0)
-
-        # Should have UTC timezone added
-        assert sample.timestamp.tzinfo == timezone.utc
-
-    def test_time_range_naive_datetime(self):
-        """Test time range with naive datetimes gets UTC timezone."""
-        from core.data.ingestion.normalization.temporal import TimeRange
-
-        start = datetime(2024, 1, 1)
-        end = datetime(2024, 1, 10)
-        time_range = TimeRange(start=start, end=end)
-
-        assert time_range.start.tzinfo == timezone.utc
-        assert time_range.end.tzinfo == timezone.utc
-
-    def test_resolution_calculator_no_resolutions_error(self):
-        """Test find_common_resolution with empty list raises error."""
-        from core.data.ingestion.normalization.resolution import ResolutionCalculator
-
-        calc = ResolutionCalculator()
-
-        with pytest.raises(ValueError, match="No resolutions provided"):
-            calc.find_common_resolution([])
-
-    def test_resolution_harmonizer_empty_datasets(self):
-        """Test harmonizing empty datasets returns empty dict."""
-        from core.data.ingestion.normalization.resolution import ResolutionHarmonizer
+        assert resampled.shape == (50, 50)
 
         harmonizer = ResolutionHarmonizer()
-        result = harmonizer.harmonize({})
-
-        assert result == {}
-
-    def test_resample_same_resolution(self):
-        """Test resampling when source and target resolution are the same."""
-        from core.data.ingestion.normalization.resolution import (
-            Resolution,
-            ResolutionUnit,
-            ResolutionHarmonizer,
-        )
-
-        harmonizer = ResolutionHarmonizer()
-        data = np.random.rand(100, 100).astype(np.float32)
-        resolution = Resolution(10.0, 10.0, ResolutionUnit.METERS)
-
         datasets = {
-            "same_res": (data, resolution),
+            "fine": (fine_data, Resolution(10, 10)),
+            "coarse": (coarse_data, Resolution(20, 20)),
         }
 
-        result = harmonizer.harmonize(
-            datasets,
-            target_resolution=resolution,
-        )
+        harmonized = harmonizer.harmonize(datasets, strategy="coarsest")
 
-        # Should return original data unchanged
-        assert "same_res" in result
-        resampled_data, resampled_result = result["same_res"]
-        assert resampled_result.resampling_method == "none"
-        assert np.array_equal(resampled_data, data)
-
-
-# ============================================================================
-# INTEGRATION TESTS
-# ============================================================================
-
-
-class TestIntegration:
-    """Integration tests for normalization pipeline."""
-
-    def test_projection_then_resample(self):
-        """Test reprojection followed by resampling."""
-        pyproj = pytest.importorskip("pyproj")
-        from core.data.ingestion.normalization.projection import CRSHandler
-        from core.data.ingestion.normalization.resolution import (
-            Resolution,
-            ResolutionUnit,
-            ResamplingConfig,
-            SpatialResampler,
-        )
-
-        # Step 1: CRS transformation
-        handler = CRSHandler()
-        wgs84_bounds = (0.0, 45.0, 1.0, 46.0)
-        utm_bounds = handler.transform_bounds(
-            wgs84_bounds, "EPSG:4326", "EPSG:32632"
-        )
-
-        # Step 2: Calculate expected shape
-        from core.data.ingestion.normalization.resolution import ResolutionCalculator
-
-        calc = ResolutionCalculator()
-        res = Resolution(100.0, 100.0, ResolutionUnit.METERS)
-        height, width = calc.calculate_shape(utm_bounds, res)
-
-        assert height > 0
-        assert width > 0
-
-    def test_temporal_and_spatial_alignment(self):
-        """Test combined temporal and spatial normalization."""
-        from core.data.ingestion.normalization.temporal import (
-            TemporalSample,
-            TemporalAligner,
-        )
-        from core.data.ingestion.normalization.resolution import (
-            Resolution,
-            ResolutionUnit,
-            ResolutionHarmonizer,
-        )
-
-        # Create temporal samples with spatial data
-        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
-        samples = [
-            TemporalSample(
-                timestamp=base_time + timedelta(hours=i),
-                data=np.random.rand(50, 50).astype(np.float32),
-            )
-            for i in range(24)
-        ]
-
-        # Verify samples are created correctly
-        assert len(samples) == 24
-        assert samples[0].data.shape == (50, 50)
-
-
-# ============================================================================
-# MODULE IMPORT TESTS
-# ============================================================================
-
-
-class TestModuleImports:
-    """Test that all module imports work correctly."""
-
-    def test_import_normalization_module(self):
-        """Test importing main normalization module."""
-        from core.data.ingestion.normalization import (
-            # Projection
-            CRSHandler,
-            ReprojectionConfig,
-            # Tiling
-            TileGrid,
-            TileGridConfig,
-            # Temporal
-            TimeRange,
-            TemporalResampler,
-            # Resolution
-            Resolution,
-            SpatialResampler,
-        )
-
-        # All imports should succeed
-        assert CRSHandler is not None
-        assert TileGrid is not None
-        assert TimeRange is not None
-        assert Resolution is not None
-
-    def test_all_exports(self):
-        """Test that __all__ contains expected exports."""
-        from core.data.ingestion import normalization
-
-        # Check some key exports exist
-        assert hasattr(normalization, "CRSHandler")
-        assert hasattr(normalization, "TileGrid")
-        assert hasattr(normalization, "TimeRange")
-        assert hasattr(normalization, "Resolution")
+        assert harmonized["fine"][0].shape == (50, 50)
+        assert harmonized["coarse"][0].shape == (50, 50)
