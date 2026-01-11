@@ -345,11 +345,13 @@ Your analytical arsenal is ready! These baseline algorithms are battle-tested wo
 
 **Parallel Tracks:**
 
-1. **Track 1: Constraint Evaluation Engine**
-   - `core/data/evaluation/constraints.py`
+1. **Track 1: Constraint Evaluation Engine** ✅ **[DONE]**
+   - `core/data/evaluation/constraints.py` (612 lines, comprehensive implementation)
    - Hard constraint checking (spatial/temporal/availability)
    - Soft constraint scoring (cloud cover, resolution, proximity)
-   - Evaluation result schema
+   - Additional soft constraints: SAR noise quality, geometric accuracy, AOI proximity, view/incidence angle
+   - Evaluation result schema with full diagnostics
+   - 85 comprehensive tests passing (test_constraints.py)
 
 2. **Track 2: Multi-Criteria Ranking** ✅ **[DONE]**
    - `core/data/evaluation/ranking.py`
@@ -373,23 +375,34 @@ Your analytical arsenal is ready! These baseline algorithms are battle-tested wo
    - 78 comprehensive tests passing (includes atmospheric assessment tests from Track 3)
    - Bug fixed: degraded mode threshold corrected (MEDIUM is acceptable, only LOW is degraded)
 
-5. **Track 5: Fusion Strategy**
+5. **Track 5: Fusion Strategy** 🔄 **[IN PROGRESS]**
    - `core/data/selection/fusion.py`
    - Multi-sensor blending rules
    - Complementary vs redundant strategies
    - Temporal densification
 
-6. **Track 6: Algorithm Selector**
-   - `core/analysis/selection/selector.py`
-   - Rule-based algorithm filtering
-   - Data availability matching
-   - Compute constraint checking
+6. **Track 6: Algorithm Selector** ✅ **[DONE]**
+   - `core/analysis/selection/selector.py` (835 lines, comprehensive implementation)
+   - Rule-based algorithm filtering with event type matching
+   - Data availability matching with missing data rejection
+   - Compute constraint checking (memory, GPU, runtime, distributed)
+   - Multi-criteria scoring with configurable weights
+   - Validation-aware selection with min accuracy enforcement
+   - Compute profiles (laptop, workstation, cloud, edge)
+   - Comprehensive rejection tracking with detailed reasons
+   - 40 comprehensive tests covering edge cases and constraints
 
-7. **Track 7: Deterministic Selection**
-   - `core/analysis/selection/deterministic.py`
-   - Reproducible selection logic
-   - Version pinning
-   - Selection hash generation
+7. **Track 7: Deterministic Selection** ✅ **[DONE]**
+   - `core/analysis/selection/deterministic.py` (470 lines, comprehensive implementation)
+   - `core/analysis/selection/__init__.py` - Module exports for selector components
+   - Reproducible selection logic with category-aware ordering
+   - Version pinning with full version lock tracking
+   - Selection hash generation (SHA-256 based, 16-char truncated)
+   - SelectionPlan with plan-level hash verification
+   - Constraint evaluation (memory, GPU, determinism, excluded algorithms)
+   - Trade-off documentation between selected algorithms
+   - 25 comprehensive tests covering edge cases and determinism
+   - Full integration with AlgorithmRegistry and DataAvailability
 
 8. **Track 8: Selection Tests**
    - `tests/test_selection.py`
