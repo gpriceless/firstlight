@@ -682,10 +682,10 @@ Your analytical engine roars to life! Multiple sensors combine their perspective
 
 4. **Track 4: Action Management** (all parallel) ✅ **[DONE]**
    - `core/quality/actions/gating.py` - Pass/fail/review logic (763 lines)
-   - `core/quality/actions/flagging.py` - Quality flag system (825 lines)
-   - `core/quality/actions/routing.py` - Expert review routing (869 lines)
+   - `core/quality/actions/flagging.py` - Quality flag system (832 lines)
+   - `core/quality/actions/routing.py` - Expert review routing (871 lines)
    - `core/quality/actions/__init__.py` - Module exports (130 lines)
-   - `tests/test_quality.py` - Comprehensive test suite (51 tests passing)
+   - `tests/test_quality.py` - Comprehensive test suite (74 tests passing)
 
 5. **Track 5: Reporting**
    - `core/quality/reporting/qa_report.py` - QA report generation
