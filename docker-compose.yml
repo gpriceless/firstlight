@@ -71,7 +71,7 @@ services:
       context: .
       dockerfile: docker/worker/Dockerfile
     image: multiverse-dive-worker:latest
-    container_name: mdive-worker
+    # Note: container_name removed because it's incompatible with replicas > 1
     environment:
       - WORKER_CONCURRENCY=4
       - WORKER_QUEUE=default

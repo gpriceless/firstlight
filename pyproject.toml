@@ -104,6 +104,20 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+markers = [
+    "docker: marks tests that require Docker",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks integration tests",
+    "smoke: marks smoke tests for deployed services",
+    "flood: marks flood hazard tests",
+    "wildfire: marks wildfire hazard tests",
+    "storm: marks storm hazard tests",
+    "schema: marks JSON schema tests",
+    "intent: marks intent resolution tests",
+    "provider: marks data provider tests",
+    "quality: marks quality control tests",
+    "algorithm: marks algorithm-specific tests",
+]
 
 [tool.black]
 line-length = 100
