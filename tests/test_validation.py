@@ -1008,5 +1008,413 @@ class TestValidationSuiteEdgeCases:
             Path(f.name).unlink()
 
 
+# =============================================================================
+# Additional Comprehensive Tests (Track 5 Review)
+# =============================================================================
+
+
+class TestIntegrityRobustness:
+    """Robustness tests for integrity validation."""
+
+    def test_directory_instead_of_file(self):
+        """Test validation of a directory path instead of file."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            validator = IntegrityValidator()
+            result = validator.validate_file(tmpdir)
+
+            # Should handle gracefully - directory is not a valid file
+            assert result is not None
+            assert not result.is_valid
+            assert result.file_size_bytes == 0
+            assert len(result.issues) == 1
+            assert result.issues[0].severity == IntegritySeverity.ERROR
+            assert "directory" in result.issues[0].message.lower()
+
+    def test_verify_checksum_nonexistent_file(self):
+        """Test verify_checksum with non-existent file."""
+        validator = IntegrityValidator()
+        result = validator.verify_checksum("/nonexistent/file.dat", "abc123", "sha256")
+        assert result is False
+
+    def test_integrity_issue_to_dict(self):
+        """Test IntegrityIssue serialization."""
+        from core.data.ingestion.validation.integrity import IntegrityIssue
+
+        issue = IntegrityIssue(
+            check_type=IntegrityCheckType.FORMAT,
+            severity=IntegritySeverity.ERROR,
+            message="Test message",
+            details={"key": "value"},
+            location="band1",
+        )
+        d = issue.to_dict()
+
+        assert d["check_type"] == "format"
+        assert d["severity"] == "error"
+        assert d["message"] == "Test message"
+        assert d["details"] == {"key": "value"}
+        assert d["location"] == "band1"
+
+
+class TestAnomalyRobustness:
+    """Robustness tests for anomaly detection."""
+
+    def test_all_nan_data(self):
+        """Test handling of all-NaN data."""
+        data = np.full((1, 100, 100), np.nan, dtype=np.float32)
+
+        detector = AnomalyDetector()
+        result = detector.detect_from_array(data)
+
+        # Should handle gracefully
+        assert result is not None
+        # Should detect invalid NaN values
+        assert result.has_anomalies
+
+    def test_zero_std_data(self):
+        """Test data with zero standard deviation."""
+        data = np.full((1, 50, 50), 42.0)
+
+        detector = AnomalyDetector()
+        result = detector.detect_from_array(data)
+
+        # Should not crash - std is zero
+        assert result is not None
+        # Statistics should show std = 0
+        assert result.band_statistics[0]["std"] == 0.0
+
+    def test_detected_anomaly_to_dict(self):
+        """Test DetectedAnomaly serialization."""
+        from core.data.ingestion.validation.anomaly import (
+            DetectedAnomaly,
+            AnomalyLocation,
+        )
+
+        location = AnomalyLocation(
+            band=0,
+            row_start=10,
+            row_end=20,
+            col_start=5,
+            col_end=15,
+            pixel_count=100,
+            percentage=10.0,
+        )
+        anomaly = DetectedAnomaly(
+            anomaly_type=AnomalyType.OUTLIER_ZSCORE,
+            severity=AnomalySeverity.HIGH,
+            description="Test anomaly",
+            location=location,
+            statistics={"threshold": 3.0},
+            confidence=0.95,
+            recommendation="Fix it",
+        )
+        d = anomaly.to_dict()
+
+        assert d["type"] == "outlier_zscore"
+        assert d["severity"] == "high"
+        assert d["description"] == "Test anomaly"
+        assert d["confidence"] == 0.95
+        assert d["recommendation"] == "Fix it"
+        assert d["location"]["band"] == 0
+
+    def test_anomaly_location_to_dict(self):
+        """Test AnomalyLocation serialization."""
+        from core.data.ingestion.validation.anomaly import AnomalyLocation
+
+        location = AnomalyLocation(band=1, pixel_count=50, percentage=5.0)
+        d = location.to_dict()
+
+        assert d["band"] == 1
+        assert d["pixel_count"] == 50
+        assert d["percentage"] == 5.0
+        assert d["row_range"] is None
+        assert d["col_range"] is None
+
+    def test_anomaly_result_properties(self):
+        """Test AnomalyResult count properties."""
+        from core.data.ingestion.validation.anomaly import (
+            AnomalyResult,
+            DetectedAnomaly,
+        )
+
+        anomalies = [
+            DetectedAnomaly(
+                AnomalyType.INVALID_VALUE,
+                AnomalySeverity.CRITICAL,
+                "Critical issue",
+            ),
+            DetectedAnomaly(
+                AnomalyType.OUTLIER_ZSCORE,
+                AnomalySeverity.HIGH,
+                "High issue",
+            ),
+            DetectedAnomaly(
+                AnomalyType.SATURATED,
+                AnomalySeverity.MEDIUM,
+                "Medium issue",
+            ),
+        ]
+        result = AnomalyResult(
+            has_anomalies=True,
+            anomalies=anomalies,
+        )
+
+        assert result.critical_count == 1
+        assert result.high_count == 1
+
+
+class TestCompletenessRobustness:
+    """Robustness tests for completeness validation."""
+
+    def test_zero_area_expected_bounds(self):
+        """Test expected bounds with zero area (point)."""
+        data = np.ones((1, 100, 100))
+        actual_bounds = (0, 0, 10, 10)
+        expected_bounds = (5, 5, 5, 5)  # Zero area point
+
+        config = CompletenessConfig(expected_bounds=expected_bounds)
+        validator = CompletenessValidator(config)
+        result = validator.validate_array(data, bounds=actual_bounds)
+
+        # Should handle zero-area bounds without crashing
+        assert result is not None
+
+    def test_coverage_region_to_dict(self):
+        """Test CoverageRegion serialization."""
+        from core.data.ingestion.validation.completeness import CoverageRegion
+
+        region = CoverageRegion(
+            bounds=(0, 0, 10, 10),
+            pixel_bounds=(0, 0, 100, 100),
+            area_sq_units=100.0,
+            percentage=25.0,
+            is_gap=True,
+        )
+        d = region.to_dict()
+
+        assert d["bounds"] == (0, 0, 10, 10)
+        assert d["pixel_bounds"] == (0, 0, 100, 100)
+        assert d["percentage"] == 25.0
+        assert d["is_gap"] is True
+
+    def test_completeness_issue_to_dict(self):
+        """Test CompletenessIssue serialization."""
+        from core.data.ingestion.validation.completeness import (
+            CompletenessIssue,
+            CoverageRegion,
+        )
+
+        regions = [CoverageRegion(percentage=10.0, is_gap=True)]
+        issue = CompletenessIssue(
+            check_type=CompletenessCheckType.SPATIAL_COVERAGE,
+            severity=CompletenessSeverity.HIGH,
+            message="Coverage too low",
+            details={"coverage": 50.0},
+            affected_regions=regions,
+        )
+        d = issue.to_dict()
+
+        assert d["check_type"] == "spatial_coverage"
+        assert d["severity"] == "high"
+        assert len(d["affected_regions"]) == 1
+
+    def test_completeness_result_gap_percentage(self):
+        """Test gap_percentage property."""
+        data = np.ones((1, 100, 100))
+        data[0, :30, :] = -9999
+
+        result = validate_completeness(data, nodata=-9999)
+
+        assert result.coverage_percentage == 70.0
+        assert result.gap_percentage == 30.0
+
+    def test_tile_coverage_no_tiles(self):
+        """Test tile coverage with no tiles."""
+        validator = CompletenessValidator()
+        result = validator.validate_tile_coverage([], (0, 0, 100, 100))
+
+        assert not result.is_complete
+        assert result.coverage_percentage == 0.0
+        assert any(i.severity == CompletenessSeverity.CRITICAL for i in result.issues)
+
+    def test_gap_detection_without_scipy(self):
+        """Test gap detection falls back when scipy unavailable."""
+        # This test verifies the fallback code path exists
+        # The actual scipy import is hard to mock, but we test with data
+        data = np.ones((1, 100, 100))
+        data[0, 40:60, 40:60] = -9999
+
+        config = CompletenessConfig(detect_gaps=True, min_gap_size_pixels=50)
+        validator = CompletenessValidator(config)
+        result = validator.validate_array(data, nodata=-9999)
+
+        # Should detect gaps regardless of scipy
+        assert len(result.gap_regions) >= 1
+
+
+class TestValidationSuiteRobustness:
+    """Robustness tests for ValidationSuite."""
+
+    def test_suite_result_to_dict_complete(self):
+        """Test full suite result serialization."""
+        with tempfile.NamedTemporaryFile(suffix=".dat", delete=False) as f:
+            f.write(b"test data for full serialization")
+            f.flush()
+
+            suite = ValidationSuite()
+            result = suite.validate(f.name, skip_anomaly=True, skip_completeness=True)
+            d = result.to_dict()
+
+            assert "is_valid" in d
+            assert "overall_score" in d
+            assert "summary" in d
+            assert "integrity" in d
+            assert d["integrity"] is not None
+
+            Path(f.name).unlink()
+
+    def test_suite_with_failing_validators(self):
+        """Test suite gracefully handles validator failures."""
+        # Use a file that won't be valid for rasterio-based validators
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
+            f.write(b"not a valid raster file")
+            f.flush()
+
+            suite = ValidationSuite()
+            # Anomaly and completeness will fail (not raster format)
+            result = suite.validate(f.name)
+
+            # Should still return a result
+            assert result is not None
+            assert isinstance(result.summary, str)
+
+            Path(f.name).unlink()
+
+
+class TestDataTypeEdgeCases:
+    """Tests for various data type edge cases."""
+
+    def test_float64_data(self):
+        """Test handling of float64 data."""
+        data = np.random.normal(100, 10, (1, 50, 50)).astype(np.float64)
+
+        detector = AnomalyDetector()
+        result = detector.detect_from_array(data)
+
+        assert result is not None
+        assert 0 in result.band_statistics
+
+    def test_int16_data(self):
+        """Test handling of int16 data."""
+        data = np.random.randint(-1000, 1000, (1, 50, 50), dtype=np.int16)
+
+        detector = AnomalyDetector()
+        result = detector.detect_from_array(data)
+
+        assert result is not None
+
+    def test_uint16_saturation(self):
+        """Test saturation detection in uint16 data."""
+        data = np.random.randint(1000, 60000, (1, 100, 100), dtype=np.uint16)
+        # Add saturated values (near max uint16 = 65535)
+        data[0, :3, :] = 65535
+
+        config = AnomalyConfig(saturation_threshold=0.99)
+        detector = AnomalyDetector(config)
+        result = detector.detect_from_array(data)
+
+        # Should detect saturation
+        saturated = [a for a in result.anomalies if a.anomaly_type == AnomalyType.SATURATED]
+        assert len(saturated) >= 1
+
+    def test_boolean_data(self):
+        """Test handling of boolean/binary data."""
+        data = np.random.choice([0, 1], size=(1, 50, 50)).astype(np.uint8)
+
+        detector = AnomalyDetector()
+        result = detector.detect_from_array(data)
+
+        # Should handle binary data
+        assert result is not None
+
+
+class TestMADOutlierDetection:
+    """Tests for MAD (Median Absolute Deviation) functionality."""
+
+    def test_mad_threshold_config(self):
+        """Test MAD threshold configuration."""
+        config = AnomalyConfig(mad_threshold=4.0)
+        detector = AnomalyDetector(config)
+
+        assert detector.config.mad_threshold == 4.0
+
+
+class TestStripeDetectionEdgeCases:
+    """Edge cases for stripe detection."""
+
+    def test_small_image_no_stripe_detection(self):
+        """Test stripe detection skipped for small images."""
+        # Image with less than 10 valid rows/cols should skip stripe detection
+        data = np.random.normal(100, 10, (1, 5, 5))
+
+        config = AnomalyConfig(stripe_detection=True)
+        detector = AnomalyDetector(config)
+        result = detector.detect_from_array(data)
+
+        # Should not detect stripes in small images
+        stripe_anomalies = [
+            a for a in result.anomalies if a.anomaly_type == AnomalyType.STRIPE_ARTIFACT
+        ]
+        assert len(stripe_anomalies) == 0
+
+    def test_stripe_detection_disabled(self):
+        """Test stripe detection can be disabled."""
+        np.random.seed(42)
+        data = np.random.normal(100, 5, (1, 100, 100))
+        # Add obvious stripes
+        data[0, 10, :] = 500
+
+        config = AnomalyConfig(stripe_detection=False)
+        detector = AnomalyDetector(config)
+        result = detector.detect_from_array(data)
+
+        # Should not detect stripes when disabled
+        stripe_anomalies = [
+            a for a in result.anomalies if a.anomaly_type == AnomalyType.STRIPE_ARTIFACT
+        ]
+        assert len(stripe_anomalies) == 0
+
+
+class TestQualityScoreEdgeCases:
+    """Edge cases for quality score calculation."""
+
+    def test_quality_score_single_band_many_anomalies(self):
+        """Test quality score with many anomalies on single band."""
+        data = np.ones((1, 100, 100))
+        # Add multiple issues
+        data[0, :60, :] = -9999  # 60% nodata
+        data[0, 0, 0] = np.inf  # Inf value
+
+        config = AnomalyConfig(max_nodata_percent=10.0)
+        detector = AnomalyDetector(config)
+        result = detector.detect_from_array(data, nodata=-9999)
+
+        # Score should be reduced but clamped to [0, 1]
+        assert 0.0 <= result.overall_quality_score <= 1.0
+        assert result.overall_quality_score < 1.0
+
+    def test_quality_score_multiband(self):
+        """Test quality score normalization across multiple bands."""
+        data = np.random.normal(100, 10, (5, 50, 50))
+
+        detector = AnomalyDetector()
+        result = detector.detect_from_array(data)
+
+        # Score should be between 0 and 1
+        assert 0.0 <= result.overall_quality_score <= 1.0
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

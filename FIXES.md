@@ -519,6 +519,11 @@ PYTHONPATH=. .venv/bin/pytest tests/test_flood_algorithms.py -v
 
 | Date | Fix ID | Status | Notes |
 |------|--------|--------|-------|
+| 2026-01-10 | NEW-010 | Fixed | Track 5 (G): Directory validation in integrity.py - validate_file() crashed with IsADirectoryError when passed a directory path instead of a file |
+| 2026-01-10 | NEW-009 | Fixed | Track 3 (G): Scale factor bug in resolution.py - resample_array used division instead of multiplication to calculate destination dimensions, causing upsampling/downsampling inversion |
+| 2026-01-10 | NEW-008 | Fixed | Track 4 (G): NaN handling in overviews.py _downsample_array - changed np.mean/max/min to np.nanmean/nanmax/nanmin |
+| 2026-01-10 | NEW-007 | Fixed | Track 4 (G): Division by zero in quality.py QualityConfig.__post_init__ when all dimension weights are zero |
+| 2026-01-10 | NEW-006 | Fixed | Track 4 (G): Histogram error in statistics.py when min_val == max_val for constant data |
 | 2026-01-10 | NEW-005 | Fixed | Track 5: Division by zero in _calculate_fusion_confidence when configuration.sensors is empty |
 | 2026-01-10 | NEW-004 | Fixed | Track 1: None handling in soft_weights context (AttributeError when soft_weights was None) |
 | 2026-01-10 | NEW-003 | Fixed | Track 1: Resolution score clamping bug in constraints.py (negative values produced invalid scores > 1.0) |
