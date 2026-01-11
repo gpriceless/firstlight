@@ -478,7 +478,7 @@ Your system can now make intelligent decisions! It knows when to use optical vs 
      - Resampler with multiple methods (nearest, bilinear, cubic, lanczos)
      - Quality-aware resolution matching across sensor types
    - `core/data/ingestion/normalization/__init__.py` - Module exports (130 lines)
-   - `tests/test_normalization.py` - Comprehensive test suite (70 tests, 63 passing)
+   - `tests/test_normalization.py` - Comprehensive test suite (72 tests, 56 passing, 16 skipped for optional deps)
 
 4. **Track 4: Enrichment** (all parallel) ✅ **[DONE]**
    - `core/data/ingestion/enrichment/overviews.py` - Pyramid generation (602 lines)
@@ -521,12 +521,12 @@ Your system can now make intelligent decisions! It knows when to use optical vs 
    - `core/data/ingestion/persistence/__init__.py` - Module exports (105 lines)
    - 108 comprehensive tests in `tests/test_persistence.py` (1430 lines)
 
-7. **Track 7: Cache System** (can develop in parallel with above)
+7. **Track 7: Cache System** (can develop in parallel with above) **[IN PROGRESS]**
    - `core/data/cache/manager.py` - Lifecycle management
    - `core/data/cache/index.py` - Spatiotemporal indexing
    - `core/data/cache/storage.py` - S3/local backends
 
-8. **Track 8: Ingestion Tests**
+8. **Track 8: Ingestion Tests** **[IN PROGRESS]**
    - `tests/test_ingestion.py`
    - Test format conversions
    - Test normalization accuracy
