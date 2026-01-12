@@ -47,3 +47,7 @@ Thumbs.db
 
 # Local development
 .claude/
+.orchestrator_locks/
+
+# Test outputs
+/tmp/mdive_*/
