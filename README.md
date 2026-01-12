@@ -96,18 +96,171 @@ multiverse_dive/
 
 ## Quick Start
 
+### Installation
+
 ```bash
-# Install dependencies
+# Clone and install
+git clone https://github.com/gpriceless/multiverse_dive.git
+cd multiverse_dive
 pip install -e .
 
-# Run tests
-PYTHONPATH=. .venv/bin/pytest tests/ -v
+# Install optional dependencies for full functionality
+pip install rasterio geopandas xarray pyproj shapely
 
-# Example: process a flood event (API not yet implemented)
-# curl -X POST http://localhost:8000/events \
-#   -H "Content-Type: application/yaml" \
-#   --data-binary @examples/flood_event.yaml
+# Run tests
+./run_tests.py                    # All tests
+./run_tests.py flood              # Flood tests only
+./run_tests.py --list             # Show all categories
 ```
+
+### Command Line Interface (mdive)
+
+The `mdive` CLI provides full access to all platform capabilities:
+
+```bash
+# Get help
+mdive --help
+mdive info                        # Show system info and configuration
+
+# Discover available satellite data
+mdive discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 --event flood
+mdive discover --bbox -80.5,25.5,-80.0,26.0 --event wildfire --format json
+
+# Download and prepare data
+mdive ingest --area miami.geojson --source sentinel1 --output ./data/
+mdive ingest --area california.geojson --source sentinel2,landsat8 --output ./data/
+
+# Run analysis with specific algorithm
+mdive analyze --input ./data/ --algorithm sar_threshold --output ./results/
+mdive analyze --input ./data/ --algorithm ndwi --confidence 0.8 --output ./results/
+
+# Validate results
+mdive validate --input ./results/ --checks sanity,cross_validation
+mdive validate --input ./results/ --reference ground_truth.geojson
+
+# Export products
+mdive export --input ./results/ --format geotiff,geojson,pdf --output ./products/
+
+# Full end-to-end pipeline
+mdive run --area miami.geojson --event flood --profile laptop --output ./products/
+mdive run --area california.geojson --event wildfire --profile workstation --output ./products/
+
+# Monitor and resume
+mdive status --workdir ./products/
+mdive resume --workdir ./products/
+```
+
+**Execution Profiles** adapt to your hardware:
+
+| Profile | Memory | Workers | Tile Size | Use Case |
+|---------|--------|---------|-----------|----------|
+| `edge` | 1 GB | 1 | 128px | Raspberry Pi, embedded |
+| `laptop` | 2 GB | 2 | 256px | Local development |
+| `workstation` | 8 GB | 4 | 512px | Desktop processing |
+| `cloud` | 32 GB | 16 | 1024px | Server deployment |
+
+### REST API
+
+Start the API server for programmatic access:
+
+```bash
+# Development server
+python -m api.main
+
+# Or with uvicorn directly
+uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+# API documentation available at:
+# http://localhost:8000/api/docs     (Swagger UI)
+# http://localhost:8000/api/redoc    (ReDoc)
+```
+
+**API Endpoints:**
+
+```bash
+# Submit an event for processing
+curl -X POST http://localhost:8000/api/v1/events \
+  -H "Content-Type: application/json" \
+  -d @examples/flood_event.yaml
+
+# Check processing status
+curl http://localhost:8000/api/v1/events/{event_id}/status
+
+# Download products
+curl http://localhost:8000/api/v1/events/{event_id}/products/flood_extent.geojson
+
+# Browse data catalog
+curl http://localhost:8000/api/v1/catalog/algorithms
+curl http://localhost:8000/api/v1/catalog/providers
+
+# Health check
+curl http://localhost:8000/api/v1/health
+```
+
+### Using Modules Independently
+
+Each core module can be used standalone in your own Python code:
+
+```python
+# Intent Resolution - classify event types from natural language
+from core.intent import IntentResolver
+
+resolver = IntentResolver()
+result = resolver.resolve("flooding in coastal Miami after Hurricane Milton")
+print(result.resolved_class)  # "flood.coastal"
+print(result.confidence)      # 0.92
+
+# Data Discovery - find available satellite imagery
+from core.data.broker import DataBroker
+
+broker = DataBroker()
+datasets = await broker.discover(
+    spatial={"type": "Polygon", "coordinates": [...]},
+    temporal={"start": "2024-09-15", "end": "2024-09-20"},
+    event_class="flood.coastal"
+)
+
+# Algorithm Execution - run specific detection algorithms
+from core.analysis.library.baseline.flood import ThresholdSARAlgorithm
+
+algorithm = ThresholdSARAlgorithm()
+result = algorithm.execute(sar_data, pixel_size_m=10.0)
+print(f"Flood area: {result.statistics['flood_area_ha']} hectares")
+
+# Quality Control - validate results
+from core.quality import SanityChecker, CrossValidator
+
+checker = SanityChecker()
+issues = checker.check(result.flood_extent, event_class="flood.coastal")
+
+validator = CrossValidator()
+consensus = validator.validate([result1, result2, result3])
+```
+
+### Docker Deployment
+
+```bash
+# Build images
+docker build -f docker/Dockerfile.api -t mdive-api .
+docker build -f docker/Dockerfile.cli -t mdive-cli .
+
+# Run with Docker Compose
+docker-compose up -d
+
+# Or run CLI in container
+docker run -v $(pwd)/data:/data mdive-cli run \
+  --area /data/area.geojson --event flood --output /data/output/
+```
+
+### Example Event Specifications
+
+See the `examples/` directory for sample event configurations:
+
+- `flood_event.yaml` - Coastal flooding analysis
+- `wildfire_event.yaml` - Burn severity mapping
+- `storm_event.yaml` - Hurricane damage assessment
+- `datasource_sentinel1.yaml` - SAR data source configuration
+- `pipeline_flood_sar.yaml` - Custom pipeline definition
 
 ## Current Status
 
