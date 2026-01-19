@@ -1,5 +1,5 @@
 """
-Agent Foundation Module for Multiverse Dive.
+Agent Foundation Module for FirstLight.
 
 Provides the base infrastructure for all agents in the orchestration system:
 - AgentState enum for lifecycle management

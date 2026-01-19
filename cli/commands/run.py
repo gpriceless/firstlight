@@ -2,7 +2,7 @@
 Run Command - Execute full pipeline from specification to products.
 
 Usage:
-    mdive run --area miami.geojson --event flood --profile laptop --output ./products/
+    flight run --area miami.geojson --event flood --profile laptop --output ./products/
 """
 
 import json
@@ -16,7 +16,7 @@ from typing import Optional, Dict, Any, List
 
 import click
 
-logger = logging.getLogger("mdive.run")
+logger = logging.getLogger("flight.run")
 
 
 # Execution profiles
@@ -228,14 +228,14 @@ def run(
     \b
     Examples:
         # Run flood analysis with laptop profile
-        mdive run --area miami.geojson --event flood --profile laptop --output ./products/
+        flight run --area miami.geojson --event flood --profile laptop --output ./products/
 
         # Run with specific dates and algorithm
-        mdive run --area miami.geojson --start 2024-09-15 --end 2024-09-20 \\
+        flight run --area miami.geojson --start 2024-09-15 --end 2024-09-20 \\
             --event flood --algorithm sar_threshold --output ./products/
 
         # Run for wildfire with cloud profile
-        mdive run --bbox -120.5,34.0,-120.0,34.5 --event wildfire \\
+        flight run --bbox -120.5,34.0,-120.0,34.5 --event wildfire \\
             --profile cloud --output ./products/
     """
     output_path = Path(output_path)
@@ -253,7 +253,7 @@ def run(
     profile_config = PROFILES[profile]
 
     click.echo(f"\n{'=' * 60}")
-    click.echo(f"  Multiverse Dive - Full Pipeline Execution")
+    click.echo(f"  FirstLight - Full Pipeline Execution")
     click.echo(f"{'=' * 60}")
     click.echo(f"\n  Event type: {event_type}")
     click.echo(f"  Time window: {start_dt.date()} to {end_dt.date()}")
@@ -385,7 +385,7 @@ def run(
                     click.echo(f"    - {p.name}")
 
     except KeyboardInterrupt:
-        click.echo(f"\n\nInterrupted. Use 'mdive resume --workdir {output_path}' to continue.")
+        click.echo(f"\n\nInterrupted. Use 'flight resume --workdir {output_path}' to continue.")
         state.save()
         sys.exit(130)
 
@@ -395,7 +395,7 @@ def run(
             state.fail_stage(current, str(e))
         logger.error(f"Pipeline failed: {e}")
         click.echo(f"\nError: {e}", err=True)
-        click.echo(f"Use 'mdive resume --workdir {output_path}' to retry.")
+        click.echo(f"Use 'flight resume --workdir {output_path}' to retry.")
         sys.exit(1)
 
 

@@ -1,18 +1,18 @@
-# ClusterIP Service for Multiverse Dive API
+# ClusterIP Service for FirstLight API
 # Deploy: kubectl apply -f api-service.yaml
 
 apiVersion: v1
 kind: Service
 metadata:
-  name: multiverse-dive-api
-  namespace: multiverse-dive
+  name: firstlight-api
+  namespace: firstlight
   labels:
-    app: multiverse-dive
+    app: firstlight
     component: api
 spec:
   type: ClusterIP
   selector:
-    app: multiverse-dive
+    app: firstlight
     component: api
   ports:
     - name: http

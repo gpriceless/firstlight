@@ -1,6 +1,6 @@
-# Multiverse Dive - Edge Deployment Guide
+# FirstLight - Edge Deployment Guide
 
-This guide covers deploying Multiverse Dive on edge devices for field operations, remote sensing stations, and disconnected environments.
+This guide covers deploying FirstLight on edge devices for field operations, remote sensing stations, and disconnected environments.
 
 ## Overview
 
@@ -60,20 +60,20 @@ Edge deployments enable geospatial analysis in resource-constrained environments
 ```bash
 # Build the lightweight image (on device or cross-compile)
 docker build --platform linux/arm64 \
-  -t multiverse-dive/edge-arm64:latest \
+  -t firstlight-dive/edge-arm64:latest \
   -f deploy/edge/arm64/Dockerfile.lightweight .
 
 # Run the container
 docker run -d \
-  --name multiverse-dive \
+  --name firstlight-dive \
   --restart unless-stopped \
   -p 8080:8080 \
-  -v /opt/multiverse/data:/data \
-  -v /opt/multiverse/cache:/cache \
-  multiverse-dive/edge-arm64:latest
+  -v /opt/firstlight/data:/data \
+  -v /opt/firstlight/cache:/cache \
+  firstlight-dive/edge-arm64:latest
 
 # Check status
-docker logs -f multiverse-dive
+docker logs -f firstlight-dive
 ```
 
 ### NVIDIA Jetson Deployment
@@ -81,22 +81,22 @@ docker logs -f multiverse-dive
 ```bash
 # Build the GPU image (on Jetson device)
 docker build \
-  -t multiverse-dive/edge-jetson:latest \
+  -t firstlight-dive/edge-jetson:latest \
   -f deploy/edge/nvidia-jetson/Dockerfile.gpu .
 
 # Run with NVIDIA runtime
 docker run -d \
-  --name multiverse-dive \
+  --name firstlight-dive \
   --runtime=nvidia \
   --restart unless-stopped \
   -p 8080:8080 \
-  -v /opt/multiverse/data:/data \
-  -v /opt/multiverse/cache:/cache \
-  -v /opt/multiverse/models:/models \
-  multiverse-dive/edge-jetson:latest
+  -v /opt/firstlight/data:/data \
+  -v /opt/firstlight/cache:/cache \
+  -v /opt/firstlight/models:/models \
+  firstlight-dive/edge-jetson:latest
 
 # Verify GPU access
-docker exec multiverse-dive nvidia-smi
+docker exec firstlight-dive nvidia-smi
 ```
 
 ## Configuration
@@ -105,12 +105,12 @@ docker exec multiverse-dive nvidia-smi
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MULTIVERSE_DIVE_ENV` | edge | Deployment environment |
-| `MULTIVERSE_DIVE_DATA_DIR` | /data | Data storage directory |
-| `MULTIVERSE_DIVE_CACHE_DIR` | /cache | Cache directory |
-| `MULTIVERSE_DIVE_EDGE_MODE` | true | Enable edge optimizations |
-| `MULTIVERSE_DIVE_GPU_ENABLED` | false | Enable GPU (Jetson only) |
-| `MULTIVERSE_DIVE_OFFLINE_MODE` | false | Disable network features |
+| `FIRSTLIGHT_ENV` | edge | Deployment environment |
+| `FIRSTLIGHT_DATA_DIR` | /data | Data storage directory |
+| `FIRSTLIGHT_CACHE_DIR` | /cache | Cache directory |
+| `FIRSTLIGHT_EDGE_MODE` | true | Enable edge optimizations |
+| `FIRSTLIGHT_GPU_ENABLED` | false | Enable GPU (Jetson only) |
+| `FIRSTLIGHT_OFFLINE_MODE` | false | Disable network features |
 
 ### Memory Optimization
 
@@ -118,9 +118,9 @@ For 4GB devices, add these environment variables:
 
 ```bash
 docker run -d \
-  -e MULTIVERSE_DIVE_MAX_WORKERS=1 \
-  -e MULTIVERSE_DIVE_CACHE_SIZE_MB=512 \
-  -e MULTIVERSE_DIVE_CHUNK_SIZE_MB=256 \
+  -e FIRSTLIGHT_MAX_WORKERS=1 \
+  -e FIRSTLIGHT_CACHE_SIZE_MB=512 \
+  -e FIRSTLIGHT_CHUNK_SIZE_MB=256 \
   ...
 ```
 
@@ -149,8 +149,8 @@ docker run -d \
 Edge deployments can operate without network connectivity:
 
 1. **Pre-load data**: Copy required datasets to `/data` before deployment
-2. **Enable offline mode**: Set `MULTIVERSE_DIVE_OFFLINE_MODE=true`
-3. **Disable telemetry**: Set `MULTIVERSE_DIVE_TELEMETRY=false`
+2. **Enable offline mode**: Set `FIRSTLIGHT_OFFLINE_MODE=true`
+3. **Disable telemetry**: Set `FIRSTLIGHT_TELEMETRY=false`
 
 ### Data Synchronization
 
@@ -158,10 +158,10 @@ When connectivity is restored:
 
 ```bash
 # Sync results to central server
-docker exec multiverse-dive python -m core.sync upload --target https://central.example.com
+docker exec firstlight-dive python -m core.sync upload --target https://central.example.com
 
 # Pull updated models/data
-docker exec multiverse-dive python -m core.sync download --source https://central.example.com
+docker exec firstlight-dive python -m core.sync download --source https://central.example.com
 ```
 
 ## Troubleshooting
@@ -170,11 +170,11 @@ docker exec multiverse-dive python -m core.sync download --source https://centra
 
 ```bash
 # Check memory usage
-docker stats multiverse-dive
+docker stats firstlight-dive
 
 # Reduce chunk size
-docker exec multiverse-dive sed -i 's/CHUNK_SIZE_MB=512/CHUNK_SIZE_MB=128/' /app/config/edge.conf
-docker restart multiverse-dive
+docker exec firstlight-dive sed -i 's/CHUNK_SIZE_MB=512/CHUNK_SIZE_MB=128/' /app/config/edge.conf
+docker restart firstlight-dive
 ```
 
 ### Slow Processing
@@ -190,7 +190,7 @@ docker restart multiverse-dive
 docker info | grep -i runtime
 
 # Check CUDA
-docker exec multiverse-dive nvidia-smi
+docker exec firstlight-dive nvidia-smi
 
 # Reinstall container toolkit if needed
 sudo apt-get install -y nvidia-container-toolkit

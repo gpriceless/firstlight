@@ -1,5 +1,5 @@
 {
-  "family": "multiverse-dive",
+  "family": "firstlight",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "2048",
@@ -9,7 +9,7 @@
   "containerDefinitions": [
     {
       "name": "api",
-      "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/multiverse-dive-api:${IMAGE_TAG}",
+      "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/firstlight-api:${IMAGE_TAG}",
       "essential": true,
       "cpu": 1024,
       "memory": 2048,
@@ -41,19 +41,19 @@
       "secrets": [
         {
           "name": "DATABASE_URL",
-          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/multiverse-dive/database-url"
+          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/firstlight/database-url"
         },
         {
           "name": "REDIS_URL",
-          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/multiverse-dive/redis-url"
+          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/firstlight/redis-url"
         },
         {
           "name": "API_SECRET_KEY",
-          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/multiverse-dive/api-secret-key"
+          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/firstlight/api-secret-key"
         },
         {
           "name": "STAC_API_KEY",
-          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/multiverse-dive/stac-api-key"
+          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/firstlight/stac-api-key"
         }
       ],
       "healthCheck": {
@@ -66,7 +66,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/multiverse-dive",
+          "awslogs-group": "/ecs/firstlight",
           "awslogs-region": "${AWS_REGION}",
           "awslogs-stream-prefix": "api",
           "awslogs-create-group": "true"
@@ -81,7 +81,7 @@
     },
     {
       "name": "worker",
-      "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/multiverse-dive-worker:${IMAGE_TAG}",
+      "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/firstlight-worker:${IMAGE_TAG}",
       "essential": true,
       "cpu": 1024,
       "memory": 2048,
@@ -106,19 +106,19 @@
       "secrets": [
         {
           "name": "DATABASE_URL",
-          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/multiverse-dive/database-url"
+          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/firstlight/database-url"
         },
         {
           "name": "REDIS_URL",
-          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/multiverse-dive/redis-url"
+          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/firstlight/redis-url"
         },
         {
           "name": "S3_BUCKET",
-          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/multiverse-dive/s3-bucket"
+          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/firstlight/s3-bucket"
         },
         {
           "name": "STAC_API_KEY",
-          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/multiverse-dive/stac-api-key"
+          "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/firstlight/stac-api-key"
         }
       ],
       "healthCheck": {
@@ -131,7 +131,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/multiverse-dive",
+          "awslogs-group": "/ecs/firstlight",
           "awslogs-region": "${AWS_REGION}",
           "awslogs-stream-prefix": "worker",
           "awslogs-create-group": "true"
@@ -151,7 +151,7 @@
       "name": "data-cache",
       "efsVolumeConfiguration": {
         "fileSystemId": "${EFS_FILE_SYSTEM_ID}",
-        "rootDirectory": "/multiverse-dive/cache",
+        "rootDirectory": "/firstlight/cache",
         "transitEncryption": "ENABLED"
       }
     }
@@ -159,7 +159,7 @@
   "tags": [
     {
       "key": "Application",
-      "value": "multiverse-dive"
+      "value": "firstlight"
     },
     {
       "key": "Environment",

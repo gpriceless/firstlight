@@ -17,8 +17,8 @@ services:
   api:
     build:
       target: development
-    image: multiverse-dive/api:dev
-    container_name: multiverse-dive-api-dev
+    image: firstlight/api:dev
+    container_name: firstlight-api-dev
     ports:
       - "8000:8000"
       - "5678:5678"  # debugpy port
@@ -94,9 +94,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_USER=multiverse
+      - POSTGRES_USER=firstlight
       - POSTGRES_PASSWORD=dev_password
-      - POSTGRES_DB=multiverse_dive_dev
+      - POSTGRES_DB=first_light_dev
 
   # ==========================================================================
   # Worker - Development overrides
@@ -104,8 +104,8 @@ services:
   worker:
     # Always start worker in dev mode
     profiles: []
-    image: multiverse-dive/worker:dev
-    container_name: multiverse-dive-worker-dev
+    image: firstlight/worker:dev
+    container_name: firstlight-worker-dev
     environment:
       - ENVIRONMENT=development
       - LOG_LEVEL=debug
@@ -128,7 +128,7 @@ services:
   # Redis Commander - Redis GUI
   redis-commander:
     image: rediscommander/redis-commander:latest
-    container_name: multiverse-dive-redis-commander
+    container_name: firstlight-redis-commander
     restart: unless-stopped
     ports:
       - "8081:8081"
@@ -137,12 +137,12 @@ services:
     depends_on:
       - redis
     networks:
-      - multiverse-network
+      - firstlight-network
 
   # pgAdmin - PostgreSQL GUI
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: multiverse-dive-pgadmin
+    container_name: firstlight-pgadmin
     restart: unless-stopped
     ports:
       - "5050:80"
@@ -155,7 +155,7 @@ services:
     depends_on:
       - postgres
     networks:
-      - multiverse-network
+      - firstlight-network
 
 volumes:
   pgadmin-data:

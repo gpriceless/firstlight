@@ -2,7 +2,7 @@
 Reporting Agent for Final Product Generation and Delivery.
 
 This module provides the ReportingAgent and supporting classes for generating
-and delivering final output products from the multiverse_dive analysis pipeline.
+and delivering final output products from the FirstLight analysis pipeline.
 
 Components:
 - ReportingAgent: Main agent for coordinating product generation and delivery

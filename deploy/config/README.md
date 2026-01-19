@@ -1,6 +1,6 @@
 # Configuration Management
 
-This directory contains environment configuration files for the Multiverse Dive platform.
+This directory contains environment configuration files for the FirstLight platform.
 
 ## Configuration Files
 
@@ -30,7 +30,7 @@ docker-compose --env-file deploy/config/development.env up
 docker-compose --env-file deploy/config/production.env up
 
 # Or in Kubernetes, create ConfigMaps and Secrets
-kubectl create configmap multiverse-config --from-env-file=deploy/config/base.env
+kubectl create configmap firstlight-config --from-env-file=deploy/config/base.env
 ```
 
 ## Environment Variables Reference
@@ -39,7 +39,7 @@ kubectl create configmap multiverse-config --from-env-file=deploy/config/base.en
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `APP_NAME` | No | `multiverse-dive` | Application name for logging and metrics |
+| `APP_NAME` | No | `firstlight-dive` | Application name for logging and metrics |
 | `APP_ENV` | No | `production` | Environment: `development`, `staging`, `production` |
 | `APP_VERSION` | No | `0.1.0` | Application version |
 | `LOG_LEVEL` | No | `INFO` | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
@@ -76,7 +76,7 @@ kubectl create configmap multiverse-config --from-env-file=deploy/config/base.en
 | `CACHE_URL` | No | `redis://localhost:6379/0` | Redis connection URL |
 | `CACHE_TTL_SECONDS` | No | `3600` | Default cache TTL |
 | `CACHE_MAX_SIZE_MB` | No | `1024` | Maximum cache size |
-| `CACHE_KEY_PREFIX` | No | `mdive:` | Cache key prefix |
+| `CACHE_KEY_PREFIX` | No | `flight:` | Cache key prefix |
 
 ### Processing
 
@@ -93,7 +93,7 @@ kubectl create configmap multiverse-config --from-env-file=deploy/config/base.en
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `STORAGE_BACKEND` | No | `local` | Backend: `local`, `s3` |
-| `STORAGE_LOCAL_PATH` | No | `/data/multiverse_dive` | Local storage path |
+| `STORAGE_LOCAL_PATH` | No | `/data/firstlight_dive` | Local storage path |
 | `STORAGE_S3_BUCKET` | No | - | S3 bucket name |
 | `STORAGE_S3_REGION` | No | `us-east-1` | S3 region |
 | `STORAGE_S3_ENDPOINT` | No | - | S3 endpoint (for custom S3-compatible) |
@@ -162,7 +162,7 @@ export DATABASE_URL="postgresql://user:pass@host/db"
 import boto3
 
 client = boto3.client('secretsmanager')
-secret = client.get_secret_value(SecretId='multiverse-dive/production')
+secret = client.get_secret_value(SecretId='firstlight-dive/production')
 ```
 
 ### Option 3: Kubernetes Secrets
@@ -171,7 +171,7 @@ secret = client.get_secret_value(SecretId='multiverse-dive/production')
 apiVersion: v1
 kind: Secret
 metadata:
-  name: multiverse-secrets
+  name: firstlight-secrets
 type: Opaque
 stringData:
   JWT_SECRET_KEY: "your-secure-secret"
@@ -181,7 +181,7 @@ stringData:
 ### Option 4: HashiCorp Vault
 
 ```bash
-vault kv get -field=jwt_secret secret/multiverse-dive/production
+vault kv get -field=jwt_secret secret/firstlight-dive/production
 ```
 
 ## Configuration Priority

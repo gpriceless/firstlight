@@ -151,7 +151,7 @@ INPUT: Downloaded raster file path
 │ STEP 5: SCREENSHOT CAPTURE (Optional)                       │
 │ • If enabled: Render bands with matplotlib/PIL              │
 │ • Generate: RGB composite, individual bands, metadata       │
-│ • Save to: ~/.multiverse_dive/screenshots/                  │
+│ • Save to: ~/.firstlight/screenshots/                  │
 │ • Log: Screenshot path for debugging                        │
 └────────────────┬────────────────────────────────────────────┘
                  │
@@ -355,7 +355,7 @@ OUTPUT: ImageValidationResult
 validation:
   screenshots:
     enabled: true  # Set to false in production
-    output_dir: "~/.multiverse_dive/screenshots"
+    output_dir: "~/.firstlight/screenshots"
     on_failure_only: true  # Only capture screenshots for failed validations
 ```
 

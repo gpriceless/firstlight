@@ -365,7 +365,7 @@ class STACItemGenerator:
             # Add processing extension
             if "processing" in self.config.extensions:
                 item_props["processing:software"] = {
-                    "multiverse_dive": "1.0.0"
+                    "firstlight": "1.0.0"
                 }
                 item_props["processing:level"] = "L2A"
 

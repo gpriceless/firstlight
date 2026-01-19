@@ -561,7 +561,7 @@ class ReportingAgent(BaseAgent):
             output_dir: Default output directory
         """
         super().__init__(agent_id, message_handler)
-        self.output_dir = output_dir or Path("/tmp/multiverse_dive/products")
+        self.output_dir = output_dir or Path("/tmp/firstlight/products")
         self._product_generator: Optional["ProductGenerator"] = None
         self._format_converter: Optional["FormatConverter"] = None
         self._delivery_manager: Optional["DeliveryManager"] = None

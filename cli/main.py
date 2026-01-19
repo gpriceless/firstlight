@@ -1,5 +1,5 @@
 """
-Multiverse Dive CLI - Main Entry Point
+FirstLight CLI - Main Entry Point
 
 Command-line interface for the geospatial event intelligence platform.
 Built with Click for robust argument parsing and help generation.
@@ -18,10 +18,10 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-logger = logging.getLogger("mdive")
+logger = logging.getLogger("flight")
 
 
-class MdiveContext:
+class FlightContext:
     """Context object for passing global options to subcommands."""
 
     def __init__(
@@ -56,8 +56,8 @@ class MdiveContext:
 
         config = {
             "default_profile": "workstation",
-            "cache_dir": Path.home() / ".mdive" / "cache",
-            "data_dir": Path.home() / ".mdive" / "data",
+            "cache_dir": Path.home() / ".flight" / "cache",
+            "data_dir": Path.home() / ".flight" / "data",
             "output_dir": Path.cwd() / "output",
             "providers": {
                 "stac_catalogs": [
@@ -103,9 +103,9 @@ class MdiveContext:
 
         # Check for default config locations
         default_paths = [
-            Path.cwd() / ".mdive.yaml",
-            Path.cwd() / "mdive.yaml",
-            Path.home() / ".mdive" / "config.yaml",
+            Path.cwd() / ".flight.yaml",
+            Path.cwd() / "flight.yaml",
+            Path.home() / ".flight" / "config.yaml",
         ]
 
         for path in default_paths:
@@ -133,7 +133,7 @@ class MdiveContext:
 
 
 # Custom Click group with enhanced help formatting
-class MdiveGroup(click.Group):
+class FlightGroup(click.Group):
     """Custom Click group with improved help formatting."""
 
     def format_help(self, ctx, formatter):
@@ -141,7 +141,7 @@ class MdiveGroup(click.Group):
         # Add banner
         formatter.write_paragraph()
         formatter.write_text(
-            "Multiverse Dive - Geospatial Event Intelligence Platform"
+            "FirstLight - Geospatial Event Intelligence Platform"
         )
         formatter.write_paragraph()
         formatter.write_text(
@@ -159,22 +159,22 @@ class MdiveGroup(click.Group):
 
         examples = [
             "# Discover available data for a flood event",
-            "mdive discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 --event flood",
+            "flight discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 --event flood",
             "",
             "# Download and prepare data",
-            "mdive ingest --area miami.geojson --source sentinel1 --output ./data/",
+            "flight ingest --area miami.geojson --source sentinel1 --output ./data/",
             "",
             "# Run analysis with specific algorithm",
-            "mdive analyze --input ./data/ --algorithm sar_threshold --output ./results/",
+            "flight analyze --input ./data/ --algorithm sar_threshold --output ./results/",
             "",
             "# Full pipeline with laptop profile",
-            "mdive run --area miami.geojson --event flood --profile laptop --output ./products/",
+            "flight run --area miami.geojson --event flood --profile laptop --output ./products/",
             "",
             "# Check workflow status",
-            "mdive status --workdir ./products/",
+            "flight status --workdir ./products/",
             "",
             "# Resume interrupted workflow",
-            "mdive resume --workdir ./products/",
+            "flight resume --workdir ./products/",
         ]
 
         for line in examples:
@@ -183,10 +183,10 @@ class MdiveGroup(click.Group):
         formatter.dedent()
 
 
-pass_context = click.make_pass_decorator(MdiveContext, ensure=True)
+pass_context = click.make_pass_decorator(FlightContext, ensure=True)
 
 
-@click.group(cls=MdiveGroup)
+@click.group(cls=FlightGroup)
 @click.option(
     "-v",
     "--verbose",
@@ -210,13 +210,13 @@ pass_context = click.make_pass_decorator(MdiveContext, ensure=True)
 )
 @click.version_option(
     version="0.1.0",
-    prog_name="mdive",
-    message="%(prog)s version %(version)s - Multiverse Dive CLI",
+    prog_name="flight",
+    message="%(prog)s version %(version)s - FirstLight CLI",
 )
 @click.pass_context
 def app(ctx, verbose: bool, quiet: bool, config_path: Optional[Path]):
     """
-    Multiverse Dive CLI - Geospatial Event Intelligence
+    FirstLight CLI - Geospatial Event Intelligence
 
     A situation-agnostic platform for processing satellite imagery
     and generating decision products for flood, wildfire, and storm events.
@@ -227,7 +227,7 @@ def app(ctx, verbose: bool, quiet: bool, config_path: Optional[Path]):
 
     # Create context object
     ctx.ensure_object(dict)
-    ctx.obj = MdiveContext(
+    ctx.obj = FlightContext(
         verbose=verbose,
         quiet=quiet,
         config_path=config_path,
@@ -259,7 +259,7 @@ def info(ctx):
     import platform
     import json
 
-    click.echo("\n=== Multiverse Dive System Info ===\n")
+    click.echo("\n=== FirstLight System Info ===\n")
 
     # Python info
     click.echo(f"Python: {platform.python_version()}")

@@ -93,7 +93,7 @@ class ErrorResponse(BaseModel):
         "message": "Event with ID 'evt_123' was not found",
         "details": None,
         "request_id": "req_abc123",
-        "documentation_url": "https://docs.multiverse-dive.io/errors#EVENT_NOT_FOUND"
+        "documentation_url": "https://docs.firstlight.io/errors#EVENT_NOT_FOUND"
     }}}
 
 

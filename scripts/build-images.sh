@@ -1,5 +1,5 @@
 #!/bin/bash
-# Multiverse Dive - Local Image Build Script
+# FirstLight - Local Image Build Script
 #
 # Builds all Docker images locally for development and testing.
 #
@@ -15,7 +15,7 @@ set -e
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-IMAGE_PREFIX="${IMAGE_PREFIX:-multiverse-dive}"
+IMAGE_PREFIX="${IMAGE_PREFIX:-firstlight}"
 VERSION="${VERSION:-latest}"
 BUILD_ARGS=""
 IMAGES_TO_BUILD=""
@@ -41,7 +41,7 @@ log_error() {
 
 show_help() {
     cat << EOF
-Multiverse Dive Docker Image Builder
+FirstLight Docker Image Builder
 
 Usage: $(basename "$0") [OPTIONS] [IMAGE...]
 
@@ -178,7 +178,7 @@ if ! docker info &> /dev/null; then
     exit 1
 fi
 
-log_info "Starting Multiverse Dive image build"
+log_info "Starting FirstLight image build"
 log_info "Project root: $PROJECT_ROOT"
 log_info "Image prefix: $IMAGE_PREFIX"
 log_info "Version: $VERSION"

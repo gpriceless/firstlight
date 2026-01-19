@@ -2,8 +2,8 @@
 Ingest Command - Download and normalize data to analysis-ready format.
 
 Usage:
-    mdive ingest --area miami.geojson --source sentinel1 --output ./data/
-    mdive ingest --input discovery.json --output ./data/ --resume
+    flight ingest --area miami.geojson --source sentinel1 --output ./data/
+    flight ingest --input discovery.json --output ./data/ --resume
 """
 
 import json
@@ -17,7 +17,7 @@ from typing import Optional, List, Dict, Any
 
 import click
 
-logger = logging.getLogger("mdive.ingest")
+logger = logging.getLogger("flight.ingest")
 
 
 class ProgressTracker:
@@ -253,13 +253,13 @@ def ingest(
     \b
     Examples:
         # Ingest Sentinel-1 data for an area
-        mdive ingest --area miami.geojson --source sentinel1 --output ./data/
+        flight ingest --area miami.geojson --source sentinel1 --output ./data/
 
         # Ingest from discovery results
-        mdive ingest --input discovery.json --output ./data/ --format zarr
+        flight ingest --input discovery.json --output ./data/ --format zarr
 
         # Parallel downloads with custom resolution
-        mdive ingest --input discovery.json --output ./data/ --parallel 4 --resolution 10
+        flight ingest --input discovery.json --output ./data/ --parallel 4 --resolution 10
     """
     output_path = Path(output_path)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -271,7 +271,7 @@ def ingest(
     items = load_ingest_items(area_path, input_path, sources)
 
     if not items:
-        click.echo("No items to ingest. Run 'mdive discover' first or specify --area and --source.")
+        click.echo("No items to ingest. Run 'flight discover' first or specify --area and --source.")
         return
 
     click.echo(f"\nIngesting {len(items)} items to {output_path}")

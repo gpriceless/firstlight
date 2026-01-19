@@ -1,13 +1,13 @@
-# ConfigMap for Multiverse Dive Application Configuration
+# ConfigMap for FirstLight Application Configuration
 # Deploy: kubectl apply -f app-config.yaml
 
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: multiverse-dive-config
-  namespace: multiverse-dive
+  name: firstlight-config
+  namespace: firstlight
   labels:
-    app: multiverse-dive
+    app: firstlight
 data:
   # Environment settings
   environment: "production"

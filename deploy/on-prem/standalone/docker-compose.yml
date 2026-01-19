@@ -1,4 +1,4 @@
-# Multiverse Dive - Standalone Single-Server Deployment
+# FirstLight - Standalone Single-Server Deployment
 # Deploys all services on a single host with persistent volumes
 #
 # Usage:
@@ -17,20 +17,20 @@ version: "3.9"
 services:
   # Core API service
   api:
-    image: multiverse-dive/api:${VERSION:-latest}
+    image: firstlight/api:${VERSION:-latest}
     build:
       context: ../../..
       dockerfile: docker/api/Dockerfile
-    container_name: multiverse-dive-api
+    container_name: firstlight-api
     restart: unless-stopped
     ports:
       - "${API_PORT:-8000}:8000"
     environment:
-      - MULTIVERSE_DIVE_ENV=production
-      - MULTIVERSE_DIVE_DATA_DIR=/data
-      - MULTIVERSE_DIVE_CACHE_DIR=/cache
+      - FIRSTLIGHT_ENV=production
+      - FIRSTLIGHT_DATA_DIR=/data
+      - FIRSTLIGHT_CACHE_DIR=/cache
       - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgresql://multiverse:${DB_PASSWORD:-changeme}@postgres:5432/multiverse_dive
+      - DATABASE_URL=postgresql://firstlight:${DB_PASSWORD:-changeme}@postgres:5432/firstlight
     volumes:
       - api-data:/data
       - api-cache:/cache
@@ -45,22 +45,22 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - multiverse-net
+      - firstlight-net
 
   # Worker service for background processing
   worker:
-    image: multiverse-dive/worker:${VERSION:-latest}
+    image: firstlight/worker:${VERSION:-latest}
     build:
       context: ../../..
       dockerfile: docker/worker/Dockerfile
-    container_name: multiverse-dive-worker
+    container_name: firstlight-worker
     restart: unless-stopped
     environment:
-      - MULTIVERSE_DIVE_ENV=production
-      - MULTIVERSE_DIVE_DATA_DIR=/data
-      - MULTIVERSE_DIVE_CACHE_DIR=/cache
+      - FIRSTLIGHT_ENV=production
+      - FIRSTLIGHT_DATA_DIR=/data
+      - FIRSTLIGHT_CACHE_DIR=/cache
       - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgresql://multiverse:${DB_PASSWORD:-changeme}@postgres:5432/multiverse_dive
+      - DATABASE_URL=postgresql://firstlight:${DB_PASSWORD:-changeme}@postgres:5432/firstlight
       - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-4}
     volumes:
       - worker-data:/data
@@ -70,12 +70,12 @@ services:
       - redis
       - postgres
     networks:
-      - multiverse-net
+      - firstlight-net
 
   # Redis for caching and task queue
   redis:
     image: redis:7-alpine
-    container_name: multiverse-dive-redis
+    container_name: firstlight-redis
     restart: unless-stopped
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
@@ -86,29 +86,29 @@ services:
       timeout: 5s
       retries: 3
     networks:
-      - multiverse-net
+      - firstlight-net
 
   # PostgreSQL for persistent storage
   postgres:
     image: postgis/postgis:15-3.4-alpine
-    container_name: multiverse-dive-postgres
+    container_name: firstlight-postgres
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=multiverse
+      - POSTGRES_USER=firstlight
       - POSTGRES_PASSWORD=${DB_PASSWORD:-changeme}
-      - POSTGRES_DB=multiverse_dive
+      - POSTGRES_DB=firstlight
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U multiverse -d multiverse_dive"]
+      test: ["CMD-SHELL", "pg_isready -U firstlight -d firstlight"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - multiverse-net
+      - firstlight-net
 
 networks:
-  multiverse-net:
+  firstlight-net:
     driver: bridge
 
 volumes:

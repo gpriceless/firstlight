@@ -2,8 +2,8 @@
 Analyze Command - Run analysis algorithms on prepared data.
 
 Usage:
-    mdive analyze --input ./data/ --algorithm sar_threshold --output ./results/
-    mdive analyze --input ./data/ --algorithm sar_threshold --tiles 0-10 --output ./results/
+    flight analyze --input ./data/ --algorithm sar_threshold --output ./results/
+    flight analyze --input ./data/ --algorithm sar_threshold --tiles 0-10 --output ./results/
 """
 
 import json
@@ -17,7 +17,7 @@ from typing import Optional, List, Dict, Any, Tuple
 
 import click
 
-logger = logging.getLogger("mdive.analyze")
+logger = logging.getLogger("flight.analyze")
 
 
 # Available algorithms with their metadata
@@ -226,16 +226,16 @@ def analyze(
     \b
     Examples:
         # Run SAR flood detection
-        mdive analyze --input ./data/ --algorithm sar_threshold --output ./results/
+        flight analyze --input ./data/ --algorithm sar_threshold --output ./results/
 
         # Process specific tile range
-        mdive analyze --input ./data/ --algorithm sar_threshold --tiles 0-10 --output ./results/
+        flight analyze --input ./data/ --algorithm sar_threshold --tiles 0-10 --output ./results/
 
         # Use laptop profile for memory efficiency
-        mdive analyze --input ./data/ --algorithm sar_threshold --profile laptop --output ./results/
+        flight analyze --input ./data/ --algorithm sar_threshold --profile laptop --output ./results/
 
         # Pass custom parameters
-        mdive analyze --input ./data/ --algorithm sar_threshold \\
+        flight analyze --input ./data/ --algorithm sar_threshold \\
             --params '{"threshold_db": -16.0}' --output ./results/
     """
     algo_info = ALGORITHMS[algorithm.lower()]

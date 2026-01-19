@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Example: Submit an event to the Multiverse Dive API using cURL.
+# Example: Submit an event to the FirstLight API using cURL.
 #
 # This script demonstrates how to:
 # 1. Submit an event specification
@@ -8,20 +8,20 @@
 # 3. List available products
 #
 # Usage:
-#   export MULTIVERSE_API_KEY="your_api_key_here"
+#   export FIRSTLIGHT_API_KEY="your_api_key_here"
 #   ./submit_event.sh
 #
 
 set -e
 
 # Configuration
-API_BASE_URL="${MULTIVERSE_API_URL:-https://api.multiverse-dive.io/v1}"
-API_KEY="${MULTIVERSE_API_KEY:-}"
+API_BASE_URL="${FIRSTLIGHT_API_URL:-https://api.firstlight.io/v1}"
+API_KEY="${FIRSTLIGHT_API_KEY:-}"
 
 # Check for API key
 if [ -z "$API_KEY" ]; then
-    echo "Error: MULTIVERSE_API_KEY environment variable not set"
-    echo "Export your API key: export MULTIVERSE_API_KEY='your_key_here'"
+    echo "Error: FIRSTLIGHT_API_KEY environment variable not set"
+    echo "Export your API key: export FIRSTLIGHT_API_KEY='your_key_here'"
     exit 1
 fi
 

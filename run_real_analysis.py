@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Real-World Analysis Jobs for Multiverse Dive
+Real-World Analysis Jobs for FirstLight
 
 Runs actual satellite data analysis for:
 1. Miami Flood (Hurricane event)
@@ -83,7 +83,7 @@ class RealDataAnalysis:
     ]
 
     def __init__(self, output_dir: Path = None):
-        self.output_dir = output_dir or Path(tempfile.mkdtemp(prefix="mdive_real_"))
+        self.output_dir = output_dir or Path(tempfile.mkdtemp(prefix="flight_real_"))
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def search_stac(
@@ -531,7 +531,7 @@ class RealDataAnalysis:
 
 
 def main():
-    print_header("MULTIVERSE DIVE - Real Data Analysis")
+    print_header("FIRSTLIGHT - Real Data Analysis")
 
     print_info(f"Output directory: Creating temp directory...")
 

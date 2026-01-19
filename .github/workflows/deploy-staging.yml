@@ -8,7 +8,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ${{ github.repository }}
-  STAGING_HOST: staging.multiverse-dive.example.com
+  STAGING_HOST: staging.firstlight.example.com
 
 concurrency:
   group: staging-deploy
@@ -54,10 +54,10 @@ jobs:
           #!/bin/bash
           set -e
 
-          DEPLOY_DIR="/opt/multiverse-dive"
+          DEPLOY_DIR="/opt/firstlight"
           COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.yml"
 
-          echo "=== Multiverse Dive Staging Deployment ==="
+          echo "=== FirstLight Staging Deployment ==="
           echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "Commit: $GITHUB_SHA"
 
@@ -71,15 +71,15 @@ jobs:
           docker pull $REGISTRY/$IMAGE_PREFIX/worker:$GITHUB_SHA
 
           # Tag as staging
-          docker tag $REGISTRY/$IMAGE_PREFIX/api:$GITHUB_SHA multiverse-dive/api:staging
-          docker tag $REGISTRY/$IMAGE_PREFIX/worker:$GITHUB_SHA multiverse-dive/worker:staging
+          docker tag $REGISTRY/$IMAGE_PREFIX/api:$GITHUB_SHA firstlight/api:staging
+          docker tag $REGISTRY/$IMAGE_PREFIX/worker:$GITHUB_SHA firstlight/worker:staging
 
           # Update environment file
           cat > .env << EOF
           VERSION=staging
           DB_PASSWORD=${DB_PASSWORD}
           API_SECRET_KEY=${API_SECRET_KEY}
-          MULTIVERSE_DIVE_ENV=staging
+          FIRSTLIGHT_ENV=staging
           EOF
 
           # Deploy with docker compose
@@ -116,7 +116,7 @@ jobs:
           DEPLOY_SCRIPT
 
           # Copy files to staging server
-          scp deploy/on-prem/standalone/docker-compose.yml ${DEPLOY_USER}@${{ env.STAGING_HOST }}:/opt/multiverse-dive/docker-compose.yml
+          scp deploy/on-prem/standalone/docker-compose.yml ${DEPLOY_USER}@${{ env.STAGING_HOST }}:/opt/firstlight/docker-compose.yml
           scp deploy.sh ${DEPLOY_USER}@${{ env.STAGING_HOST }}:/tmp/deploy.sh
 
           # Execute deployment

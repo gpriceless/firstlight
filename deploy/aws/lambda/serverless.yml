@@ -1,7 +1,7 @@
-# Serverless Framework configuration for Multiverse Dive
+# Serverless Framework configuration for FirstLight
 # Deploy: serverless deploy --stage <stage>
 
-service: multiverse-dive
+service: firstlight
 
 frameworkVersion: '3'
 
@@ -46,11 +46,11 @@ provider:
             - ssm:GetParameter
             - ssm:GetParameters
           Resource:
-            - arn:aws:ssm:${self:provider.region}:*:parameter/multiverse-dive/*
+            - arn:aws:ssm:${self:provider.region}:*:parameter/firstlight/*
 
 custom:
-  s3Bucket: multiverse-dive-${self:provider.stage}
-  cacheTable: multiverse-dive-cache-${self:provider.stage}
+  s3Bucket: firstlight-${self:provider.stage}
+  cacheTable: firstlight-cache-${self:provider.stage}
   logLevel:
     dev: DEBUG
     staging: INFO
@@ -72,8 +72,8 @@ functions:
           method: ANY
           cors: true
     environment:
-      API_SECRET_KEY: ${ssm:/multiverse-dive/api-secret-key}
-      DATABASE_URL: ${ssm:/multiverse-dive/database-url}
+      API_SECRET_KEY: ${ssm:/firstlight/api-secret-key}
+      DATABASE_URL: ${ssm:/firstlight/database-url}
 
   eventProcessor:
     handler: core.lambda_handlers.process_event
@@ -87,7 +87,7 @@ functions:
             Fn::GetAtt: [EventQueue, Arn]
           batchSize: 1
     environment:
-      STAC_API_KEY: ${ssm:/multiverse-dive/stac-api-key}
+      STAC_API_KEY: ${ssm:/firstlight/stac-api-key}
 
   dataIngestion:
     handler: core.lambda_handlers.ingest_data
@@ -108,14 +108,14 @@ functions:
             - prefix: incoming/
             - suffix: .nc
     environment:
-      STAC_API_KEY: ${ssm:/multiverse-dive/stac-api-key}
+      STAC_API_KEY: ${ssm:/firstlight/stac-api-key}
 
 resources:
   Resources:
     EventQueue:
       Type: AWS::SQS::Queue
       Properties:
-        QueueName: multiverse-dive-events-${self:provider.stage}
+        QueueName: firstlight-events-${self:provider.stage}
         VisibilityTimeout: 960
         MessageRetentionPeriod: 1209600
         RedrivePolicy:
@@ -126,7 +126,7 @@ resources:
     DeadLetterQueue:
       Type: AWS::SQS::Queue
       Properties:
-        QueueName: multiverse-dive-dlq-${self:provider.stage}
+        QueueName: firstlight-dlq-${self:provider.stage}
         MessageRetentionPeriod: 1209600
 
     CacheTable:

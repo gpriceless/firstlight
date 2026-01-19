@@ -1,5 +1,5 @@
 # =============================================================================
-# Base Image for Multiverse Dive
+# Base Image for FirstLight
 # =============================================================================
 # Provides geospatial dependencies (GDAL, etc.) and Python environment.
 # All other service images extend from this base.
@@ -7,8 +7,8 @@
 
 FROM python:3.11-slim AS base
 
-LABEL maintainer="Multiverse Dive Team"
-LABEL description="Base image with geospatial dependencies for multiverse-dive"
+LABEL maintainer="FirstLight Team"
+LABEL description="Base image with geospatial dependencies for firstlight"
 LABEL version="0.1.0"
 
 # Prevent interactive prompts during package installation
@@ -51,8 +51,8 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Create non-root user for security
-RUN groupadd --gid 1000 mdive \
-    && useradd --uid 1000 --gid mdive --shell /bin/bash --create-home mdive
+RUN groupadd --gid 1000 firstlight \
+    && useradd --uid 1000 --gid firstlight --shell /bin/bash --create-home firstlight
 
 # Set working directory
 WORKDIR /app
@@ -68,10 +68,10 @@ RUN pip install --upgrade pip setuptools wheel \
 
 # Create directories for data and cache
 RUN mkdir -p /app/data /app/cache /app/output \
-    && chown -R mdive:mdive /app
+    && chown -R firstlight:firstlight /app
 
 # Set default user (can be overridden in derived images)
-USER mdive
+USER firstlight
 
 # Default healthcheck (can be overridden)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

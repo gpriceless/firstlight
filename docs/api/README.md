@@ -1,8 +1,8 @@
-# Multiverse Dive API Documentation
+# FirstLight API Documentation
 
 ## Overview
 
-The Multiverse Dive API provides RESTful endpoints for the geospatial event intelligence platform. It enables you to:
+The FirstLight API provides RESTful endpoints for the geospatial event intelligence platform. It enables you to:
 
 - Submit event specifications for automated analysis
 - Monitor processing status and progress
@@ -10,7 +10,7 @@ The Multiverse Dive API provides RESTful endpoints for the geospatial event inte
 - Browse available data sources and algorithms
 - Register webhooks for real-time notifications
 
-**Base URL:** `https://api.multiverse-dive.io/v1`
+**Base URL:** `https://api.firstlight.io/v1`
 
 **OpenAPI Spec:** Available at `/openapi.json`
 
@@ -29,12 +29,12 @@ All API endpoints (except `/health`) require authentication via API key.
 Include your API key in the `X-API-Key` header:
 
 ```bash
-curl -H "X-API-Key: your_api_key_here" https://api.multiverse-dive.io/v1/events
+curl -H "X-API-Key: your_api_key_here" https://api.firstlight.io/v1/events
 ```
 
 ### Obtaining an API Key
 
-Contact support@multiverse-dive.io to request API access.
+Contact support@firstlight.io to request API access.
 
 ### Rate Limiting
 
@@ -55,7 +55,7 @@ When rate limited, you'll receive a `429 Too Many Requests` response with a `Ret
 ### 1. Submit an Event
 
 ```bash
-curl -X POST https://api.multiverse-dive.io/v1/events \
+curl -X POST https://api.firstlight.io/v1/events \
   -H "X-API-Key: your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -98,7 +98,7 @@ curl -X POST https://api.multiverse-dive.io/v1/events \
 
 ```bash
 curl -H "X-API-Key: your_api_key" \
-  https://api.multiverse-dive.io/v1/events/evt_abc123def456/progress
+  https://api.firstlight.io/v1/events/evt_abc123def456/progress
 ```
 
 **Response:**
@@ -123,11 +123,11 @@ curl -H "X-API-Key: your_api_key" \
 ```bash
 # List available products
 curl -H "X-API-Key: your_api_key" \
-  https://api.multiverse-dive.io/v1/events/evt_abc123def456/products
+  https://api.firstlight.io/v1/events/evt_abc123def456/products
 
 # Download a product
 curl -H "X-API-Key: your_api_key" \
-  -O https://api.multiverse-dive.io/v1/events/evt_abc123def456/products/prod_001/download
+  -O https://api.firstlight.io/v1/events/evt_abc123def456/products/prod_001/download
 ```
 
 ---
@@ -236,7 +236,7 @@ Register webhooks to receive real-time notifications when events complete or fai
 ### Registering a Webhook
 
 ```bash
-curl -X POST https://api.multiverse-dive.io/v1/webhooks \
+curl -X POST https://api.firstlight.io/v1/webhooks \
   -H "X-API-Key: your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -331,13 +331,13 @@ See the `examples/` directory for complete code examples:
 
 Official client libraries are available for:
 
-- **Python**: `pip install multiverse-dive`
-- **JavaScript/TypeScript**: `npm install @multiverse/dive`
+- **Python**: `pip install firstlight`
+- **JavaScript/TypeScript**: `npm install @firstlight/core`
 
 ---
 
 ## Support
 
-- **Email**: support@multiverse-dive.io
-- **GitHub Issues**: https://github.com/gpriceless/multiverse_dive/issues
-- **Documentation**: https://docs.multiverse-dive.io
+- **Email**: support@firstlight.io
+- **GitHub Issues**: https://github.com/gpriceless/firstlight/issues
+- **Documentation**: https://docs.firstlight.io

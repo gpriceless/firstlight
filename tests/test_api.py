@@ -1,5 +1,5 @@
 """
-Comprehensive API Test Suite for Multiverse Dive Event Intelligence Platform.
+Comprehensive API Test Suite for FirstLight Event Intelligence Platform.
 
 Tests all API endpoints including:
 - Event submission and retrieval
@@ -241,7 +241,7 @@ def create_test_app(
     import asyncio
 
     app = FastAPI(
-        title="Multiverse Dive API",
+        title="FirstLight API",
         description="Geospatial Event Intelligence Platform API",
         version="1.0.0"
     )

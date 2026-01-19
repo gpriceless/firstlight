@@ -1,5 +1,5 @@
 #!/bin/bash
-# Multiverse Dive - Image Push Script
+# FirstLight - Image Push Script
 #
 # Pushes Docker images to container registries.
 #
@@ -15,7 +15,7 @@ set -e
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-IMAGE_PREFIX="${IMAGE_PREFIX:-multiverse-dive}"
+IMAGE_PREFIX="${IMAGE_PREFIX:-firstlight}"
 VERSION="${VERSION:-latest}"
 REGISTRY="${REGISTRY:-ghcr.io}"
 REGISTRY_NAMESPACE="${REGISTRY_NAMESPACE:-}"
@@ -42,7 +42,7 @@ log_error() {
 
 show_help() {
     cat << EOF
-Multiverse Dive Docker Image Push Script
+FirstLight Docker Image Push Script
 
 Usage: $(basename "$0") [OPTIONS] [IMAGE...]
 
@@ -63,7 +63,7 @@ Images:
 Environment Variables:
     REGISTRY            Default registry (overridden by --registry)
     REGISTRY_NAMESPACE  Registry namespace (overridden by --namespace)
-    IMAGE_PREFIX        Local image prefix (default: multiverse-dive)
+    IMAGE_PREFIX        Local image prefix (default: firstlight)
     VERSION             Image version (overridden by --version)
 
 Examples:
@@ -183,7 +183,7 @@ check_registry_auth() {
     fi
 }
 
-log_info "Multiverse Dive Image Push"
+log_info "FirstLight Image Push"
 log_info "Registry: $REGISTRY"
 log_info "Version: $VERSION"
 [ -n "$REGISTRY_NAMESPACE" ] && log_info "Namespace: $REGISTRY_NAMESPACE"

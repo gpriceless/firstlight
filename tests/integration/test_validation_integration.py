@@ -403,8 +403,8 @@ validation:
         """Test environment variable overrides."""
         from core.data.ingestion.validation import load_config
 
-        monkeypatch.setenv("MULTIVERSE_VALIDATION_ENABLED", "false")
-        monkeypatch.setenv("MULTIVERSE_VALIDATION_SAMPLE_RATIO", "0.5")
+        monkeypatch.setenv("FIRSTLIGHT_VALIDATION_ENABLED", "false")
+        monkeypatch.setenv("FIRSTLIGHT_VALIDATION_SAMPLE_RATIO", "0.5")
 
         config = load_config(use_environment=True)
 

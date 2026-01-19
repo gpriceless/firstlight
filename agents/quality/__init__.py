@@ -2,7 +2,7 @@
 Quality Agent Module.
 
 The Quality Agent handles all validation, QC, and quality gating decisions
-for the Multiverse Dive platform.
+for the FirstLight platform.
 
 Components:
 - QualityAgent: Main agent class orchestrating all QC operations

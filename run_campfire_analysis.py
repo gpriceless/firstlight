@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Multiverse Dive - Camp Fire Burn Severity Analysis
+FirstLight - Camp Fire Burn Severity Analysis
 ===================================================
 
 Full tiled pipeline analysis of the 2018 Camp Fire in Butte County, California.
@@ -927,11 +927,11 @@ def run_campfire_pipeline(config: CampFireConfig) -> Dict[str, Any]:
 # =============================================================================
 
 def main():
-    print(f"\n{Colors.BOLD}{Colors.BLUE}Multiverse Dive - Camp Fire Analysis Pipeline{Colors.END}")
+    print(f"\n{Colors.BOLD}{Colors.BLUE}FirstLight - Camp Fire Analysis Pipeline{Colors.END}")
     print(f"Starting at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
     # Create output directory
-    output_dir = Path(tempfile.mkdtemp(prefix="mdive_campfire_"))
+    output_dir = Path(tempfile.mkdtemp(prefix="flight_campfire_"))
 
     # Configuration
     config = CampFireConfig(output_dir=output_dir)

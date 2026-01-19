@@ -1,4 +1,4 @@
-# Multiverse Dive - Lightweight ARM64 Image
+# FirstLight - Lightweight ARM64 Image
 # Optimized for Raspberry Pi 4/5 and similar ARM64 devices
 #
 # Target specs:
@@ -8,10 +8,10 @@
 #   - Core algorithms only
 #
 # Build:
-#   docker build --platform linux/arm64 -t multiverse-dive/edge-arm64:latest -f Dockerfile.lightweight .
+#   docker build --platform linux/arm64 -t firstlight/edge-arm64:latest -f Dockerfile.lightweight .
 #
 # Run:
-#   docker run -d -p 8080:8080 -v /data:/data multiverse-dive/edge-arm64:latest
+#   docker run -d -p 8080:8080 -v /data:/data firstlight/edge-arm64:latest
 
 FROM python:3.11-slim-bookworm AS builder
 
@@ -49,27 +49,27 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Create non-root user
-RUN useradd --create-home --shell /bin/bash multiverse \
+RUN useradd --create-home --shell /bin/bash firstlight \
     && mkdir -p /app /data /cache \
-    && chown -R multiverse:multiverse /app /data /cache
+    && chown -R firstlight:firstlight /app /data /cache
 
 WORKDIR /app
 
 # Copy application code (core modules only)
-COPY --chown=multiverse:multiverse openspec/ ./openspec/
-COPY --chown=multiverse:multiverse core/ ./core/
-COPY --chown=multiverse:multiverse api/ ./api/
+COPY --chown=firstlight:firstlight openspec/ ./openspec/
+COPY --chown=firstlight:firstlight core/ ./core/
+COPY --chown=firstlight:firstlight api/ ./api/
 
 # Remove heavy/unused components for edge deployment
 RUN rm -rf core/analysis/ml core/analysis/deep_learning 2>/dev/null || true
 
-USER multiverse
+USER firstlight
 
 # Environment configuration
-ENV MULTIVERSE_DIVE_ENV=edge \
-    MULTIVERSE_DIVE_DATA_DIR=/data \
-    MULTIVERSE_DIVE_CACHE_DIR=/cache \
-    MULTIVERSE_DIVE_EDGE_MODE=true \
+ENV FIRSTLIGHT_ENV=edge \
+    FIRSTLIGHT_DATA_DIR=/data \
+    FIRSTLIGHT_CACHE_DIR=/cache \
+    FIRSTLIGHT_EDGE_MODE=true \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 

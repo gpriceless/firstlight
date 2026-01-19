@@ -1,4 +1,4 @@
-# Multiverse Dive
+# FirstLight
 
 **Geospatial event intelligence platform that converts (area, time window, event type) into decision products.**
 
@@ -6,7 +6,7 @@
 
 When a flood, wildfire, or storm happens, decision-makers need answers fast: *Where exactly is affected? How severe? What's the uncertainty?* Getting those answers typically requires specialists to manually find satellite data, run analyses, validate results, and produce reports—a process that takes days.
 
-Multiverse Dive automates this entire pipeline. You provide:
+FirstLight automates this entire pipeline. You provide:
 - A geographic area (polygon or bounding box)
 - A time window (start/end dates)
 - An event type ("coastal flood", "forest fire", "hurricane damage")
@@ -80,7 +80,7 @@ All with complete provenance—every output traces back to source data and proce
 ## Project Structure
 
 ```
-multiverse_dive/
+first_light/
 ├── core/                    # Core processing logic
 │   ├── intent/              # Event type classification and resolution
 │   ├── data/                # Data discovery, providers, and ingestion
@@ -100,8 +100,8 @@ multiverse_dive/
 
 ```bash
 # Clone and install
-git clone https://github.com/gpriceless/multiverse_dive.git
-cd multiverse_dive
+git clone https://github.com/gpriceless/firstlight.git
+cd firstlight
 pip install -e .
 
 # Install optional dependencies for full functionality
@@ -113,41 +113,41 @@ pip install rasterio geopandas xarray pyproj shapely
 ./run_tests.py --list             # Show all categories
 ```
 
-### Command Line Interface (mdive)
+### Command Line Interface (flight)
 
-The `mdive` CLI provides full access to all platform capabilities:
+The `flight` CLI provides full access to all platform capabilities:
 
 ```bash
 # Get help
-mdive --help
-mdive info                        # Show system info and configuration
+flight --help
+flight info                        # Show system info and configuration
 
 # Discover available satellite data
-mdive discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 --event flood
-mdive discover --bbox -80.5,25.5,-80.0,26.0 --event wildfire --format json
+flight discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 --event flood
+flight discover --bbox -80.5,25.5,-80.0,26.0 --event wildfire --format json
 
 # Download and prepare data
-mdive ingest --area miami.geojson --source sentinel1 --output ./data/
-mdive ingest --area california.geojson --source sentinel2,landsat8 --output ./data/
+flight ingest --area miami.geojson --source sentinel1 --output ./data/
+flight ingest --area california.geojson --source sentinel2,landsat8 --output ./data/
 
 # Run analysis with specific algorithm
-mdive analyze --input ./data/ --algorithm sar_threshold --output ./results/
-mdive analyze --input ./data/ --algorithm ndwi --confidence 0.8 --output ./results/
+flight analyze --input ./data/ --algorithm sar_threshold --output ./results/
+flight analyze --input ./data/ --algorithm ndwi --confidence 0.8 --output ./results/
 
 # Validate results
-mdive validate --input ./results/ --checks sanity,cross_validation
-mdive validate --input ./results/ --reference ground_truth.geojson
+flight validate --input ./results/ --checks sanity,cross_validation
+flight validate --input ./results/ --reference ground_truth.geojson
 
 # Export products
-mdive export --input ./results/ --format geotiff,geojson,pdf --output ./products/
+flight export --input ./results/ --format geotiff,geojson,pdf --output ./products/
 
 # Full end-to-end pipeline
-mdive run --area miami.geojson --event flood --profile laptop --output ./products/
-mdive run --area california.geojson --event wildfire --profile workstation --output ./products/
+flight run --area miami.geojson --event flood --profile laptop --output ./products/
+flight run --area california.geojson --event wildfire --profile workstation --output ./products/
 
 # Monitor and resume
-mdive status --workdir ./products/
-mdive resume --workdir ./products/
+flight status --workdir ./products/
+flight resume --workdir ./products/
 ```
 
 **Execution Profiles** adapt to your hardware:
@@ -241,14 +241,14 @@ consensus = validator.validate([result1, result2, result3])
 
 ```bash
 # Build images
-docker build -f docker/Dockerfile.api -t mdive-api .
-docker build -f docker/Dockerfile.cli -t mdive-cli .
+docker build -f docker/Dockerfile.api -t firstlight-api .
+docker build -f docker/Dockerfile.cli -t firstlight-cli .
 
 # Run with Docker Compose
 docker-compose up -d
 
 # Or run CLI in container
-docker run -v $(pwd)/data:/data mdive-cli run \
+docker run -v $(pwd)/data:/data firstlight-cli run \
   --area /data/area.geojson --event flood --output /data/output/
 ```
 

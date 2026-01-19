@@ -1,9 +1,9 @@
 {
-  "jobDefinitionName": "multiverse-dive-batch",
+  "jobDefinitionName": "firstlight-batch",
   "type": "container",
   "platformCapabilities": ["FARGATE"],
   "containerProperties": {
-    "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/multiverse-dive-worker:${IMAGE_TAG}",
+    "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/firstlight-worker:${IMAGE_TAG}",
     "resourceRequirements": [
       {
         "type": "VCPU",
@@ -47,21 +47,21 @@
     "secrets": [
       {
         "name": "DATABASE_URL",
-        "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/multiverse-dive/database-url"
+        "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/firstlight/database-url"
       },
       {
         "name": "S3_BUCKET",
-        "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/multiverse-dive/s3-bucket"
+        "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/firstlight/s3-bucket"
       },
       {
         "name": "STAC_API_KEY",
-        "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/multiverse-dive/stac-api-key"
+        "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/firstlight/stac-api-key"
       }
     ],
     "logConfiguration": {
       "logDriver": "awslogs",
       "options": {
-        "awslogs-group": "/aws/batch/multiverse-dive",
+        "awslogs-group": "/aws/batch/firstlight",
         "awslogs-region": "${AWS_REGION}",
         "awslogs-stream-prefix": "batch"
       }
@@ -78,7 +78,7 @@
         "name": "scratch",
         "efsVolumeConfiguration": {
           "fileSystemId": "${EFS_FILE_SYSTEM_ID}",
-          "rootDirectory": "/multiverse-dive/batch",
+          "rootDirectory": "/firstlight/batch",
           "transitEncryption": "ENABLED"
         }
       }
@@ -105,7 +105,7 @@
     "attemptDurationSeconds": 7200
   },
   "tags": {
-    "Application": "multiverse-dive",
+    "Application": "firstlight",
     "Environment": "production"
   }
 }

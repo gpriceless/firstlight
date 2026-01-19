@@ -107,7 +107,7 @@ class EventClassRegistry:
         if definitions_dir is None:
             # Default to openspec/definitions/event_classes relative to project root
             project_root = Path(os.environ.get(
-                "MULTIVERSE_DIVE_ROOT",
+                "FIRSTLIGHT_ROOT",
                 Path(__file__).parent.parent.parent
             ))
             definitions_dir = project_root / "openspec" / "definitions" / "event_classes"

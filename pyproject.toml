@@ -3,14 +3,14 @@ requires = ["setuptools>=65.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "multiverse-dive"
+name = "firstlight"
 version = "0.1.0"
 description = "Geospatial event intelligence platform for converting (area, time window, event type) into decision products"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "Multiverse Dive Team"}
+    {name = "FirstLight Team"}
 ]
 keywords = ["geospatial", "event-intelligence", "disaster-response", "satellite-imagery"]
 classifiers = [
@@ -94,12 +94,12 @@ docs = [
 ]
 
 [project.scripts]
-mdive = "cli.main:main"
+flight = "cli.main:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/multiverse-dive"
-Documentation = "https://multiverse-dive.readthedocs.io"
-Repository = "https://github.com/yourusername/multiverse-dive"
+Homepage = "https://github.com/yourusername/firstlight"
+Documentation = "https://firstlight.readthedocs.io"
+Repository = "https://github.com/yourusername/firstlight"
 
 [tool.setuptools.packages.find]
 where = ["."]

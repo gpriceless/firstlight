@@ -170,7 +170,7 @@ class ProductGenerator:
             output_dir: Default output directory
             cog_config: COG generation configuration
         """
-        self.output_dir = output_dir or Path("/tmp/multiverse_dive/products")
+        self.output_dir = output_dir or Path("/tmp/firstlight/products")
         self.cog_config = cog_config or COGConfig()
         self._ensure_output_dir()
 

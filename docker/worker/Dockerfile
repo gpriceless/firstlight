@@ -1,15 +1,15 @@
 # =============================================================================
-# Background Worker Image for Multiverse Dive
+# Background Worker Image for FirstLight
 # =============================================================================
 # Worker image for distributed processing and async task execution.
 # Connects to Redis for job queuing and coordinates with agent system.
 # =============================================================================
 
 # Accept base image as build argument for CI/CD flexibility
-ARG BASE_IMAGE=multiverse-dive-base:latest
+ARG BASE_IMAGE=firstlight-base:latest
 FROM ${BASE_IMAGE} AS worker
 
-LABEL maintainer="Multiverse Dive Team"
+LABEL maintainer="FirstLight Team"
 LABEL description="Background worker image for distributed processing"
 LABEL version="0.1.0"
 
@@ -17,18 +17,18 @@ LABEL version="0.1.0"
 USER root
 
 # Copy required modules for worker processes
-COPY --chown=mdive:mdive core/ /app/core/
-COPY --chown=mdive:mdive openspec/ /app/openspec/
-COPY --chown=mdive:mdive agents/ /app/agents/
+COPY --chown=firstlight:firstlight core/ /app/core/
+COPY --chown=firstlight:firstlight openspec/ /app/openspec/
+COPY --chown=firstlight:firstlight agents/ /app/agents/
 
 # Copy configuration files
-COPY --chown=mdive:mdive examples/ /app/examples/
+COPY --chown=firstlight:firstlight examples/ /app/examples/
 
 # Ensure proper permissions
-RUN chown -R mdive:mdive /app
+RUN chown -R firstlight:firstlight /app
 
 # Switch back to non-root user
-USER mdive
+USER firstlight
 
 # Set Python path
 ENV PYTHONPATH=/app:${PYTHONPATH}

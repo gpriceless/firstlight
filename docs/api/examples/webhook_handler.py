@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example: Webhook handler for Multiverse Dive event notifications.
+Example: Webhook handler for FirstLight event notifications.
 
 This script demonstrates how to:
 1. Set up a FastAPI webhook receiver
@@ -15,8 +15,8 @@ Usage:
     # Start the webhook server
     uvicorn webhook_handler:app --host 0.0.0.0 --port 8080
 
-    # Register webhook with Multiverse Dive API
-    curl -X POST https://api.multiverse-dive.io/v1/webhooks \
+    # Register webhook with FirstLight API
+    curl -X POST https://api.firstlight.io/v1/webhooks \
         -H "X-API-Key: your_key" \
         -H "Content-Type: application/json" \
         -d '{"url": "https://your-server.com/webhook", "events": ["*"], "secret": "your_secret"}'
@@ -45,7 +45,7 @@ WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "your_webhook_secret_here")
 
 # FastAPI application
 app = FastAPI(
-    title="Multiverse Dive Webhook Handler",
+    title="FirstLight Webhook Handler",
     description="Example webhook receiver for event notifications",
     version="1.0.0",
 )
@@ -183,7 +183,7 @@ async def receive_webhook(
     x_webhook_delivery_id: Optional[str] = Header(None),
 ):
     """
-    Receive and process webhook deliveries from Multiverse Dive.
+    Receive and process webhook deliveries from FirstLight.
 
     The endpoint verifies the signature (if configured), parses the payload,
     and dispatches to the appropriate event handler.

@@ -236,7 +236,7 @@ class CacheManager:
         self._shutdown_event = threading.Event()
 
         # Initialize database
-        self._db_path = config.db_path or Path.home() / ".multiverse_dive" / "cache.db"
+        self._db_path = config.db_path or Path.home() / ".firstlight" / "cache.db"
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_database()
 

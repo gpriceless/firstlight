@@ -2,7 +2,7 @@
 Discovery Agent Package - Data discovery and acquisition coordination.
 
 This package provides the Discovery Agent which wraps the core data broker
-and handles all data discovery and acquisition tasks for the multiverse_dive
+and handles all data discovery and acquisition tasks for the FirstLight
 orchestration system.
 
 Components:

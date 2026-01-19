@@ -856,7 +856,7 @@ class WebhookManager:
             self.config.signature_header: signature,
             self.config.timestamp_header: str(timestamp),
             self.config.id_header: event.event_id,
-            "User-Agent": "MultiverseDive-Webhook/1.0",
+            "User-Agent": "FirstLight-Webhook/1.0",
         }
 
         try:

@@ -1,12 +1,12 @@
-# Kubernetes Namespace for Multiverse Dive
+# Kubernetes Namespace for FirstLight
 # Deploy: kubectl apply -f namespace.yaml
 
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: multiverse-dive
+  name: firstlight
   labels:
-    app: multiverse-dive
+    app: firstlight
     environment: production
   annotations:
     description: "Geospatial event intelligence platform"

@@ -188,7 +188,7 @@ class SedonaConfig:
     """
 
     master: str = "local[*]"
-    app_name: str = "multiverse_sedona"
+    app_name: str = "firstlight_sedona"
     deploy_mode: SedonaDeployMode = SedonaDeployMode.LOCAL
     executor_memory: str = "4g"
     executor_cores: int = 4
@@ -282,7 +282,7 @@ class SedonaConfig:
         """Create config for cluster deployment."""
         return cls(
             master=master,
-            app_name="multiverse_continental",
+            app_name="firstlight_continental",
             deploy_mode=SedonaDeployMode.CLIENT,
             executor_memory=executor_memory,
             executor_cores=executor_cores,
@@ -304,7 +304,7 @@ class SedonaConfig:
         # Databricks handles master URL internally
         return cls(
             master="local[*]",  # Databricks overrides this
-            app_name="multiverse_databricks",
+            app_name="firstlight_databricks",
             deploy_mode=SedonaDeployMode.CLIENT,
             executor_memory="8g",
             executor_cores=4,

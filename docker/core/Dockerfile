@@ -1,13 +1,13 @@
 # =============================================================================
-# Core Processing Image for Multiverse Dive
+# Core Processing Image for FirstLight
 # =============================================================================
 # Lightweight image for batch processing and analysis pipelines.
 # Does not include API dependencies - optimized for compute workloads.
 # =============================================================================
 
-FROM multiverse-dive-base:latest AS core
+FROM firstlight-base:latest AS core
 
-LABEL maintainer="Multiverse Dive Team"
+LABEL maintainer="FirstLight Team"
 LABEL description="Core processing image for batch analysis"
 LABEL version="0.1.0"
 
@@ -15,17 +15,17 @@ LABEL version="0.1.0"
 USER root
 
 # Copy core processing modules
-COPY --chown=mdive:mdive core/ /app/core/
-COPY --chown=mdive:mdive openspec/ /app/openspec/
+COPY --chown=firstlight:firstlight core/ /app/core/
+COPY --chown=firstlight:firstlight openspec/ /app/openspec/
 
 # Copy configuration and schema files
-COPY --chown=mdive:mdive examples/ /app/examples/
+COPY --chown=firstlight:firstlight examples/ /app/examples/
 
 # Ensure proper permissions
-RUN chown -R mdive:mdive /app
+RUN chown -R firstlight:firstlight /app
 
 # Switch back to non-root user
-USER mdive
+USER firstlight
 
 # Set Python path to include app directory
 ENV PYTHONPATH=/app:${PYTHONPATH}

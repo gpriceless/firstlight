@@ -603,7 +603,7 @@ class ForecastIngester:
             cache_dir: Directory for caching forecast data
             api_keys: API keys for providers requiring authentication
         """
-        self.cache_dir = cache_dir or Path.home() / ".multiverse_dive" / "forecast_cache"
+        self.cache_dir = cache_dir or Path.home() / ".firstlight" / "forecast_cache"
         self.api_keys = api_keys or {}
         self._loaders: Dict[ForecastProvider, Callable] = {}
 
