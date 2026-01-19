@@ -1,4 +1,4 @@
-# Claude Context
+# Claude Context - FirstLight
 
 Geospatial event intelligence platform that converts (area, time window, event type) into decision products.
 
@@ -6,7 +6,7 @@ Geospatial event intelligence platform that converts (area, time window, event t
 
 | Item | Location |
 |------|----------|
-| Bug fixes (check first!) | `FIXES.md` |
+| Bug fixes | `FIXES.md` |
 | Roadmap & tasks | `ROADMAP.md` |
 | Agent memory | `.claude/agents/PROJECT_MEMORY.md` |
 | Active specs | `OPENSPEC.md` |
@@ -15,26 +15,17 @@ Geospatial event intelligence platform that converts (area, time window, event t
 ## Current Status
 
 - **Core Platform:** Complete (170K+ lines, 518+ tests)
-- **P0 Bugs:** 4 remaining - **FIX THESE FIRST**
+- **P0 Bugs:** All fixed - platform is production-ready
 
-### P0 Bugs (from FIXES.md)
+### Work Streams Available
 
-| ID | Issue | File |
-|----|-------|------|
-| FIX-003 | WCS duplicate dict key | `core/data/discovery/wms_wcs.py:379` |
-| FIX-004 | Hallucinated scipy API (grey_erosion) | `core/analysis/library/baseline/flood/hand_model.py:305` |
-| FIX-005 | Wrong distance_transform_edt usage | `core/analysis/library/baseline/flood/hand_model.py:378` |
-| FIX-006 | Broken schema $ref | `openspec/schemas/provenance.schema.json:112` |
-
-### Work Streams (after bugs fixed)
-
-1. **Image Validation** - Band validation before processing
-2. **Distributed Processing** - Dask parallelization for large rasters
+1. **Image Validation** - Band validation before processing (COMPLETE)
+2. **Distributed Processing** - Dask parallelization for large rasters (COMPLETE)
 
 ## Before Starting Work
 
-1. Check `FIXES.md` for P0 bugs
-2. Read `.claude/agents/PROJECT_MEMORY.md` for context
+1. Read `.claude/agents/PROJECT_MEMORY.md` for context
+2. Check `FIXES.md` for any new bugs
 3. Run tests: `./run_tests.py` or `./run_tests.py <category>`
 
 ## Test Commands
@@ -46,6 +37,15 @@ Geospatial event intelligence platform that converts (area, time window, event t
 ./run_tests.py schemas            # Schema tests
 ./run_tests.py --algorithm sar    # Specific algorithm
 ./run_tests.py --list             # Show categories
+```
+
+## CLI Commands
+
+```bash
+flight --help                     # Show all commands
+flight info                       # System info
+flight discover --area area.geojson --event flood  # Find data
+flight run --area area.geojson --event flood --profile laptop  # Run analysis
 ```
 
 ## Git Workflow
