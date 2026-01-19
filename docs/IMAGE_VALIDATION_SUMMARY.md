@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides a high-level summary of the image validation requirements for the multiverse_dive platform. It serves as a quick reference for developers implementing the validation system.
+This document provides a high-level summary of the image validation requirements for the FirstLight platform. It serves as a quick reference for developers implementing the validation system.
 
 ## Key Documents
 
@@ -124,7 +124,7 @@ class PipelineRunner:
 - **Default**: Disabled (configurable)
 - **Purpose**: Debugging and audit trails
 - **Tool**: matplotlib or PIL (lightweight, no browser)
-- **Output**: `~/.multiverse_dive/screenshots/`
+- **Output**: `~/.FirstLight/screenshots/`
 - **Configuration**: `config/ingestion.yaml`
 
 **For E2E Tests**:
@@ -218,7 +218,7 @@ validation:
 
   screenshots:
     enabled: false  # true for staging/dev
-    output_dir: "~/.multiverse_dive/screenshots"
+    output_dir: "~/.FirstLight/screenshots"
     format: "png"
     on_failure_only: false
 

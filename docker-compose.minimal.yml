@@ -19,8 +19,8 @@ services:
     build:
       context: .
       dockerfile: docker/cli/Dockerfile
-    image: multiverse-dive-cli:latest
-    container_name: mdive-cli
+    image: firstlight-cli:latest
+    container_name: firstlight-cli
     environment:
       - PYTHONPATH=/app
       - LOG_LEVEL=info
@@ -43,8 +43,8 @@ services:
     build:
       context: .
       dockerfile: docker/core/Dockerfile
-    image: multiverse-dive-core:latest
-    container_name: mdive-core
+    image: firstlight-core:latest
+    container_name: firstlight-core
     environment:
       - PYTHONPATH=/app
       - LOG_LEVEL=info

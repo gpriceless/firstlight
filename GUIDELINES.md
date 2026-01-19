@@ -1,6 +1,6 @@
-# Multiverse Dive - Complete Guidelines
+# FirstLight - Complete Guidelines
 
-This document covers every process available in the Multiverse Dive platform: from local development to cloud deployment, from algorithm selection to end-to-end workflows.
+This document covers every process available in the FirstLight platform: from local development to cloud deployment, from algorithm selection to end-to-end workflows.
 
 ## Table of Contents
 
@@ -23,8 +23,8 @@ This document covers every process available in the Multiverse Dive platform: fr
 
 ```bash
 # Clone the repository
-git clone https://github.com/gpriceless/multiverse_dive.git
-cd multiverse_dive
+git clone https://github.com/gpriceless/firstlight.git
+cd firstlight
 
 # Create virtual environment (recommended)
 python -m venv .venv
@@ -72,41 +72,41 @@ pip install rasterio geopandas xarray pyproj shapely
 ./run_tests.py --list
 ```
 
-### 1.3 CLI Usage (mdive)
+### 1.3 CLI Usage (flight)
 
-The `mdive` command provides access to all platform capabilities:
+The `flight` command provides access to all platform capabilities:
 
 ```bash
 # Get help
-mdive --help
-mdive info                    # Show system info
+flight --help
+flight info                    # Show system info
 
 # Data discovery
-mdive discover --area area.geojson --start 2024-09-15 --end 2024-09-20 --event flood
-mdive discover --bbox -80.5,25.5,-80.0,26.0 --event wildfire --format json
+flight discover --area area.geojson --start 2024-09-15 --end 2024-09-20 --event flood
+flight discover --bbox -80.5,25.5,-80.0,26.0 --event wildfire --format json
 
 # Data ingestion
-mdive ingest --area area.geojson --source sentinel1 --output ./data/
-mdive ingest --area area.geojson --source sentinel2,landsat8 --output ./data/
+flight ingest --area area.geojson --source sentinel1 --output ./data/
+flight ingest --area area.geojson --source sentinel2,landsat8 --output ./data/
 
 # Analysis
-mdive analyze --input ./data/ --algorithm sar_threshold --output ./results/
-mdive analyze --input ./data/ --algorithm ndwi --confidence 0.8 --output ./results/
+flight analyze --input ./data/ --algorithm sar_threshold --output ./results/
+flight analyze --input ./data/ --algorithm ndwi --confidence 0.8 --output ./results/
 
 # Validation
-mdive validate --input ./results/ --checks sanity,cross_validation
-mdive validate --input ./results/ --reference ground_truth.geojson
+flight validate --input ./results/ --checks sanity,cross_validation
+flight validate --input ./results/ --reference ground_truth.geojson
 
 # Export
-mdive export --input ./results/ --format geotiff,geojson,pdf --output ./products/
+flight export --input ./results/ --format geotiff,geojson,pdf --output ./products/
 
 # Full pipeline
-mdive run --area area.geojson --event flood --profile laptop --output ./products/
-mdive run --area area.geojson --event wildfire --profile workstation --output ./products/
+flight run --area area.geojson --event flood --profile laptop --output ./products/
+flight run --area area.geojson --event wildfire --profile workstation --output ./products/
 
 # Monitoring
-mdive status --workdir ./products/
-mdive resume --workdir ./products/
+flight status --workdir ./products/
+flight resume --workdir ./products/
 ```
 
 ### 1.4 Execution Profiles
@@ -122,18 +122,18 @@ Profiles adapt processing to your hardware:
 
 Usage:
 ```bash
-mdive run --area miami.geojson --event flood --profile laptop
-mdive run --area california.geojson --event wildfire --profile cloud
+flight run --area miami.geojson --event flood --profile laptop
+flight run --area california.geojson --event wildfire --profile cloud
 ```
 
 ### 1.5 Configuration Files
 
-Create a `.mdive.yaml` in your project or home directory:
+Create a `.flight.yaml` in your project or home directory:
 
 ```yaml
-# .mdive.yaml - User configuration
+# .flight.yaml - User configuration
 profile: laptop
-cache_dir: ~/.mdive/cache
+cache_dir: ~/.flight/cache
 log_level: info
 
 providers:
@@ -226,11 +226,11 @@ For CLI-only operations without external services:
 
 ```bash
 # Run CLI commands
-docker compose -f docker-compose.minimal.yml run --rm cli mdive --help
-docker compose -f docker-compose.minimal.yml run --rm cli mdive analyze --help
+docker compose -f docker-compose.minimal.yml run --rm cli flight --help
+docker compose -f docker-compose.minimal.yml run --rm cli flight analyze --help
 
 # Run full pipeline
-docker compose -f docker-compose.minimal.yml run --rm cli mdive run \
+docker compose -f docker-compose.minimal.yml run --rm cli flight run \
   --area /app/examples/flood_event.yaml \
   --output /app/output/
 ```
@@ -266,9 +266,9 @@ kubectl apply -f deploy/kubernetes/hpa.yaml
 
 Check deployment:
 ```bash
-kubectl get pods -n multiverse-dive
-kubectl get services -n multiverse-dive
-kubectl logs -f deployment/api -n multiverse-dive
+kubectl get pods -n firstlight
+kubectl get services -n firstlight
+kubectl logs -f deployment/api -n firstlight
 ```
 
 ### 3.2 AWS Deployment
@@ -276,7 +276,7 @@ kubectl logs -f deployment/api -n multiverse-dive
 **ECS (Elastic Container Service)**:
 ```bash
 # Deploy using AWS CLI
-aws ecs create-cluster --cluster-name mdive-cluster
+aws ecs create-cluster --cluster-name flight-cluster
 aws ecs register-task-definition --cli-input-json file://deploy/aws/ecs/task-definition.json
 aws ecs create-service --cli-input-json file://deploy/aws/ecs/service.json
 ```
@@ -294,10 +294,10 @@ sam deploy --guided
 # Submit batch job
 aws batch submit-job \
   --job-name flood-analysis \
-  --job-queue mdive-queue \
-  --job-definition mdive-analysis \
+  --job-queue flight-queue \
+  --job-definition flight-analysis \
   --container-overrides '{
-    "command": ["mdive", "run", "--area", "s3://bucket/area.geojson", "--event", "flood"]
+    "command": ["flight", "run", "--area", "s3://bucket/area.geojson", "--event", "flood"]
   }'
 ```
 
@@ -312,9 +312,9 @@ kubectl apply -f deploy/azure/aks/deployment.yaml
 **Azure Container Instances**:
 ```bash
 az container create \
-  --resource-group mdive-rg \
-  --name mdive-api \
-  --image multiverse-dive-api:latest \
+  --resource-group flight-rg \
+  --name flight-api \
+  --image firstlight-api:latest \
   --ports 8000 \
   --environment-variables LOG_LEVEL=info
 ```
@@ -323,8 +323,8 @@ az container create \
 
 **Cloud Run**:
 ```bash
-gcloud run deploy mdive-api \
-  --image gcr.io/your-project/multiverse-dive-api:latest \
+gcloud run deploy flight-api \
+  --image gcr.io/your-project/firstlight-api:latest \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated
@@ -351,10 +351,10 @@ ansible-playbook -i inventory deploy/on-prem/cluster.yaml
 For resource-constrained devices (Raspberry Pi, NVIDIA Jetson):
 ```bash
 # Build edge image
-docker build -f deploy/edge/Dockerfile.arm64 -t mdive-edge .
+docker build -f deploy/edge/Dockerfile.arm64 -t flight-edge .
 
 # Run on edge device
-docker run -v /data:/data mdive-edge mdive run \
+docker run -v /data:/data flight-edge flight run \
   --area /data/area.geojson \
   --event flood \
   --profile edge
@@ -555,7 +555,7 @@ quality_checks:
 
 Run custom pipeline:
 ```bash
-mdive run --pipeline my_flood_pipeline.yaml --area area.geojson --output ./products/
+flight run --pipeline my_flood_pipeline.yaml --area area.geojson --output ./products/
 ```
 
 ### 5.3 Data Sources
@@ -584,7 +584,7 @@ mdive run --pipeline my_flood_pipeline.yaml --area area.geojson --output ./produ
 │                      USER INTERFACES                                 │
 ├─────────────┬─────────────┬─────────────────────────────────────────┤
 │   CLI       │   REST API  │   Python SDK                            │
-│  (mdive)    │  (FastAPI)  │   (import core.*)                       │
+│  (flight)    │  (FastAPI)  │   (import core.*)                       │
 └──────┬──────┴──────┬──────┴─────────────────────────────────────────┘
        │             │
        ▼             ▼
@@ -736,12 +736,12 @@ result = await orchestrator.wait_for_completion(event.id)
 
 ```bash
 # Export to multiple formats
-mdive export --input ./results/ --format geotiff,geojson,pdf,png --output ./products/
+flight export --input ./results/ --format geotiff,geojson,pdf,png --output ./products/
 
 # Format-specific options
-mdive export --input ./results/ --format geotiff --cog --compression lzw
-mdive export --input ./results/ --format geojson --simplify 10m
-mdive export --input ./results/ --format pdf --include-maps --include-statistics
+flight export --input ./results/ --format geotiff --cog --compression lzw
+flight export --input ./results/ --format geojson --simplify 10m
+flight export --input ./results/ --format pdf --include-maps --include-statistics
 ```
 
 ### 7.2 Programmatic Visualization
@@ -907,19 +907,19 @@ priority: critical
 EOF
 
 # Step 2: Discover available data
-mdive discover --event miami_flood.yaml --format json > available_data.json
+flight discover --event miami_flood.yaml --format json > available_data.json
 
 # Step 3: Run full analysis pipeline
-mdive run --event miami_flood.yaml --profile workstation --output ./miami_products/
+flight run --event miami_flood.yaml --profile workstation --output ./miami_products/
 
 # Step 4: Check status (if running async)
-mdive status --workdir ./miami_products/
+flight status --workdir ./miami_products/
 
 # Step 5: Validate results
-mdive validate --input ./miami_products/ --checks sanity,cross_validation
+flight validate --input ./miami_products/ --checks sanity,cross_validation
 
 # Step 6: Export final products
-mdive export --input ./miami_products/ --format geotiff,geojson,pdf --output ./miami_final/
+flight export --input ./miami_products/ --format geotiff,geojson,pdf --output ./miami_final/
 ```
 
 Output files:
@@ -1100,10 +1100,10 @@ watch -n 5 'curl -s http://localhost:8000/api/v1/events | jq ".events[] | {id, s
 
 ```bash
 # Start analysis (may take hours for large areas)
-mdive run --area large_area.geojson --event flood --profile cloud --output ./analysis/
+flight run --area large_area.geojson --event flood --profile cloud --output ./analysis/
 
 # If interrupted (Ctrl+C, system restart, etc.), resume:
-mdive resume --workdir ./analysis/
+flight resume --workdir ./analysis/
 
 # The system tracks checkpoints and resumes from last completed step
 ```
@@ -1116,23 +1116,23 @@ mdive resume --workdir ./analysis/
 
 ```bash
 # Discovery
-mdive discover --area X.geojson --event flood         # Find available data
-mdive discover --bbox -80.5,25.5,-80.0,26.0 --event wildfire
+flight discover --area X.geojson --event flood         # Find available data
+flight discover --bbox -80.5,25.5,-80.0,26.0 --event wildfire
 
 # Analysis
-mdive run --event X.yaml --profile laptop             # Full pipeline
-mdive analyze --input ./data/ --algorithm sar_threshold
+flight run --event X.yaml --profile laptop             # Full pipeline
+flight analyze --input ./data/ --algorithm sar_threshold
 
 # Validation
-mdive validate --input ./results/ --checks sanity
-mdive validate --input ./results/ --reference truth.geojson
+flight validate --input ./results/ --checks sanity
+flight validate --input ./results/ --reference truth.geojson
 
 # Export
-mdive export --input ./results/ --format geotiff,geojson,pdf
+flight export --input ./results/ --format geotiff,geojson,pdf
 
 # Status
-mdive status --workdir ./products/
-mdive resume --workdir ./products/
+flight status --workdir ./products/
+flight resume --workdir ./products/
 ```
 
 ### Python Import Reference
@@ -1217,11 +1217,11 @@ docker compose down
 docker compose logs -f api
 
 # CLI only
-docker compose -f docker-compose.minimal.yml run --rm cli mdive run ...
+docker compose -f docker-compose.minimal.yml run --rm cli flight run ...
 
 # Build images
-docker build -f docker/api/Dockerfile -t mdive-api .
-docker build -f docker/cli/Dockerfile -t mdive-cli .
+docker build -f docker/api/Dockerfile -t flight-api .
+docker build -f docker/cli/Dockerfile -t flight-cli .
 ```
 
 ### Test Commands
@@ -1251,7 +1251,7 @@ docker build -f docker/cli/Dockerfile -t mdive-cli .
 **"Algorithm not applicable" error:**
 - Check if required data types are available
 - Some algorithms need specific bands (e.g., dNBR needs NIR+SWIR)
-- Use `mdive discover` to see what's available
+- Use `flight discover` to see what's available
 
 **Memory errors:**
 - Use appropriate profile for your hardware
@@ -1266,9 +1266,9 @@ docker build -f docker/cli/Dockerfile -t mdive-cli .
 ### Getting Help
 
 ```bash
-mdive --help                        # General help
-mdive run --help                    # Command-specific help
-mdive info                          # System information
+flight --help                        # General help
+flight run --help                    # Command-specific help
+flight info                          # System information
 
 # Test your setup
 ./run_tests.py schemas              # Verify schemas

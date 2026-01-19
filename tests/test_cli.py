@@ -637,7 +637,7 @@ class TestInfoCommand:
         result = runner.invoke(app, ["info"])
 
         assert result.exit_code == 0
-        assert "Multiverse Dive" in result.output or "Python" in result.output
+        assert "FirstLight" in result.output or "Python" in result.output
 
     def test_info_with_config(self, runner, sample_config):
         """Test info with config file."""
@@ -701,7 +701,7 @@ class TestCLIOptions:
         result = runner.invoke(app, ["--help"])
 
         assert result.exit_code == 0
-        assert "Multiverse Dive" in result.output
+        assert "FirstLight" in result.output
 
 
 # =============================================================================

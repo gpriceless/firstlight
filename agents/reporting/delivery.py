@@ -700,7 +700,7 @@ class DeliveryManager:
         smtp_port: int = 25,
         smtp_user: Optional[str] = None,
         smtp_password: Optional[str] = None,
-        from_addr: str = "noreply@multiverse-dive.local",
+        from_addr: str = "noreply@firstlight.local",
     ) -> Dict[str, Any]:
         """
         Send email notification.

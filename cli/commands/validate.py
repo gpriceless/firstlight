@@ -2,8 +2,8 @@
 Validate Command - Run quality control checks on analysis results.
 
 Usage:
-    mdive validate --input ./results/
-    mdive validate --input ./results/ --output report.html --format html
+    flight validate --input ./results/
+    flight validate --input ./results/ --output report.html --format html
 """
 
 import json
@@ -14,7 +14,7 @@ from typing import Optional, List, Dict, Any
 
 import click
 
-logger = logging.getLogger("mdive.validate")
+logger = logging.getLogger("flight.validate")
 
 
 # Quality check definitions
@@ -123,13 +123,13 @@ def validate(
     \b
     Examples:
         # Run all quality checks
-        mdive validate --input ./results/
+        flight validate --input ./results/
 
         # Generate HTML report
-        mdive validate --input ./results/ --output report.html --format html
+        flight validate --input ./results/ --output report.html --format html
 
         # Run specific checks only
-        mdive validate --input ./results/ --checks spatial_coherence,value_range
+        flight validate --input ./results/ --checks spatial_coherence,value_range
     """
     click.echo(f"\n=== Quality Validation ===")
     click.echo(f"  Input: {input_path}")

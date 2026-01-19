@@ -77,7 +77,7 @@ class ScreenshotConfig:
     """
 
     enabled: bool = False
-    output_dir: str = "~/.multiverse_dive/screenshots"
+    output_dir: str = "~/.firstlight/screenshots"
     format: str = "png"
     resolution: tuple = (1200, 800)
     bands_to_render: List[str] = field(
@@ -279,10 +279,10 @@ class ValidationConfig:
         Create configuration from environment variables.
 
         Environment variables override default values:
-        - MULTIVERSE_VALIDATION_ENABLED
-        - MULTIVERSE_VALIDATION_SCREENSHOT_DIR
-        - MULTIVERSE_VALIDATION_SAMPLE_RATIO
-        - MULTIVERSE_VALIDATION_MAX_TIME
+        - FIRSTLIGHT_VALIDATION_ENABLED
+        - FIRSTLIGHT_VALIDATION_SCREENSHOT_DIR
+        - FIRSTLIGHT_VALIDATION_SAMPLE_RATIO
+        - FIRSTLIGHT_VALIDATION_MAX_TIME
 
         Returns:
             ValidationConfig instance
@@ -290,24 +290,24 @@ class ValidationConfig:
         config = cls()
 
         # Check for environment variable overrides
-        if os.environ.get("MULTIVERSE_VALIDATION_ENABLED"):
-            config.enabled = os.environ.get("MULTIVERSE_VALIDATION_ENABLED", "true").lower() == "true"
+        if os.environ.get("FIRSTLIGHT_VALIDATION_ENABLED"):
+            config.enabled = os.environ.get("FIRSTLIGHT_VALIDATION_ENABLED", "true").lower() == "true"
 
-        if os.environ.get("MULTIVERSE_VALIDATION_SCREENSHOT_DIR"):
-            config.screenshots.output_dir = os.environ.get("MULTIVERSE_VALIDATION_SCREENSHOT_DIR")
+        if os.environ.get("FIRSTLIGHT_VALIDATION_SCREENSHOT_DIR"):
+            config.screenshots.output_dir = os.environ.get("FIRSTLIGHT_VALIDATION_SCREENSHOT_DIR")
 
-        if os.environ.get("MULTIVERSE_VALIDATION_SAMPLE_RATIO"):
+        if os.environ.get("FIRSTLIGHT_VALIDATION_SAMPLE_RATIO"):
             try:
                 config.performance.sample_ratio = float(
-                    os.environ.get("MULTIVERSE_VALIDATION_SAMPLE_RATIO")
+                    os.environ.get("FIRSTLIGHT_VALIDATION_SAMPLE_RATIO")
                 )
             except ValueError:
                 pass
 
-        if os.environ.get("MULTIVERSE_VALIDATION_MAX_TIME"):
+        if os.environ.get("FIRSTLIGHT_VALIDATION_MAX_TIME"):
             try:
                 config.performance.max_validation_time_seconds = float(
-                    os.environ.get("MULTIVERSE_VALIDATION_MAX_TIME")
+                    os.environ.get("FIRSTLIGHT_VALIDATION_MAX_TIME")
                 )
             except ValueError:
                 pass
@@ -398,8 +398,8 @@ def load_config(
     if config is None:
         default_paths = [
             Path("config/ingestion.yaml"),
-            Path("~/.multiverse_dive/config/ingestion.yaml").expanduser(),
-            Path("/etc/multiverse_dive/ingestion.yaml"),
+            Path("~/.firstlight/config/ingestion.yaml").expanduser(),
+            Path("/etc/firstlight/ingestion.yaml"),
         ]
         for path in default_paths:
             if path.exists():
@@ -416,13 +416,13 @@ def load_config(
     # Apply environment overrides
     if use_environment:
         env_config = ValidationConfig.from_environment()
-        if os.environ.get("MULTIVERSE_VALIDATION_ENABLED"):
+        if os.environ.get("FIRSTLIGHT_VALIDATION_ENABLED"):
             config.enabled = env_config.enabled
-        if os.environ.get("MULTIVERSE_VALIDATION_SCREENSHOT_DIR"):
+        if os.environ.get("FIRSTLIGHT_VALIDATION_SCREENSHOT_DIR"):
             config.screenshots.output_dir = env_config.screenshots.output_dir
-        if os.environ.get("MULTIVERSE_VALIDATION_SAMPLE_RATIO"):
+        if os.environ.get("FIRSTLIGHT_VALIDATION_SAMPLE_RATIO"):
             config.performance.sample_ratio = env_config.performance.sample_ratio
-        if os.environ.get("MULTIVERSE_VALIDATION_MAX_TIME"):
+        if os.environ.get("FIRSTLIGHT_VALIDATION_MAX_TIME"):
             config.performance.max_validation_time_seconds = env_config.performance.max_validation_time_seconds
 
     return config

@@ -1,14 +1,14 @@
-# LoadBalancer Service for Multiverse Dive API (optional)
+# LoadBalancer Service for FirstLight API (optional)
 # Deploy: kubectl apply -f api-lb.yaml
 # Note: Use this for direct external access without Ingress
 
 apiVersion: v1
 kind: Service
 metadata:
-  name: multiverse-dive-api-lb
-  namespace: multiverse-dive
+  name: firstlight-api-lb
+  namespace: firstlight
   labels:
-    app: multiverse-dive
+    app: firstlight
     component: api
   annotations:
     # AWS NLB annotations (uncomment for AWS)
@@ -21,7 +21,7 @@ metadata:
 spec:
   type: LoadBalancer
   selector:
-    app: multiverse-dive
+    app: firstlight
     component: api
   ports:
     - name: http

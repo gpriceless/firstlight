@@ -1,19 +1,19 @@
-# AKS Deployment for Multiverse Dive API
+# AKS Deployment for FirstLight API
 # Deploy: kubectl apply -f deployment.yaml
 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: multiverse-dive-api
-  namespace: multiverse-dive
+  name: firstlight-api
+  namespace: firstlight
   labels:
-    app: multiverse-dive
+    app: firstlight
     component: api
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: multiverse-dive
+      app: firstlight
       component: api
   strategy:
     type: RollingUpdate
@@ -23,14 +23,14 @@ spec:
   template:
     metadata:
       labels:
-        app: multiverse-dive
+        app: firstlight
         component: api
     spec:
-      serviceAccountName: multiverse-dive-sa
+      serviceAccountName: firstlight-sa
       terminationGracePeriodSeconds: 30
       containers:
         - name: api
-          image: ${ACR_LOGIN_SERVER}/multiverse-dive-api:${IMAGE_TAG}
+          image: ${ACR_LOGIN_SERVER}/firstlight-api:${IMAGE_TAG}
           imagePullPolicy: Always
           ports:
             - name: http
@@ -53,27 +53,27 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: multiverse-dive-secrets
+                  name: firstlight-secrets
                   key: database-url
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
-                  name: multiverse-dive-secrets
+                  name: firstlight-secrets
                   key: redis-url
             - name: API_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: multiverse-dive-secrets
+                  name: firstlight-secrets
                   key: api-secret-key
             - name: STAC_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: multiverse-dive-secrets
+                  name: firstlight-secrets
                   key: stac-api-key
             - name: AZURE_STORAGE_ACCOUNT
               valueFrom:
                 configMapKeyRef:
-                  name: multiverse-dive-config
+                  name: firstlight-config
                   key: azure-storage-account
           livenessProbe:
             httpGet:
@@ -105,6 +105,6 @@ spec:
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app: multiverse-dive
+                    app: firstlight
                     component: api
                 topologyKey: kubernetes.io/hostname

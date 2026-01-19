@@ -1,4 +1,4 @@
-# Multiverse Dive - Multi-Node Cluster Deployment
+# FirstLight - Multi-Node Cluster Deployment
 # Ansible playbook for Docker Swarm cluster setup
 #
 # Prerequisites:
@@ -18,16 +18,16 @@
 #   worker2 ansible_host=192.168.1.12
 
 ---
-- name: Multiverse Dive Cluster Setup
+- name: FirstLight Cluster Setup
   hosts: all
   become: true
   vars:
     docker_version: "24.0"
-    multiverse_version: "{{ lookup('env', 'MULTIVERSE_VERSION') | default('latest', true) }}"
-    data_dir: /opt/multiverse-dive/data
+    firstlight_version: "{{ lookup('env', 'FIRSTLIGHT_VERSION') | default('latest', true) }}"
+    data_dir: /opt/firstlight/data
     shared_storage_type: nfs  # nfs, glusterfs, or local
     nfs_server: "{{ hostvars[groups['managers'][0]]['ansible_host'] }}"
-    nfs_export: /srv/multiverse-shared
+    nfs_export: /srv/firstlight-shared
 
   tasks:
     # ============================================
@@ -178,13 +178,13 @@
     # ============================================
     - name: Create overlay network
       docker_network:
-        name: multiverse-net
+        name: firstlight-net
         driver: overlay
         attachable: true
       when: inventory_hostname == groups['managers'][0]
 
     # ============================================
-    # Phase 5: Deploy Multiverse Dive Stack
+    # Phase 5: Deploy FirstLight Stack
     # ============================================
     - name: Copy stack configuration
       template:
@@ -193,9 +193,9 @@
         mode: "0644"
       when: inventory_hostname == groups['managers'][0]
 
-    - name: Deploy Multiverse Dive stack
+    - name: Deploy FirstLight stack
       docker_stack:
-        name: multiverse-dive
+        name: firstlight
         compose:
           - "{{ data_dir }}/config/docker-stack.yml"
         state: present

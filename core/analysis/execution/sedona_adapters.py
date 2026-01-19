@@ -72,6 +72,13 @@ except ImportError:
     F = None
     pandas_udf = None
     PandasUDFType = None
+    StructType = None
+    StructField = None
+    ArrayType = None
+    BinaryType = None
+    DoubleType = None
+    FloatType = None
+    IntegerType = None
     HAS_SPARK = False
 
 try:

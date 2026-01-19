@@ -2,7 +2,7 @@
 Export Command - Generate final products in various formats.
 
 Usage:
-    mdive export --input ./results/ --format geotiff,geojson --output ./products/
+    flight export --input ./results/ --format geotiff,geojson --output ./products/
 """
 
 import json
@@ -14,7 +14,7 @@ from typing import Optional, List, Dict, Any
 
 import click
 
-logger = logging.getLogger("mdive.export")
+logger = logging.getLogger("flight.export")
 
 
 # Supported export formats
@@ -138,14 +138,14 @@ def export(
     \b
     Examples:
         # Export to GeoTIFF and GeoJSON
-        mdive export --input ./results/ --format geotiff,geojson --output ./products/
+        flight export --input ./results/ --format geotiff,geojson --output ./products/
 
         # Export with custom name and simplified vectors
-        mdive export --input ./results/ --format geojson,kml --output ./products/ \\
+        flight export --input ./results/ --format geojson,kml --output ./products/ \\
             --name miami_flood --simplify 10.0
 
         # Export for web visualization
-        mdive export --input ./results/ --format geojson,png --output ./products/
+        flight export --input ./results/ --format geojson,png --output ./products/
     """
     output_path = Path(output_path)
     output_path.mkdir(parents=True, exist_ok=True)

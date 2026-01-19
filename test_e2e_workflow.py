@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-End-to-End Workflow Test for Multiverse Dive
+End-to-End Workflow Test for FirstLight
 
 Tests the complete pipeline from event specification to product generation.
 Designed to run on a laptop with the 'laptop' execution profile.
@@ -61,7 +61,7 @@ class E2EWorkflowTest:
 
     def __init__(self, profile: str = "laptop", output_dir: Path = None):
         self.profile = profile
-        self.output_dir = output_dir or Path(tempfile.mkdtemp(prefix="mdive_e2e_"))
+        self.output_dir = output_dir or Path(tempfile.mkdtemp(prefix="flight_e2e_"))
         self.results: Dict[str, Dict[str, Any]] = {}
         self.total_steps = 10
         self.current_step = 0
@@ -93,7 +93,7 @@ class E2EWorkflowTest:
             print_fail(f"{details} ({elapsed:.2f}s)")
 
     def run_all(self) -> bool:
-        print_header("Multiverse Dive - End-to-End Workflow Test")
+        print_header("FirstLight - End-to-End Workflow Test")
         print_info(f"Profile: {self.profile}")
         print_info(f"Output directory: {self.output_dir}")
         print_info(f"Settings: {self.profiles.get(self.profile, self.profiles['laptop'])}")
@@ -431,7 +431,7 @@ class E2EWorkflowTest:
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Multiverse Dive E2E Test")
+    parser = argparse.ArgumentParser(description="FirstLight E2E Test")
     parser.add_argument("--profile", choices=["edge", "laptop", "workstation", "cloud"],
                         default="laptop", help="Execution profile")
     parser.add_argument("--output", type=Path, default=None, help="Output directory")

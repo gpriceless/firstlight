@@ -1,5 +1,5 @@
 """
-Execution Infrastructure for Multiverse Dive.
+Execution Infrastructure for FirstLight.
 
 Provides execution profiles, state persistence, and tiled processing
 for resource-constrained environments.

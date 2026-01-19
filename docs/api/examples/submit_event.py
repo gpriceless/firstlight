@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example: Submit an event to the Multiverse Dive API.
+Example: Submit an event to the FirstLight API.
 
 This script demonstrates how to:
 1. Submit an event specification
@@ -11,7 +11,7 @@ Requirements:
     pip install requests
 
 Usage:
-    export MULTIVERSE_API_KEY="your_api_key_here"
+    export FIRSTLIGHT_API_KEY="your_api_key_here"
     python submit_event.py
 """
 
@@ -23,13 +23,13 @@ from typing import Dict, Any, Optional
 import requests
 
 # Configuration
-API_BASE_URL = os.environ.get("MULTIVERSE_API_URL", "https://api.multiverse-dive.io/v1")
-API_KEY = os.environ.get("MULTIVERSE_API_KEY")
+API_BASE_URL = os.environ.get("FIRSTLIGHT_API_URL", "https://api.firstlight.io/v1")
+API_KEY = os.environ.get("FIRSTLIGHT_API_KEY")
 
 # Check for API key
 if not API_KEY:
-    print("Error: MULTIVERSE_API_KEY environment variable not set")
-    print("Export your API key: export MULTIVERSE_API_KEY='your_key_here'")
+    print("Error: FIRSTLIGHT_API_KEY environment variable not set")
+    print("Export your API key: export FIRSTLIGHT_API_KEY='your_key_here'")
     sys.exit(1)
 
 

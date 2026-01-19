@@ -1,15 +1,15 @@
 # =============================================================================
-# API Service Image for Multiverse Dive
+# API Service Image for FirstLight
 # =============================================================================
 # Full-featured API server with FastAPI and agent orchestration.
 # Exposes REST endpoints for event analysis and pipeline management.
 # =============================================================================
 
 # Accept base image as build argument for CI/CD flexibility
-ARG BASE_IMAGE=multiverse-dive-base:latest
+ARG BASE_IMAGE=firstlight-base:latest
 FROM ${BASE_IMAGE} AS api
 
-LABEL maintainer="Multiverse Dive Team"
+LABEL maintainer="FirstLight Team"
 LABEL description="API service image with FastAPI and agent orchestration"
 LABEL version="0.1.0"
 
@@ -17,19 +17,19 @@ LABEL version="0.1.0"
 USER root
 
 # Copy all required modules
-COPY --chown=mdive:mdive core/ /app/core/
-COPY --chown=mdive:mdive openspec/ /app/openspec/
-COPY --chown=mdive:mdive agents/ /app/agents/
-COPY --chown=mdive:mdive api/ /app/api/
+COPY --chown=firstlight:firstlight core/ /app/core/
+COPY --chown=firstlight:firstlight openspec/ /app/openspec/
+COPY --chown=firstlight:firstlight agents/ /app/agents/
+COPY --chown=firstlight:firstlight api/ /app/api/
 
 # Copy configuration files
-COPY --chown=mdive:mdive examples/ /app/examples/
+COPY --chown=firstlight:firstlight examples/ /app/examples/
 
 # Ensure proper permissions
-RUN chown -R mdive:mdive /app
+RUN chown -R firstlight:firstlight /app
 
 # Switch back to non-root user
-USER mdive
+USER firstlight
 
 # Set Python path
 ENV PYTHONPATH=/app:${PYTHONPATH}

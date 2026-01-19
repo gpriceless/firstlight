@@ -4,7 +4,7 @@ FastAPI Application Entry Point.
 Initializes the FastAPI application with all routers, middleware,
 exception handlers, and startup/shutdown events.
 
-Multiverse Dive API - Geospatial Event Intelligence Platform.
+FirstLight API - Geospatial Event Intelligence Platform.
 
 This FastAPI application provides RESTful endpoints for:
 - Event submission and retrieval

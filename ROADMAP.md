@@ -1,4 +1,4 @@
-# Multiverse Dive: Implementation Roadmap
+# FirstLight: Implementation Roadmap
 
 **Last Updated:** 2026-01-13
 **Status:** Core Platform Complete, ALL P0 BUGS FIXED - Production Ready
@@ -238,7 +238,7 @@ docker-compose up                 # Full stack
 uvicorn api.main:app --reload     # Development mode
 
 # Use CLI
-mdive run --event examples/flood_event.yaml --profile laptop
+flight run --event examples/flood_event.yaml --profile laptop
 ```
 
 ---

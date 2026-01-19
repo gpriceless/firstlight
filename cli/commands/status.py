@@ -2,7 +2,7 @@
 Status Command - Check workflow state and progress.
 
 Usage:
-    mdive status --workdir ./products/
+    flight status --workdir ./products/
 """
 
 import json
@@ -13,7 +13,7 @@ from typing import Optional, Dict, Any
 
 import click
 
-logger = logging.getLogger("mdive.status")
+logger = logging.getLogger("flight.status")
 
 
 @click.command("status")
@@ -55,10 +55,10 @@ def status(
     \b
     Examples:
         # Check workflow status
-        mdive status --workdir ./products/
+        flight status --workdir ./products/
 
         # Detailed status as JSON
-        mdive status --workdir ./products/ --format json --detailed
+        flight status --workdir ./products/ --format json --detailed
     """
     # Load workflow state
     state_file = workdir / ".workflow_state.json"
@@ -183,12 +183,12 @@ def output_text_status(
     if all(s in completed for s in stages):
         click.echo("    Workflow complete. Products available in 'products/' directory.")
     elif current and stage_results.get(current, {}).get("status") == "failed":
-        click.echo(f"    Fix the error and run: mdive resume --workdir {workdir}")
+        click.echo(f"    Fix the error and run: flight resume --workdir {workdir}")
     elif current:
         click.echo("    Workflow is running. Wait for completion or interrupt to resume later.")
     else:
         next_stage = next((s for s in stages if s not in completed), stages[0])
-        click.echo(f"    Resume workflow: mdive resume --workdir {workdir}")
+        click.echo(f"    Resume workflow: flight resume --workdir {workdir}")
 
     click.echo()
 

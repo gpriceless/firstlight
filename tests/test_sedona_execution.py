@@ -217,7 +217,7 @@ class TestSedonaConfig:
         """Test default configuration values."""
         config = SedonaConfig()
         assert config.master == "local[*]"
-        assert config.app_name == "multiverse_sedona"
+        assert config.app_name == "firstlight_sedona"
         assert config.deploy_mode == SedonaDeployMode.LOCAL
         assert config.executor_cores == 4
         assert config.tile_size == (1024, 1024)

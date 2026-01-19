@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document specifies functional requirements for **production workflow** image validation in the multiverse_dive platform. These requirements define where and how downloaded satellite images are validated during the actual data ingestion and processing pipeline—NOT in E2E tests.
+This document specifies functional requirements for **production workflow** image validation in the FirstLight platform. These requirements define where and how downloaded satellite images are validated during the actual data ingestion and processing pipeline—NOT in E2E tests.
 
 **Key Distinction**: This document specifies validation for the **production system workflow**, while `tests/e2e/IMAGE_VALIDATION_REQUIREMENTS.md` specifies validation for **testing workflows**.
 
@@ -73,8 +73,8 @@ Data Flow:
 - **Asynchronous**: Screenshot generation should not delay pipeline execution
 
 **FR-SCREENSHOT-PROD-003**: Screenshots MUST be saved to a configurable directory:
-- **Default**: `~/.multiverse_dive/screenshots/`
-- **Configurable via**: Environment variable `MULTIVERSE_SCREENSHOT_DIR` or config file
+- **Default**: `~/.FirstLight/screenshots/`
+- **Configurable via**: Environment variable `FIRSTLIGHT_SCREENSHOT_DIR` or config file
 - **Structure**: `{screenshot_dir}/{execution_id}/{dataset_id}_{timestamp}.png`
 
 **FR-SCREENSHOT-PROD-004**: Each screenshot MUST capture:
@@ -97,7 +97,7 @@ Data Flow:
 validation:
   screenshots:
     enabled: false  # true for staging/dev, false for production
-    output_dir: "~/.multiverse_dive/screenshots"
+    output_dir: "~/.FirstLight/screenshots"
     format: "png"
     resolution: [1200, 800]  # width, height
     bands_to_render: ["rgb_composite", "nir", "swir1"]  # configurable bands
@@ -746,7 +746,7 @@ validation:
 
   screenshots:
     enabled: false  # true for dev/staging
-    output_dir: "~/.multiverse_dive/screenshots"
+    output_dir: "~/.FirstLight/screenshots"
     format: "png"
     resolution: [1200, 800]
     on_failure_only: false
@@ -770,9 +770,9 @@ validation:
 **CONFIG-002**: Configuration MUST be overridable via environment variables:
 
 ```bash
-export MULTIVERSE_VALIDATION_ENABLED=true
-export MULTIVERSE_VALIDATION_SCREENSHOT_DIR=/mnt/artifacts/screenshots
-export MULTIVERSE_VALIDATION_SAMPLE_RATIO=0.1  # For large images
+export FIRSTLIGHT_VALIDATION_ENABLED=true
+export FIRSTLIGHT_VALIDATION_SCREENSHOT_DIR=/mnt/artifacts/screenshots
+export FIRSTLIGHT_VALIDATION_SAMPLE_RATIO=0.1  # For large images
 ```
 
 ### 11.2 Band Mapping Configuration

@@ -1,13 +1,13 @@
-# Persistent Volume Claim for Multiverse Dive Data Storage
+# Persistent Volume Claim for FirstLight Data Storage
 # Deploy: kubectl apply -f data-pvc.yaml
 
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: multiverse-dive-data
-  namespace: multiverse-dive
+  name: firstlight-data
+  namespace: firstlight
   labels:
-    app: multiverse-dive
+    app: firstlight
 spec:
   accessModes:
     - ReadWriteMany

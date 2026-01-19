@@ -1,4 +1,4 @@
-# Docker Compose configuration for Multiverse Dive
+# Docker Compose configuration for FirstLight
 # Full stack deployment with API, Redis, and optional PostgreSQL
 #
 # Usage:
@@ -21,8 +21,8 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile
       target: api
-    image: multiverse-dive/api:${VERSION:-latest}
-    container_name: multiverse-dive-api
+    image: firstlight/api:${VERSION:-latest}
+    container_name: firstlight-api
     restart: unless-stopped
     ports:
       - "${API_PORT:-8000}:8000"
@@ -82,7 +82,7 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - multiverse-network
+      - firstlight-network
     deploy:
       resources:
         limits:
@@ -97,7 +97,7 @@ services:
   # ==========================================================================
   redis:
     image: redis:7-alpine
-    container_name: multiverse-dive-redis
+    container_name: firstlight-redis
     restart: unless-stopped
     ports:
       - "${REDIS_PORT:-6379}:6379"
@@ -114,7 +114,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - multiverse-network
+      - firstlight-network
     deploy:
       resources:
         limits:
@@ -126,26 +126,26 @@ services:
   # ==========================================================================
   postgres:
     image: postgres:15-alpine
-    container_name: multiverse-dive-postgres
+    container_name: firstlight-postgres
     restart: unless-stopped
     profiles:
       - database  # Only start with: docker-compose --profile database up
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-multiverse}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-multiverse_dev}
-      - POSTGRES_DB=${POSTGRES_DB:-multiverse_dive}
+      - POSTGRES_USER=${POSTGRES_USER:-firstlight}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-firstlight_dev}
+      - POSTGRES_DB=${POSTGRES_DB:-first_light}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-multiverse}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-firstlight}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - multiverse-network
+      - firstlight-network
     deploy:
       resources:
         limits:
@@ -160,8 +160,8 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile
       target: worker
-    image: multiverse-dive/worker:${VERSION:-latest}
-    container_name: multiverse-dive-worker
+    image: firstlight/worker:${VERSION:-latest}
+    container_name: firstlight-worker
     restart: unless-stopped
     profiles:
       - worker  # Only start with: docker-compose --profile worker up
@@ -190,7 +190,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - multiverse-network
+      - firstlight-network
     deploy:
       resources:
         limits:
@@ -204,7 +204,7 @@ services:
 # Networks
 # ==========================================================================
 networks:
-  multiverse-network:
+  firstlight-network:
     driver: bridge
     ipam:
       config:

@@ -2,7 +2,7 @@
 Resume Command - Resume an interrupted workflow.
 
 Usage:
-    mdive resume --workdir ./products/
+    flight resume --workdir ./products/
 """
 
 import json
@@ -14,7 +14,7 @@ from typing import Optional, Dict, Any
 
 import click
 
-logger = logging.getLogger("mdive.resume")
+logger = logging.getLogger("flight.resume")
 
 
 @click.command("resume")
@@ -61,13 +61,13 @@ def resume(
     \b
     Examples:
         # Resume interrupted workflow
-        mdive resume --workdir ./products/
+        flight resume --workdir ./products/
 
         # Restart from analyze stage
-        mdive resume --workdir ./products/ --from-stage analyze
+        flight resume --workdir ./products/ --from-stage analyze
 
         # Skip failed items and continue
-        mdive resume --workdir ./products/ --skip-failed
+        flight resume --workdir ./products/ --skip-failed
     """
     # Load workflow state
     state_file = workdir / ".workflow_state.json"
@@ -247,7 +247,7 @@ def resume(
         click.echo(f"  Output directory: {workdir}")
 
     except KeyboardInterrupt:
-        click.echo(f"\n\nInterrupted. Use 'mdive resume --workdir {workdir}' to continue.")
+        click.echo(f"\n\nInterrupted. Use 'flight resume --workdir {workdir}' to continue.")
         sys.exit(130)
 
     except ImportError as e:
@@ -272,5 +272,5 @@ def resume(
     except Exception as e:
         logger.error(f"Resume failed: {e}")
         click.echo(f"\nError: {e}", err=True)
-        click.echo(f"Check the error and try again with: mdive resume --workdir {workdir}")
+        click.echo(f"Check the error and try again with: flight resume --workdir {workdir}")
         sys.exit(1)

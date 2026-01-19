@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Modular test runner for multiverse_dive.
+Modular test runner for FirstLight.
 
 Quick shortcuts for running specific test suites.
 
@@ -181,7 +181,7 @@ def build_pytest_args(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Modular test runner for multiverse_dive",
+        description="Modular test runner for FirstLight",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

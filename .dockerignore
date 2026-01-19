@@ -1,5 +1,5 @@
 # =============================================================================
-# Docker Ignore File for Multiverse Dive
+# Docker Ignore File for FirstLight
 # =============================================================================
 # Excludes files and directories from Docker build context.
 # Keeps images small and prevents sensitive data from being included.

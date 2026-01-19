@@ -50,4 +50,4 @@ Thumbs.db
 .orchestrator_locks/
 
 # Test outputs
-/tmp/mdive_*/
+/tmp/flight_*/

@@ -213,7 +213,7 @@ class TestDockerBuilds:
             [
                 "docker", "build",
                 "-f", str(PROJECT_ROOT / "docker" / "base" / "Dockerfile"),
-                "-t", "multiverse-dive-base:test",
+                "-t", "firstlight-base:test",
                 "--no-cache",
                 str(PROJECT_ROOT),
             ],
@@ -232,7 +232,7 @@ class TestDockerBuilds:
             [
                 "docker", "build",
                 "-f", str(PROJECT_ROOT / "docker" / "api" / "Dockerfile"),
-                "-t", "multiverse-dive-api:test",
+                "-t", "firstlight-api:test",
                 "--no-cache",
                 str(PROJECT_ROOT),
             ],
@@ -251,7 +251,7 @@ class TestDockerBuilds:
             [
                 "docker", "build",
                 "-f", str(PROJECT_ROOT / "docker" / "cli" / "Dockerfile"),
-                "-t", "multiverse-dive-cli:test",
+                "-t", "firstlight-cli:test",
                 "--no-cache",
                 str(PROJECT_ROOT),
             ],
@@ -270,7 +270,7 @@ class TestDockerBuilds:
             [
                 "docker", "build",
                 "-f", str(PROJECT_ROOT / "docker" / "worker" / "Dockerfile"),
-                "-t", "multiverse-dive-worker:test",
+                "-t", "firstlight-worker:test",
                 "--no-cache",
                 str(PROJECT_ROOT),
             ],
@@ -292,7 +292,7 @@ class TestDockerImageMetadata:
         """Test base image has required labels after build."""
         # First check if image exists
         result = subprocess.run(
-            ["docker", "image", "inspect", "multiverse-dive-base:test"],
+            ["docker", "image", "inspect", "firstlight-base:test"],
             capture_output=True,
             text=True,
         )

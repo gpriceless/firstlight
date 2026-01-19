@@ -11,7 +11,7 @@ on:
         default: 'latest'
 
 env:
-  DOCKERHUB_REPO: multiverse-dive
+  DOCKERHUB_REPO: firstlight
   GHCR_REGISTRY: ghcr.io
   IMAGE_PREFIX: ${{ github.repository }}
 
@@ -149,5 +149,5 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPO }}-api
-          short-description: "Multiverse Dive API - Geospatial event intelligence platform"
+          short-description: "FirstLight API - Geospatial event intelligence platform"
           readme-filepath: ./README.md

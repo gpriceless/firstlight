@@ -1,7 +1,7 @@
 """
-Multiverse Dive CLI Commands
+FirstLight CLI Commands
 
-This package contains all CLI subcommands for the mdive tool.
+This package contains all CLI subcommands for the flight tool.
 
 Commands:
     discover - Find available data for an area and time window

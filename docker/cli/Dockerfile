@@ -1,32 +1,32 @@
 # =============================================================================
-# CLI Tools Image for Multiverse Dive
+# CLI Tools Image for FirstLight
 # =============================================================================
 # Lightweight image for command-line interface operations.
-# Provides the 'mdive' CLI tool for local analysis and pipeline execution.
+# Provides the 'flight' CLI tool for local analysis and pipeline execution.
 # =============================================================================
 
-FROM multiverse-dive-base:latest AS cli
+FROM firstlight-base:latest AS cli
 
-LABEL maintainer="Multiverse Dive Team"
-LABEL description="CLI tools image for multiverse-dive"
+LABEL maintainer="FirstLight Team"
+LABEL description="CLI tools image for firstlight"
 LABEL version="0.1.0"
 
 # Switch to root for file operations
 USER root
 
 # Copy CLI and core modules (minimal footprint)
-COPY --chown=mdive:mdive cli/ /app/cli/
-COPY --chown=mdive:mdive core/ /app/core/
-COPY --chown=mdive:mdive openspec/ /app/openspec/
+COPY --chown=firstlight:firstlight cli/ /app/cli/
+COPY --chown=firstlight:firstlight core/ /app/core/
+COPY --chown=firstlight:firstlight openspec/ /app/openspec/
 
 # Copy configuration files
-COPY --chown=mdive:mdive examples/ /app/examples/
+COPY --chown=firstlight:firstlight examples/ /app/examples/
 
 # Ensure proper permissions
-RUN chown -R mdive:mdive /app
+RUN chown -R firstlight:firstlight /app
 
 # Switch back to non-root user
-USER mdive
+USER firstlight
 
 # Set Python path
 ENV PYTHONPATH=/app:${PYTHONPATH}
@@ -35,7 +35,7 @@ ENV PYTHONPATH=/app:${PYTHONPATH}
 HEALTHCHECK NONE
 
 # Set entrypoint to the CLI tool
-# Users can run: docker run mdive-cli analyze --help
+# Users can run: docker run firstlight-cli analyze --help
 ENTRYPOINT ["python", "-m", "cli"]
 
 # Default command shows help

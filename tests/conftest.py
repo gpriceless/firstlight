@@ -1,5 +1,5 @@
 """
-Pytest configuration and fixtures for multiverse_dive tests.
+Pytest configuration and fixtures for FirstLight tests.
 
 Markers:
     @pytest.mark.flood - Flood-related tests

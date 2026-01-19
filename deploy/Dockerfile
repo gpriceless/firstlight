@@ -1,11 +1,11 @@
 # =============================================================================
-# Multiverse Dive - Multi-Stage Production Dockerfile
+# FirstLight - Multi-Stage Production Dockerfile
 # =============================================================================
 # Combined Dockerfile for building API and Worker images.
 #
 # Usage:
-#   docker build --target api -t multiverse-dive/api .
-#   docker build --target worker -t multiverse-dive/worker .
+#   docker build --target api -t firstlight/api .
+#   docker build --target worker -t firstlight/worker .
 #
 # Or with docker-compose:
 #   docker-compose up --build
@@ -16,12 +16,12 @@
 # -----------------------------------------------------------------------------
 FROM python:3.11-slim-bookworm AS base
 
-LABEL maintainer="Multiverse Dive Team"
+LABEL maintainer="FirstLight Team"
 LABEL version="0.1.0"
 
 # Create non-root user for security
-RUN groupadd --gid 1000 mdive \
-    && useradd --uid 1000 --gid mdive --shell /bin/bash --create-home mdive
+RUN groupadd --gid 1000 firstlight \
+    && useradd --uid 1000 --gid firstlight --shell /bin/bash --create-home firstlight
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -39,7 +39,7 @@ WORKDIR /app
 
 # Create data directories
 RUN mkdir -p /data/products /data/cache /data/tmp \
-    && chown -R mdive:mdive /data
+    && chown -R firstlight:firstlight /data
 
 # Install Python dependencies
 COPY requirements.txt /app/
@@ -73,18 +73,18 @@ FROM base AS api
 LABEL description="API service image with FastAPI and agent orchestration"
 
 # Copy application code
-COPY --chown=mdive:mdive core/ /app/core/
-COPY --chown=mdive:mdive openspec/ /app/openspec/
-COPY --chown=mdive:mdive agents/ /app/agents/
-COPY --chown=mdive:mdive api/ /app/api/
-COPY --chown=mdive:mdive cli/ /app/cli/
-COPY --chown=mdive:mdive examples/ /app/examples/
+COPY --chown=firstlight:firstlight core/ /app/core/
+COPY --chown=firstlight:firstlight openspec/ /app/openspec/
+COPY --chown=firstlight:firstlight agents/ /app/agents/
+COPY --chown=firstlight:firstlight api/ /app/api/
+COPY --chown=firstlight:firstlight cli/ /app/cli/
+COPY --chown=firstlight:firstlight examples/ /app/examples/
 
 # Ensure proper permissions
-RUN chown -R mdive:mdive /app
+RUN chown -R firstlight:firstlight /app
 
 # Switch to non-root user
-USER mdive
+USER firstlight
 
 # API configuration defaults
 ENV API_HOST=0.0.0.0
@@ -110,16 +110,16 @@ FROM base AS worker
 LABEL description="Background worker image for distributed processing"
 
 # Copy application code (subset needed for workers)
-COPY --chown=mdive:mdive core/ /app/core/
-COPY --chown=mdive:mdive openspec/ /app/openspec/
-COPY --chown=mdive:mdive agents/ /app/agents/
-COPY --chown=mdive:mdive examples/ /app/examples/
+COPY --chown=firstlight:firstlight core/ /app/core/
+COPY --chown=firstlight:firstlight openspec/ /app/openspec/
+COPY --chown=firstlight:firstlight agents/ /app/agents/
+COPY --chown=firstlight:firstlight examples/ /app/examples/
 
 # Ensure proper permissions
-RUN chown -R mdive:mdive /app
+RUN chown -R firstlight:firstlight /app
 
 # Switch to non-root user
-USER mdive
+USER firstlight
 
 # Worker configuration defaults
 ENV WORKER_CONCURRENCY=4

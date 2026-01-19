@@ -411,7 +411,7 @@ class TestComposeServices:
     def compose_up(self):
         """Start compose services and clean up after test."""
         compose_cmd = get_compose_command()
-        project_name = "mdive-test"
+        project_name = "firstlight-test"
 
         # Start services
         subprocess.run(

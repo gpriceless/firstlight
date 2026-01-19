@@ -1,20 +1,20 @@
-# Kubernetes Deployment for Multiverse Dive Worker
+# Kubernetes Deployment for FirstLight Worker
 # Deploy: kubectl apply -f worker.yaml
 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: multiverse-dive-worker
-  namespace: multiverse-dive
+  name: firstlight-worker
+  namespace: firstlight
   labels:
-    app: multiverse-dive
+    app: firstlight
     component: worker
     version: v1
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: multiverse-dive
+      app: firstlight
       component: worker
   strategy:
     type: RollingUpdate
@@ -24,7 +24,7 @@ spec:
   template:
     metadata:
       labels:
-        app: multiverse-dive
+        app: firstlight
         component: worker
         version: v1
       annotations:
@@ -32,7 +32,7 @@ spec:
         prometheus.io/port: "9090"
         prometheus.io/path: "/metrics"
     spec:
-      serviceAccountName: multiverse-dive-sa
+      serviceAccountName: firstlight-sa
       terminationGracePeriodSeconds: 60
       securityContext:
         runAsNonRoot: true
@@ -40,7 +40,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: worker
-          image: multiverse-dive-worker:latest
+          image: firstlight-worker:latest
           imagePullPolicy: Always
           resources:
             requests:
@@ -53,42 +53,42 @@ spec:
             - name: ENVIRONMENT
               valueFrom:
                 configMapKeyRef:
-                  name: multiverse-dive-config
+                  name: firstlight-config
                   key: environment
             - name: LOG_LEVEL
               valueFrom:
                 configMapKeyRef:
-                  name: multiverse-dive-config
+                  name: firstlight-config
                   key: log-level
             - name: WORKER_CONCURRENCY
               valueFrom:
                 configMapKeyRef:
-                  name: multiverse-dive-config
+                  name: firstlight-config
                   key: worker-concurrency
             - name: MAX_MEMORY_MB
               valueFrom:
                 configMapKeyRef:
-                  name: multiverse-dive-config
+                  name: firstlight-config
                   key: max-memory-mb
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: multiverse-dive-secrets
+                  name: firstlight-secrets
                   key: database-url
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
-                  name: multiverse-dive-secrets
+                  name: firstlight-secrets
                   key: redis-url
             - name: S3_BUCKET
               valueFrom:
                 secretKeyRef:
-                  name: multiverse-dive-secrets
+                  name: firstlight-secrets
                   key: s3-bucket
             - name: STAC_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: multiverse-dive-secrets
+                  name: firstlight-secrets
                   key: stac-api-key
           livenessProbe:
             exec:
@@ -123,7 +123,7 @@ spec:
             sizeLimit: 5Gi
         - name: data-volume
           persistentVolumeClaim:
-            claimName: multiverse-dive-data
+            claimName: firstlight-data
         - name: scratch-volume
           emptyDir:
             sizeLimit: 10Gi
@@ -134,6 +134,6 @@ spec:
               podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app: multiverse-dive
+                    app: firstlight
                     component: worker
                 topologyKey: kubernetes.io/hostname

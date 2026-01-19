@@ -4,7 +4,7 @@
   "parameters": {
     "containerGroupName": {
       "type": "string",
-      "defaultValue": "multiverse-dive",
+      "defaultValue": "firstlight",
       "metadata": {
         "description": "Name for the container group"
       }
@@ -53,7 +53,7 @@
           {
             "name": "api",
             "properties": {
-              "image": "[concat(parameters('acrLoginServer'), '/multiverse-dive-api:', parameters('imageTag'))]",
+              "image": "[concat(parameters('acrLoginServer'), '/firstlight-api:', parameters('imageTag'))]",
               "resources": {
                 "requests": {
                   "cpu": 2,
@@ -124,7 +124,7 @@
         ]
       },
       "tags": {
-        "application": "multiverse-dive",
+        "application": "firstlight",
         "environment": "production"
       }
     }

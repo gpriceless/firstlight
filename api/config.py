@@ -46,7 +46,7 @@ class DatabaseSettings(BaseSettings):
     driver: str = Field(default="postgresql+asyncpg", description="Database driver")
     host: str = Field(default="localhost", description="Database host")
     port: int = Field(default=5432, description="Database port")
-    name: str = Field(default="multiverse_dive", description="Database name")
+    name: str = Field(default="first_light", description="Database name")
     user: str = Field(default="postgres", description="Database user")
     password: str = Field(default="", description="Database password")
     pool_size: int = Field(default=5, description="Connection pool size")
@@ -99,7 +99,7 @@ class StorageSettings(BaseSettings):
     local_path: Path = Field(
         default=Path("./data/products"), description="Local storage path"
     )
-    bucket: str = Field(default="multiverse-dive-products", description="S3/GCS bucket")
+    bucket: str = Field(default="firstlight-products", description="S3/GCS bucket")
     region: str = Field(default="us-east-1", description="Cloud region")
     endpoint_url: Optional[str] = Field(
         default=None, description="Custom S3 endpoint URL"
@@ -175,7 +175,7 @@ class Settings(BaseSettings):
     """Main application settings."""
 
     model_config = SettingsConfigDict(
-        env_prefix="MULTIVERSE_",
+        env_prefix="FIRSTLIGHT_",
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
@@ -183,7 +183,7 @@ class Settings(BaseSettings):
 
     # Application
     app_name: str = Field(
-        default="Multiverse Dive", description="Application name"
+        default="FirstLight", description="Application name"
     )
     app_version: str = Field(default="0.1.0", description="Application version")
     environment: Environment = Field(
@@ -272,8 +272,8 @@ class Settings(BaseSettings):
                 "Transforms (area, time window, event type) into decision products."
             ),
             "contact": {
-                "name": "Multiverse Dive Team",
-                "url": "https://github.com/multiverse-dive",
+                "name": "FirstLight Team",
+                "url": "https://github.com/firstlight",
             },
             "license_info": {
                 "name": "MIT",

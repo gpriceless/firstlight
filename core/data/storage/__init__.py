@@ -1,5 +1,5 @@
 """
-Local Storage Backend for Multiverse Dive.
+Local Storage Backend for FirstLight.
 
 Provides filesystem-based storage for offline operation:
 - Organized workspace directories

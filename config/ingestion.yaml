@@ -1,6 +1,6 @@
 # Image Validation Configuration
 # ================================
-# This file configures production image validation for the multiverse_dive platform.
+# This file configures production image validation for the FirstLight platform.
 # See docs/PRODUCTION_IMAGE_VALIDATION_REQUIREMENTS.md for full specification.
 
 validation:
@@ -75,7 +75,7 @@ validation:
     enabled: false
 
     # Output directory for screenshots (supports ~ expansion)
-    output_dir: "~/.multiverse_dive/screenshots"
+    output_dir: "~/.firstlight/screenshots"
 
     # Image format (png recommended)
     format: "png"
@@ -151,7 +151,7 @@ validation:
     failure_rate_threshold: 0.1
 
 # Environment variable overrides:
-# - MULTIVERSE_VALIDATION_ENABLED: Override enabled setting
-# - MULTIVERSE_VALIDATION_SCREENSHOT_DIR: Override screenshot output directory
-# - MULTIVERSE_VALIDATION_SAMPLE_RATIO: Override sample ratio
-# - MULTIVERSE_VALIDATION_MAX_TIME: Override max validation time
+# - FIRSTLIGHT_VALIDATION_ENABLED: Override enabled setting
+# - FIRSTLIGHT_VALIDATION_SCREENSHOT_DIR: Override screenshot output directory
+# - FIRSTLIGHT_VALIDATION_SAMPLE_RATIO: Override sample ratio
+# - FIRSTLIGHT_VALIDATION_MAX_TIME: Override max validation time

@@ -1,4 +1,4 @@
-# Multiverse Dive: Project Status
+# FirstLight: Project Status
 
 **Date:** 2026-01-11
 **Version:** 1.0.0
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Multiverse Dive is a **production-ready geospatial event intelligence platform** with 170K+ lines of implemented code. The core platform successfully transforms (area, time window, event type) specifications into validated decision products for floods, wildfires, and storms. All major subsystems are complete and tested.
+FirstLight is a **production-ready geospatial event intelligence platform** with 170K+ lines of implemented code. The core platform successfully transforms (area, time window, event type) specifications into validated decision products for floods, wildfires, and storms. All major subsystems are complete and tested.
 
 **Current Capabilities:**
 - ✅ Full end-to-end pipeline from event specification to product delivery
@@ -392,10 +392,10 @@ uvicorn api.main:app --reload
 ### Use CLI
 ```bash
 # Discover data
-mdive discover --area miami.geojson --start 2024-09-15 --end 2024-09-20
+flight discover --area miami.geojson --start 2024-09-15 --end 2024-09-20
 
 # Run full pipeline
-mdive run --event examples/flood_event.yaml --profile laptop
+flight run --event examples/flood_event.yaml --profile laptop
 ```
 
 ---

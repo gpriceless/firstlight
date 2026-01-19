@@ -280,7 +280,7 @@ class AcquisitionManager:
             chunk_size: Chunk size for streaming downloads
             verify_checksums: Default checksum verification setting
         """
-        self._default_output_path = default_output_path or "/tmp/multiverse_dive/downloads"
+        self._default_output_path = default_output_path or "/tmp/firstlight/downloads"
         self._max_concurrent_downloads = max_concurrent_downloads
         self._chunk_size = chunk_size
         self._verify_checksums = verify_checksums

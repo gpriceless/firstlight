@@ -2,8 +2,8 @@
 Discover Command - Find available data for an area and time window.
 
 Usage:
-    mdive discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 --event flood
-    mdive discover --bbox -80.5,25.5,-80.0,26.0 --start 2024-09-15 --end 2024-09-20 --event flood
+    flight discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 --event flood
+    flight discover --bbox -80.5,25.5,-80.0,26.0 --start 2024-09-15 --end 2024-09-20 --event flood
 """
 
 import json
@@ -14,7 +14,7 @@ from typing import Optional, List, Dict, Any
 
 import click
 
-logger = logging.getLogger("mdive.discover")
+logger = logging.getLogger("flight.discover")
 
 
 def format_size(size_bytes: Optional[int]) -> str:
@@ -188,13 +188,13 @@ def discover(
     \b
     Examples:
         # Discover flood-relevant data for Miami
-        mdive discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 --event flood
+        flight discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 --event flood
 
         # Use bounding box instead of file
-        mdive discover --bbox -80.5,25.5,-80.0,26.0 --start 2024-09-15 --end 2024-09-20 --event flood
+        flight discover --bbox -80.5,25.5,-80.0,26.0 --start 2024-09-15 --end 2024-09-20 --event flood
 
         # Filter by source and output as JSON
-        mdive discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 \\
+        flight discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 \\
             --event flood --source sentinel1 --format json --output results.json
     """
     # Parse inputs

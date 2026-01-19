@@ -43,7 +43,7 @@ Design: Cloud-native, agent-orchestrated platform that transforms (area, time wi
 ### Project Structure
 
 ```
-multiverse_dive/
+firstlight/
 ├── openspec/                    # Core specification schemas
 │   ├── schemas/
 │   │   ├── event.schema.json
@@ -761,4 +761,4 @@ pytest tests/test_pipeline.py -v
 
 ---
 
-**Archive Note:** This document preserves the complete design specifications for the implemented Multiverse Dive platform. For active development work, see `OPENSPEC.md`.
+**Archive Note:** This document preserves the complete design specifications for the implemented FirstLight platform. For active development work, see `OPENSPEC.md`.

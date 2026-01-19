@@ -1,7 +1,7 @@
 """
-Multiverse Dive API Package.
+FirstLight API Package.
 
-This package provides the FastAPI-based REST API for the Multiverse Dive
+This package provides the FastAPI-based REST API for the FirstLight
 geospatial event intelligence platform.
 
 Modules:

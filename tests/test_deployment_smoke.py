@@ -279,7 +279,7 @@ class TestDockerDeploymentSmoke:
             pytest.skip("Docker not available")
 
         compose_cmd = get_compose_command()
-        project_name = "mdive-smoke-test"
+        project_name = "firstlight-smoke-test"
 
         # Start only API and dependencies
         start_result = subprocess.run(
@@ -377,7 +377,7 @@ class TestContainerHealth:
         result = subprocess.run(
             [
                 "docker", "ps",
-                "--filter", "name=mdive-api",
+                "--filter", "name=firstlight-api",
                 "--format", "{{.Status}}",
             ],
             capture_output=True,
@@ -395,7 +395,7 @@ class TestContainerHealth:
             [
                 "docker", "logs",
                 "--tail", "10",
-                "mdive-api",
+                "firstlight-api",
             ],
             capture_output=True,
             text=True,
@@ -418,7 +418,7 @@ class TestServiceConnectivity:
         # Check if we can exec into API container and ping Redis
         result = subprocess.run(
             [
-                "docker", "exec", "mdive-api",
+                "docker", "exec", "firstlight-api",
                 "python", "-c",
                 "import redis; r = redis.Redis(host='redis', port=6379); print(r.ping())",
             ],
@@ -438,7 +438,7 @@ class TestServiceConnectivity:
         """Test database is accessible from API container."""
         result = subprocess.run(
             [
-                "docker", "exec", "mdive-api",
+                "docker", "exec", "firstlight-api",
                 "python", "-c",
                 "import os; print(os.environ.get('DATABASE_URL', 'not set'))",
             ],
@@ -462,7 +462,7 @@ class TestResourceUsage:
             [
                 "docker", "ps",
                 "--filter", "status=exited",
-                "--filter", "name=mdive",
+                "--filter", "name=firstlight",
                 "--format", "{{.Names}}: {{.Status}}",
             ],
             capture_output=True,
