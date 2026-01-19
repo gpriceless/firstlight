@@ -25,6 +25,7 @@ wheels/
 venv/
 ENV/
 env/
+.env
 
 # IDE
 .vscode/
@@ -32,18 +33,35 @@ env/
 *.swp
 *.swo
 *~
+.project
+.pydevproject
+.settings/
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+.tox/
+.nox/
+
+# Test artifacts
+tests/e2e/artifacts/
+*.png
+*.html
+!docs/**/*.html
 
 # Logs
 *.log
+logs/
 
 # OS
 .DS_Store
 Thumbs.db
+.Spotlight-V100
+.Trashes
 
 # Local development
 .claude/
@@ -51,3 +69,42 @@ Thumbs.db
 
 # Test outputs
 /tmp/flight_*/
+tmp/
+temp/
+
+# Knowledge base files (large binaries)
+agents/knowledge/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Ruff
+.ruff_cache/
+
+# Environment files
+.env.local
+.env.*.local
+*.env
+
+# Secrets (never commit)
+secrets/
+credentials/
+*.pem
+*.key
+
+# Data files (too large for git)
+data/
+*.tif
+*.tiff
+*.geotiff
+!examples/**/*.geojson
+
+# Generated documentation
+docs/_build/
+site/

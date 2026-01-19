@@ -2,9 +2,11 @@
 
 **Geospatial event intelligence platform that converts (area, time window, event type) into decision products.**
 
+---
+
 ## What This Does
 
-When a flood, wildfire, or storm happens, decision-makers need answers fast: *Where exactly is affected? How severe? What's the uncertainty?* Getting those answers typically requires specialists to manually find satellite data, run analyses, validate results, and produce reports—a process that takes days.
+When a flood, wildfire, or storm happens, decision-makers need answers fast: *Where exactly is affected? How severe? What's the uncertainty?* Getting those answers typically requires specialists to manually find satellite data, run analyses, validate results, and produce reports - a process that takes days.
 
 FirstLight automates this entire pipeline. You provide:
 - A geographic area (polygon or bounding box)
@@ -18,81 +20,20 @@ The system autonomously:
 4. **Validates** results through cross-sensor comparison and plausibility checks
 5. **Produces** GeoTIFF maps, GeoJSON vectors, uncertainty layers, and human-readable reports
 
-All with complete provenance—every output traces back to source data and processing steps.
+All with complete provenance - every output traces back to source data and processing steps.
+
+---
 
 ## Why This Matters
 
-**Speed**: Hours instead of days for initial situational awareness.
+| Benefit | Description |
+|---------|-------------|
+| **Speed** | Hours instead of days for initial situational awareness |
+| **Consistency** | Same methodology applied regardless of who requests the analysis |
+| **Transparency** | Full audit trail from raw data to final product |
+| **Scalability** | Handle multiple concurrent events without bottlenecks |
 
-**Consistency**: Same methodology applied regardless of who requests the analysis.
-
-**Transparency**: Full audit trail from raw data to final product.
-
-**Scalability**: Handle multiple concurrent events without bottlenecks.
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Event Request                           │
-│              (area + time window + event type)                  │
-└─────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      Intent Resolution                          │
-│         NLP + taxonomy lookup → structured event class          │
-└─────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       Data Discovery                            │
-│    Query STAC catalogs, OGC services, provider APIs             │
-│    Rank by: availability, cloud cover, resolution, cost         │
-└─────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     Algorithm Selection                         │
-│    Match algorithms to available data + event type              │
-│    SAR threshold, NDWI, change detection, HAND model, etc.      │
-└─────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Pipeline Execution                           │
-│    Ingest → normalize → fuse → analyze → validate               │
-└─────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      Quality Control                            │
-│    Sanity checks, cross-validation, uncertainty quantification  │
-└─────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        Products                                 │
-│    GeoTIFF, GeoJSON, PDF report, provenance record              │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Project Structure
-
-```
-first_light/
-├── core/                    # Core processing logic
-│   ├── intent/              # Event type classification and resolution
-│   ├── data/                # Data discovery, providers, and ingestion
-│   └── analysis/            # Algorithm library and pipeline assembly
-├── openspec/                # Specification layer
-│   ├── schemas/             # JSON Schema definitions
-│   └── definitions/         # YAML event classes, algorithms, data sources
-├── agents/                  # Autonomous agent implementations
-├── api/                     # FastAPI REST interface
-├── tests/                   # Test suites
-└── examples/                # Example event specifications
-```
+---
 
 ## Quick Start
 
@@ -104,53 +45,72 @@ git clone https://github.com/gpriceless/firstlight.git
 cd firstlight
 pip install -e .
 
-# Install optional dependencies for full functionality
+# Install geospatial dependencies
 pip install rasterio geopandas xarray pyproj shapely
 
-# Run tests
-./run_tests.py                    # All tests
+# Verify installation
+flight info
+```
+
+### Run Your First Analysis
+
+```bash
+# Discover available data for an area
+flight discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 --event flood
+
+# Run full analysis pipeline
+flight run --area miami.geojson --event flood --profile laptop --output ./results/
+```
+
+### Run Tests
+
+```bash
+./run_tests.py                    # All tests (518+)
 ./run_tests.py flood              # Flood tests only
+./run_tests.py wildfire           # Wildfire tests
 ./run_tests.py --list             # Show all categories
 ```
 
-### Command Line Interface (flight)
+---
+
+## Command Line Interface
 
 The `flight` CLI provides full access to all platform capabilities:
 
 ```bash
-# Get help
-flight --help
+flight --help                      # Show all commands
 flight info                        # Show system info and configuration
 
-# Discover available satellite data
-flight discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 --event flood
+# Data discovery
+flight discover --area area.geojson --start 2024-09-15 --end 2024-09-20 --event flood
 flight discover --bbox -80.5,25.5,-80.0,26.0 --event wildfire --format json
 
-# Download and prepare data
-flight ingest --area miami.geojson --source sentinel1 --output ./data/
-flight ingest --area california.geojson --source sentinel2,landsat8 --output ./data/
+# Data ingestion
+flight ingest --area area.geojson --source sentinel1 --output ./data/
+flight ingest --area area.geojson --source sentinel2,landsat8 --output ./data/
 
-# Run analysis with specific algorithm
+# Analysis
 flight analyze --input ./data/ --algorithm sar_threshold --output ./results/
 flight analyze --input ./data/ --algorithm ndwi --confidence 0.8 --output ./results/
 
-# Validate results
+# Validation
 flight validate --input ./results/ --checks sanity,cross_validation
 flight validate --input ./results/ --reference ground_truth.geojson
 
-# Export products
+# Export
 flight export --input ./results/ --format geotiff,geojson,pdf --output ./products/
 
-# Full end-to-end pipeline
-flight run --area miami.geojson --event flood --profile laptop --output ./products/
-flight run --area california.geojson --event wildfire --profile workstation --output ./products/
+# Full pipeline
+flight run --area area.geojson --event flood --profile laptop --output ./products/
 
-# Monitor and resume
+# Resume interrupted work
 flight status --workdir ./products/
 flight resume --workdir ./products/
 ```
 
-**Execution Profiles** adapt to your hardware:
+### Execution Profiles
+
+Profiles adapt processing to your hardware:
 
 | Profile | Memory | Workers | Tile Size | Use Case |
 |---------|--------|---------|-----------|----------|
@@ -159,15 +119,14 @@ flight resume --workdir ./products/
 | `workstation` | 8 GB | 4 | 512px | Desktop processing |
 | `cloud` | 32 GB | 16 | 1024px | Server deployment |
 
-### REST API
+---
+
+## REST API
 
 Start the API server for programmatic access:
 
 ```bash
 # Development server
-python -m api.main
-
-# Or with uvicorn directly
 uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
 # API documentation available at:
@@ -175,7 +134,7 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 # http://localhost:8000/api/redoc    (ReDoc)
 ```
 
-**API Endpoints:**
+**Key Endpoints:**
 
 ```bash
 # Submit an event for processing
@@ -189,7 +148,7 @@ curl http://localhost:8000/api/v1/events/{event_id}/status
 # Download products
 curl http://localhost:8000/api/v1/events/{event_id}/products/flood_extent.geojson
 
-# Browse data catalog
+# Browse catalogs
 curl http://localhost:8000/api/v1/catalog/algorithms
 curl http://localhost:8000/api/v1/catalog/providers
 
@@ -197,9 +156,11 @@ curl http://localhost:8000/api/v1/catalog/providers
 curl http://localhost:8000/api/v1/health
 ```
 
-### Using Modules Independently
+---
 
-Each core module can be used standalone in your own Python code:
+## Using as a Library
+
+Each core module can be used standalone in your Python code:
 
 ```python
 # Intent Resolution - classify event types from natural language
@@ -237,7 +198,9 @@ validator = CrossValidator()
 consensus = validator.validate([result1, result2, result3])
 ```
 
-### Docker Deployment
+---
+
+## Docker Deployment
 
 ```bash
 # Build images
@@ -252,34 +215,81 @@ docker run -v $(pwd)/data:/data firstlight-cli run \
   --area /data/area.geojson --event flood --output /data/output/
 ```
 
-### Example Event Specifications
-
-See the `examples/` directory for sample event configurations:
-
-- `flood_event.yaml` - Coastal flooding analysis
-- `wildfire_event.yaml` - Burn severity mapping
-- `storm_event.yaml` - Hurricane damage assessment
-- `datasource_sentinel1.yaml` - SAR data source configuration
-- `pipeline_flood_sar.yaml` - Custom pipeline definition
-
+---
 
 ## Supported Hazard Types
 
-| Hazard | Algorithms | Status |
-|--------|------------|--------|
-| **Flood** | SAR threshold, NDWI optical, change detection, HAND model | Implemented |
-| **Wildfire** | dNBR burn severity, thermal anomaly, burned area classifier | Implemented |
+| Hazard | Algorithms | Accuracy |
+|--------|------------|----------|
+| **Flood** | SAR threshold, NDWI optical, change detection, HAND model | 75-92% |
+| **Wildfire** | dNBR burn severity, thermal anomaly, burned area classifier | 78-96% |
 | **Storm** | Wind damage detection, structural damage assessment | Implemented |
+
+---
 
 ## Data Sources
 
 The platform queries multiple data sources with preference for open/free data:
 
-- **Optical**: Sentinel-2, Landsat-8/9, MODIS
-- **SAR**: Sentinel-1 (cloud-penetrating radar)
-- **DEM**: Copernicus DEM, SRTM, FABDEM
-- **Weather**: ERA5, GFS, ECMWF
-- **Ancillary**: OpenStreetMap, World Settlement Footprint, land cover
+| Category | Sources |
+|----------|---------|
+| **Optical** | Sentinel-2, Landsat-8/9, MODIS |
+| **SAR** | Sentinel-1 (cloud-penetrating radar) |
+| **DEM** | Copernicus DEM, SRTM, FABDEM |
+| **Weather** | ERA5, GFS, ECMWF |
+| **Ancillary** | OpenStreetMap, World Settlement Footprint, land cover |
+
+---
+
+## Project Structure
+
+```
+firstlight/
+├── core/                    # Core processing logic
+│   ├── intent/              # Event type classification and resolution
+│   ├── data/                # Data discovery, providers, and ingestion
+│   ├── analysis/            # Algorithm library and pipeline assembly
+│   └── quality/             # Quality control and validation
+├── openspec/                # Specification layer
+│   ├── schemas/             # JSON Schema definitions
+│   └── definitions/         # YAML event classes, algorithms, data sources
+├── agents/                  # Autonomous agent implementations
+├── api/                     # FastAPI REST interface
+├── cli/                     # Command line interface (flight)
+├── deploy/                  # Deployment configurations
+│   ├── kubernetes/          # K8s manifests
+│   ├── aws/                 # AWS ECS/Lambda configs
+│   ├── gcp/                 # GCP Cloud Run configs
+│   └── edge/                # Edge device configs
+├── docker/                  # Dockerfiles
+├── tests/                   # Test suites (518+ tests)
+├── examples/                # Example event specifications
+└── docs/                    # Documentation
+```
+
+---
+
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| `GUIDELINES.md` | Complete platform guide with all processes |
+| `ROADMAP.md` | Implementation status and future plans |
+| `OPENSPEC.md` | Technical specification and architecture |
+| `FIXES.md` | Bug tracking and changelog |
+| `docs/api/` | API reference documentation |
+
+---
+
+## Contributing
+
+1. Check `FIXES.md` for known issues and priorities
+2. Run tests before submitting: `./run_tests.py`
+3. Follow existing code style and patterns
+4. Add tests for new functionality
+5. Update documentation as needed
+
+---
 
 ## License
 
