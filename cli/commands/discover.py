@@ -8,6 +8,7 @@ Usage:
 
 import json
 import logging
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, List, Dict, Any
@@ -15,6 +16,21 @@ from typing import Optional, List, Dict, Any
 import click
 
 logger = logging.getLogger("flight.discover")
+
+
+class STACError(Exception):
+    """Base exception for STAC-related errors."""
+    pass
+
+
+class NetworkError(STACError):
+    """Network-related errors that can be retried."""
+    pass
+
+
+class QueryError(STACError):
+    """Query parameter errors that should not be retried."""
+    pass
 
 
 def format_size(size_bytes: Optional[int]) -> str:
@@ -96,6 +112,45 @@ def format_table_row(columns: List[str], widths: List[int]) -> str:
     for col, width in zip(columns, widths):
         parts.append(str(col).ljust(width)[:width])
     return "  ".join(parts)
+
+
+def extract_bbox_from_geometry(geometry: Dict[str, Any]) -> List[float]:
+    """
+    Extract bounding box from GeoJSON geometry.
+
+    Args:
+        geometry: GeoJSON geometry dict
+
+    Returns:
+        Bounding box as [west, south, east, north]
+    """
+    geom_type = geometry.get("type", "")
+    coords = geometry.get("coordinates", [])
+
+    if geom_type == "Polygon":
+        # Flatten polygon coordinates
+        all_coords = coords[0]  # Outer ring
+    elif geom_type == "MultiPolygon":
+        # Flatten all polygon coordinates
+        all_coords = []
+        for polygon in coords:
+            all_coords.extend(polygon[0])
+    elif geom_type == "Point":
+        # Single point - create small bbox around it
+        lon, lat = coords
+        return [lon - 0.01, lat - 0.01, lon + 0.01, lat + 0.01]
+    elif geom_type == "LineString":
+        all_coords = coords
+    else:
+        # Fallback for unknown types
+        logger.warning(f"Unknown geometry type: {geom_type}, using default bbox")
+        return [-180, -90, 180, 90]
+
+    # Calculate bbox
+    lons = [c[0] for c in all_coords]
+    lats = [c[1] for c in all_coords]
+
+    return [min(lons), min(lats), max(lons), max(lats)]
 
 
 @click.command("discover")
@@ -250,62 +305,34 @@ def perform_discovery(
 
     This function queries STAC catalogs and other data sources
     to find available satellite imagery.
+
+    Raises:
+        NetworkError: For transient network failures (will be retried)
+        QueryError: For invalid query parameters (will not be retried)
+        STACError: For other STAC-related errors
     """
-    results = []
+    # Extract bounding box from geometry
+    bbox = extract_bbox_from_geometry(geometry)
 
-    # Define event-specific data requirements
-    event_data_priorities = {
-        "flood": {
-            "primary": ["sentinel1", "sentinel2"],
-            "secondary": ["landsat8", "landsat9", "modis"],
-            "ancillary": ["dem", "wsf", "osm"],
-        },
-        "wildfire": {
-            "primary": ["sentinel2", "landsat8", "landsat9"],
-            "secondary": ["modis", "viirs"],
-            "ancillary": ["dem", "landcover"],
-        },
-        "storm": {
-            "primary": ["sentinel1", "sentinel2"],
-            "secondary": ["landsat8", "landsat9"],
-            "ancillary": ["dem", "wsf", "osm"],
-        },
-    }
-
-    priorities = event_data_priorities.get(event_type.lower(), event_data_priorities["flood"])
-
-    # Try to import and use actual discovery modules
+    # Import STAC client (raise clear error if not available)
     try:
-        from core.data.broker import DataBroker
+        from core.data.discovery.stac_client import discover_data
+    except ImportError as e:
+        raise STACError(
+            "STAC client not available. Install pystac-client: pip install pystac-client"
+        ) from e
 
-        broker = DataBroker()
-        discovery_results = broker.discover(
-            geometry=geometry,
-            start_date=start,
-            end_date=end,
-            event_type=event_type,
-            max_cloud_cover=max_cloud,
-        )
+    # Perform discovery with retry logic for transient failures
+    results = _discover_with_retry(
+        bbox=bbox,
+        start_date=start.strftime("%Y-%m-%d"),
+        end_date=end.strftime("%Y-%m-%d"),
+        event_type=event_type,
+        max_cloud_cover=max_cloud,
+        discover_func=discover_data,
+    )
 
-        for dr in discovery_results:
-            result = {
-                "id": dr.id if hasattr(dr, "id") else str(id(dr)),
-                "source": dr.provider if hasattr(dr, "provider") else "unknown",
-                "datetime": dr.datetime.isoformat() if hasattr(dr, "datetime") else None,
-                "cloud_cover": dr.cloud_cover if hasattr(dr, "cloud_cover") else None,
-                "resolution_m": dr.resolution if hasattr(dr, "resolution") else None,
-                "size_bytes": dr.size if hasattr(dr, "size") else None,
-                "url": dr.url if hasattr(dr, "url") else None,
-                "priority": "primary" if dr.provider in priorities["primary"] else "secondary",
-            }
-            results.append(result)
-
-    except ImportError:
-        # Mock discovery for demonstration when core modules not available
-        logger.debug("Core discovery modules not available, using mock data")
-        results = generate_mock_results(
-            geometry, start, end, event_type, sources, max_cloud, priorities
-        )
+    logger.info(f"Found {len(results)} datasets via STAC")
 
     # Filter by source if specified
     if sources:
@@ -322,73 +349,104 @@ def perform_discovery(
     return results
 
 
-def generate_mock_results(
-    geometry: Dict[str, Any],
-    start: datetime,
-    end: datetime,
+def _discover_with_retry(
+    bbox: List[float],
+    start_date: str,
+    end_date: str,
     event_type: str,
-    sources: Optional[List[str]],
-    max_cloud: float,
-    priorities: Dict[str, List[str]],
+    max_cloud_cover: float,
+    discover_func,
+    max_attempts: int = 3,
 ) -> List[Dict[str, Any]]:
-    """Generate mock discovery results for demonstration."""
-    import random
+    """
+    Execute STAC discovery with exponential backoff retry for transient failures.
 
-    results = []
-    current = start
+    Args:
+        bbox: Bounding box [west, south, east, north]
+        start_date: Start date (YYYY-MM-DD)
+        end_date: End date (YYYY-MM-DD)
+        event_type: Event type (flood, wildfire, storm)
+        max_cloud_cover: Maximum cloud cover percentage
+        discover_func: The discovery function to call
+        max_attempts: Maximum retry attempts (default: 3)
 
-    # Generate results for each day in the range
-    while current <= end:
-        # Sentinel-1 (SAR - no cloud issues)
-        if not sources or "sentinel1" in [s.lower() for s in sources]:
-            results.append({
-                "id": f"S1A_IW_GRD_{current.strftime('%Y%m%d')}",
-                "source": "sentinel1",
-                "datetime": current.isoformat(),
-                "cloud_cover": None,  # SAR
-                "resolution_m": 10.0,
-                "size_bytes": random.randint(800_000_000, 1_200_000_000),
-                "url": f"https://scihub.copernicus.eu/dhus/S1A_IW_GRD_{current.strftime('%Y%m%d')}",
-                "priority": "primary",
-                "polarization": "VV+VH",
-                "orbit": random.choice(["ascending", "descending"]),
-            })
+    Returns:
+        List of discovery results
 
-        # Sentinel-2 (optical)
-        if not sources or "sentinel2" in [s.lower() for s in sources]:
-            cloud = random.uniform(0, 100)
-            if cloud <= max_cloud:
-                results.append({
-                    "id": f"S2A_MSIL2A_{current.strftime('%Y%m%d')}",
-                    "source": "sentinel2",
-                    "datetime": current.isoformat(),
-                    "cloud_cover": round(cloud, 1),
-                    "resolution_m": 10.0,
-                    "size_bytes": random.randint(500_000_000, 900_000_000),
-                    "url": f"https://scihub.copernicus.eu/dhus/S2A_MSIL2A_{current.strftime('%Y%m%d')}",
-                    "priority": "primary",
-                    "bands": ["B02", "B03", "B04", "B08", "B11", "B12"],
-                })
+    Raises:
+        NetworkError: After exhausting retries for network failures
+        QueryError: For invalid query parameters (no retry)
+        STACError: For other errors (no retry)
+    """
+    for attempt in range(max_attempts):
+        try:
+            results = discover_func(
+                bbox=bbox,
+                start_date=start_date,
+                end_date=end_date,
+                event_type=event_type,
+                max_cloud_cover=max_cloud_cover,
+            )
 
-        # Landsat (optical, every 8 days)
-        if current.day % 8 == 0:
-            if not sources or "landsat8" in [s.lower() for s in sources]:
-                cloud = random.uniform(0, 100)
-                if cloud <= max_cloud:
-                    results.append({
-                        "id": f"LC08_L2SP_{current.strftime('%Y%m%d')}",
-                        "source": "landsat8",
-                        "datetime": current.isoformat(),
-                        "cloud_cover": round(cloud, 1),
-                        "resolution_m": 30.0,
-                        "size_bytes": random.randint(200_000_000, 400_000_000),
-                        "url": f"https://earthexplorer.usgs.gov/LC08_{current.strftime('%Y%m%d')}",
-                        "priority": "secondary",
-                    })
+            # Empty results are valid - return as-is
+            return results
 
-        current += timedelta(days=1)
+        except Exception as e:
+            error_msg = str(e).lower()
 
-    return results
+            # Categorize the error
+            is_network_error = any(
+                keyword in error_msg
+                for keyword in [
+                    "timeout",
+                    "connection",
+                    "dns",
+                    "network",
+                    "unreachable",
+                    "refused",
+                    "reset",
+                ]
+            )
+
+            is_query_error = any(
+                keyword in error_msg
+                for keyword in [
+                    "invalid",
+                    "parameter",
+                    "validation",
+                    "bbox",
+                    "collection",
+                ]
+            )
+
+            # Query errors should not be retried
+            if is_query_error:
+                raise QueryError(
+                    f"Invalid query parameters: {e}\n"
+                    f"Check that bbox={bbox}, dates={start_date}/{end_date}, and event_type={event_type} are valid."
+                ) from e
+
+            # Network errors - retry with exponential backoff
+            if is_network_error:
+                if attempt < max_attempts - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    logger.warning(
+                        f"Network error on attempt {attempt + 1}/{max_attempts}: {e}. "
+                        f"Retrying in {wait_time}s..."
+                    )
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    raise NetworkError(
+                        f"Network error after {max_attempts} attempts: {e}\n"
+                        f"Check your internet connection and try again."
+                    ) from e
+
+            # Other errors - don't retry, raise immediately
+            raise STACError(f"STAC discovery failed: {e}") from e
+
+    # Should never reach here, but just in case
+    return []
 
 
 def output_table(results: List[Dict[str, Any]]):

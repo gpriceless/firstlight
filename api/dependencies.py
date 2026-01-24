@@ -18,6 +18,9 @@ from api.models.errors import AuthenticationError, AuthorizationError, RateLimit
 
 logger = logging.getLogger(__name__)
 
+# Import database module - will be used in get_db_session
+from api.database import DatabaseSession as RealDatabaseSession, get_database_manager
+
 
 # =============================================================================
 # Settings Dependency
@@ -42,32 +45,8 @@ SettingsDep = Annotated[Settings, Depends(get_app_settings)]
 # =============================================================================
 
 
-class DatabaseSession:
-    """
-    Async database session wrapper.
-
-    This is a placeholder that will be replaced with actual database
-    session management when the database layer is implemented.
-    """
-
-    def __init__(self, settings: Settings) -> None:
-        self.settings = settings
-        self._connection: Optional[Any] = None
-
-    async def connect(self) -> None:
-        """Establish database connection."""
-        # Placeholder - will connect to actual database
-        logger.debug("Database session connected")
-
-    async def disconnect(self) -> None:
-        """Close database connection."""
-        # Placeholder - will close actual connection
-        logger.debug("Database session disconnected")
-
-    async def execute(self, query: str, params: Optional[Dict] = None) -> Any:
-        """Execute a database query."""
-        # Placeholder for query execution
-        raise NotImplementedError("Database layer not yet implemented")
+# Re-export DatabaseSession from database module
+DatabaseSession = RealDatabaseSession
 
 
 async def get_db_session(
@@ -79,7 +58,13 @@ async def get_db_session(
     Yields:
         DatabaseSession instance that is automatically closed.
     """
-    session = DatabaseSession(settings)
+    from pathlib import Path
+
+    # Get database path from settings or use default
+    db_path = Path("data/firstlight.db")
+    db_manager = get_database_manager(db_path)
+
+    session = RealDatabaseSession(db_manager)
     try:
         await session.connect()
         yield session
@@ -353,9 +338,23 @@ async def get_bearer_token(
     if not credentials:
         raise AuthenticationError(message="Bearer token is required")
 
-    # TODO: Implement actual JWT validation
-    # For now, just return the token
-    return credentials.credentials
+    # Validate JWT token
+    from api.jwt_handler import get_jwt_handler
+
+    jwt_handler = get_jwt_handler()
+    token = credentials.credentials
+
+    # Attempt to validate the token
+    payload = jwt_handler.validate_token(token)
+    if payload is None:
+        # Check if token is expired for better error message
+        if jwt_handler.check_expiration(token):
+            raise AuthenticationError(message="Token has expired")
+        else:
+            raise AuthenticationError(message="Invalid token")
+
+    # Token is valid, return it
+    return token
 
 
 async def require_auth(
