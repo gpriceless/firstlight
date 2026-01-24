@@ -382,30 +382,38 @@ def load_algorithm(algorithm: str, params: Dict[str, Any]) -> Any:
         module = importlib.import_module(algo_info["module"])
         algo_class = getattr(module, algo_info["class"])
 
-        # Create config if parameters provided
+        # Create instance with parameters
         if params:
-            return algo_class.create_from_dict(params)
+            # Try create_from_dict if available, otherwise pass to constructor
+            if hasattr(algo_class, 'create_from_dict'):
+                return algo_class.create_from_dict(params)
+            else:
+                # Try to instantiate with config dataclass
+                config_class_name = algo_info["class"].replace("Algorithm", "Config")
+                if hasattr(module, config_class_name):
+                    config_class = getattr(module, config_class_name)
+                    config = config_class(**params)
+                    return algo_class(config=config)
+                else:
+                    return algo_class(**params)
         else:
             return algo_class()
 
     except ImportError as e:
-        logger.warning(f"Could not import {algo_info['module']}: {e}")
-
-        # Return mock algorithm for demonstration
-        class MockAlgorithm:
-            def __init__(self, params=None):
-                self.params = params or {}
-
-            def execute(self, data, **kwargs):
-                return {"flood_extent": None, "confidence": None}
-
-            def process_tile(self, tile_data, context=None):
-                import numpy as np
-
-                # Simple threshold for mock processing
-                return (tile_data < -15.0).astype(np.uint8)
-
-        return MockAlgorithm(params)
+        raise ImportError(
+            f"Algorithm module '{algo_info['module']}' not available: {e}\n"
+            f"This algorithm requires the core analysis library."
+        )
+    except AttributeError as e:
+        raise ImportError(
+            f"Algorithm class '{algo_info['class']}' not found in {algo_info['module']}: {e}\n"
+            f"The algorithm implementation may be incomplete."
+        )
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to initialize algorithm '{algorithm}': {e}\n"
+            f"Check algorithm parameters and configuration."
+        )
 
 
 def run_analysis(
@@ -520,13 +528,11 @@ def run_analysis(
                 results["tiles_failed"] = len(tiles)
 
         else:
-            # No raster files - create mock output
-            logger.info("No input rasters found, creating mock output")
-            mock_result = np.random.randint(0, 2, size=(100, 100), dtype=np.uint8)
-
-            output_file = output_path / "flood_extent_mock.tif"
-            np.save(str(output_file.with_suffix(".npy")), mock_result)
-            results["tiles_completed"] = len(tiles)
+            # No raster files - raise error
+            raise FileNotFoundError(
+                f"No input raster files (*.tif) found in {input_path}\n"
+                f"Make sure you have ingested data before running analysis."
+            )
 
         # Calculate statistics
         results["statistics"] = {

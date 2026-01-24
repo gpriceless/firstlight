@@ -1,8 +1,39 @@
 # OpenSpec: Active Specifications
 
 **Status:** In-Progress Specifications Only
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-23
 **Archive:** See `docs/OPENSPEC_ARCHIVE.md` for completed specifications
+
+---
+
+## CRITICAL: Production Readiness Audit
+
+**Date:** 2026-01-23
+
+A comprehensive audit revealed that while core algorithms work, the CLI layer is approximately 60% stub/mock implementations. User-facing commands return fake data instead of calling real core libraries.
+
+**See:** `OPENSPEC_PRODUCTION.md` for the full production readiness specification.
+
+### Summary of Findings
+
+| Layer | Audit Assessment | Evidence |
+|-------|------------------|----------|
+| Core Algorithms | REAL - Works | Verified with Camp Fire analysis |
+| CLI Commands | ~60% STUB | Commands return random/mock data |
+| API Layer | ~90% Complete | Missing database, JWT validation |
+| Agent System | ~95% Complete | Pipeline agent has stub execution |
+
+### Required Work (15-21 days total)
+
+| Phase | Description | Priority | Effort |
+|-------|-------------|----------|--------|
+| Phase 1 | Wire CLI commands to core libraries | P0 | 8-10 days |
+| Phase 2 | Wire agent pipeline to algorithms | P0 | 1-2 days |
+| Phase 3 | API database and JWT | P1 | 4-6 days |
+| Phase 4 | Integration testing | P2 | 3-5 days |
+| Phase 5 | Documentation | P3 | 1-2 days |
+
+**Action Required:** Complete Phase 1 and Phase 2 before any new feature work.
 
 ---
 
@@ -227,10 +258,13 @@ config/
 
 ### Related Documentation
 
+- **`OPENSPEC_PRODUCTION.md`** - **CRITICAL: Production readiness specification (current priority)**
 - `docs/OPENSPEC_ARCHIVE.md` - Complete specifications for implemented features
 - `docs/PRODUCTION_IMAGE_VALIDATION_REQUIREMENTS.md` - Detailed validation requirements
 - `ROADMAP.md` - Implementation roadmap and task breakdown
 - `FIXES.md` - Bug tracking (P0 bugs must be fixed before new features)
+- `AUDIT_REPORT.md` - Initial comprehensive audit
+- `AUDIT_ADDENDUM.md` - CLI layer corrections
 
 ### Test Commands
 

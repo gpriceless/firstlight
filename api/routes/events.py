@@ -8,7 +8,7 @@ event specifications for processing.
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Annotated, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Path, Query, status
 
@@ -22,6 +22,8 @@ from api.dependencies import (
     SchemaValidatorDep,
     SettingsDep,
 )
+from core.intent.resolver import IntentResolver
+from core.intent.registry import get_registry
 from api.models.errors import (
     ConflictError,
     EventNotFoundError,
@@ -86,8 +88,81 @@ def calculate_area_km2(bbox: BoundingBox) -> float:
     return round(area, 2)
 
 
-# In-memory event store (would be replaced with database in production)
-_events_store: Dict[str, EventResponse] = {}
+# Helper functions for database serialization
+
+def serialize_event_for_db(event: EventResponse) -> Dict[str, Any]:
+    """Convert EventResponse to database row format."""
+    import json
+    from typing import Any
+
+    return {
+        "id": event.id,
+        "status": event.status.value,
+        "priority": event.priority.value,
+        "intent_json": json.dumps({
+            "event_class": event.intent.event_class,
+            "source": event.intent.source,
+            "confidence": event.intent.confidence,
+            "original_input": event.intent.original_input,
+            "parameters": event.intent.parameters,
+        }),
+        "spatial_json": json.dumps({
+            "geometry": event.spatial.geometry.model_dump() if event.spatial.geometry else None,
+            "bbox": event.spatial.bbox.model_dump(),
+            "crs": event.spatial.crs,
+            "area_km2": event.spatial.area_km2,
+        }),
+        "temporal_json": json.dumps({
+            "start": event.temporal.start.isoformat(),
+            "end": event.temporal.end.isoformat(),
+            "reference_time": event.temporal.reference_time.isoformat() if event.temporal.reference_time else None,
+        }),
+        "constraints_json": json.dumps(event.constraints.model_dump()) if event.constraints else None,
+        "metadata_json": json.dumps(event.metadata) if event.metadata else None,
+        "created_at": event.created_at.isoformat(),
+        "updated_at": event.updated_at.isoformat(),
+    }
+
+
+def deserialize_event_from_db(row: Any) -> EventResponse:
+    """Convert database row to EventResponse."""
+    import json
+    from typing import Any
+    from api.models.requests import GeoJSONGeometry, GeometryType, TemporalWindow, DataConstraints
+
+    intent_data = json.loads(row["intent_json"])
+    spatial_data = json.loads(row["spatial_json"])
+    temporal_data = json.loads(row["temporal_json"])
+    constraints_data = json.loads(row["constraints_json"]) if row["constraints_json"] else None
+    metadata_data = json.loads(row["metadata_json"]) if row["metadata_json"] else None
+
+    return EventResponse(
+        id=row["id"],
+        status=EventStatus(row["status"]),
+        priority=EventPriority(row["priority"]),
+        intent=ResolvedIntent(
+            event_class=intent_data["event_class"],
+            source=intent_data["source"],
+            confidence=intent_data.get("confidence"),
+            original_input=intent_data.get("original_input"),
+            parameters=intent_data.get("parameters"),
+        ),
+        spatial=SpatialInfo(
+            geometry=GeoJSONGeometry(**spatial_data["geometry"]) if spatial_data.get("geometry") else None,
+            bbox=BoundingBox(**spatial_data["bbox"]),
+            crs=spatial_data["crs"],
+            area_km2=spatial_data["area_km2"],
+        ),
+        temporal=TemporalWindow(
+            start=datetime.fromisoformat(temporal_data["start"]),
+            end=datetime.fromisoformat(temporal_data["end"]),
+            reference_time=datetime.fromisoformat(temporal_data["reference_time"]) if temporal_data.get("reference_time") else None,
+        ),
+        constraints=DataConstraints(**constraints_data) if constraints_data else None,
+        created_at=datetime.fromisoformat(row["created_at"]),
+        updated_at=datetime.fromisoformat(row["updated_at"]),
+        metadata=metadata_data,
+    )
 
 
 @router.post(
@@ -196,16 +271,58 @@ async def create_event(
         parameters=request.intent.parameters,
     )
 
-    # If natural language intent, would trigger NLP resolution here
+    # If natural language intent, trigger NLP resolution
     if not request.intent.event_class and request.intent.natural_language:
-        # TODO: Call intent resolution service
-        # For now, default to generic flood
-        resolved_intent.event_class = "flood.riverine"
-        resolved_intent.confidence = 0.75
-        logger.info(
-            f"Intent resolved from NL: '{request.intent.natural_language}' -> "
-            f"'{resolved_intent.event_class}' (confidence: {resolved_intent.confidence})"
-        )
+        resolver = IntentResolver()
+
+        try:
+            resolution = resolver.resolve(
+                natural_language=request.intent.natural_language,
+                explicit_class=None,
+                allow_override=False
+            )
+
+            if resolution and resolution.confidence > 0.0:
+                resolved_intent.event_class = resolution.resolved_class
+                resolved_intent.confidence = resolution.confidence
+
+                # Merge extracted parameters
+                if resolution.parameters:
+                    if resolved_intent.parameters is None:
+                        resolved_intent.parameters = {}
+                    resolved_intent.parameters.update(resolution.parameters)
+
+                logger.info(
+                    f"Intent resolved from NL: '{request.intent.natural_language}' -> "
+                    f"'{resolved_intent.event_class}' (confidence: {resolved_intent.confidence:.2f})"
+                )
+            else:
+                # Resolution failed - reject with 400
+                raise ValidationError(
+                    message=f"Could not resolve intent from natural language: '{request.intent.natural_language}'. "
+                    "Please provide an explicit event_class or rephrase your description."
+                )
+        except Exception as e:
+            # NLP failure - log and provide helpful error
+            logger.error(f"Intent resolution failed: {e}")
+            raise ValidationError(
+                message=f"Intent resolution failed: {str(e)}. "
+                "Please provide an explicit event_class instead of natural language."
+            )
+    elif request.intent.event_class:
+        # Validate explicit class against taxonomy
+        registry = get_registry()
+        event_class_obj = registry.get_class(request.intent.event_class)
+
+        if not event_class_obj:
+            available_classes = registry.list_all_classes()
+            raise ValidationError(
+                message=f"Invalid event class: '{request.intent.event_class}'. "
+                f"Must be a valid class from the taxonomy. "
+                f"Available classes include: {', '.join(available_classes[:10])}..."
+            )
+
+        logger.info(f"Using explicit event class: {request.intent.event_class}")
 
     now = datetime.now(timezone.utc)
 
@@ -234,8 +351,8 @@ async def create_event(
         } if request.metadata else None,
     )
 
-    # Store event (in production, this would go to database)
-    _events_store[event_id] = event
+    # Store event in database
+    await db_session.create_event(serialize_event_for_db(event))
 
     # Queue for processing (would trigger orchestrator agent)
     logger.info(
@@ -312,13 +429,44 @@ async def list_events(
     - Tags
     - Creation time range
     """
-    # Get all events (in production, would query database)
-    events = list(_events_store.values())
+    # Build database filters
+    filters = {}
 
-    # Apply filters
     if status_filter:
-        events = [e for e in events if e.status.value in status_filter]
+        filters["status"] = ",".join(status_filter)
 
+    if priority:
+        filters["priority"] = ",".join([p.value for p in priority])
+
+    if created_after:
+        filters["created_after"] = created_after.isoformat()
+
+    if created_before:
+        filters["created_before"] = created_before.isoformat()
+
+    # Determine order field
+    order_by_map = {
+        EventSortField.CREATED_AT: "created_at",
+        EventSortField.UPDATED_AT: "updated_at",
+        EventSortField.PRIORITY: "priority",
+        EventSortField.STATUS: "status",
+    }
+    order_by = order_by_map.get(sort_by, "created_at")
+    order_desc = sort_order == SortOrder.DESC
+
+    # Query database
+    rows, total = await db_session.list_events(
+        filters=filters,
+        limit=limit,
+        offset=offset,
+        order_by=order_by,
+        order_desc=order_desc
+    )
+
+    # Deserialize events
+    events = [deserialize_event_from_db(row) for row in rows]
+
+    # Apply in-memory filters for complex queries not supported by SQL
     if event_class:
         if event_class.endswith(".*"):
             prefix = event_class[:-2]
@@ -326,37 +474,12 @@ async def list_events(
         else:
             events = [e for e in events if e.intent.event_class == event_class]
 
-    if priority:
-        events = [e for e in events if e.priority in priority]
-
     if tags:
         events = [
             e for e in events
             if e.metadata and e.metadata.get("tags")
             and any(t in e.metadata["tags"] for t in tags)
         ]
-
-    if created_after:
-        events = [e for e in events if e.created_at >= created_after]
-
-    if created_before:
-        events = [e for e in events if e.created_at <= created_before]
-
-    # Sort events
-    reverse = sort_order == SortOrder.DESC
-    if sort_by == EventSortField.CREATED_AT:
-        events.sort(key=lambda e: e.created_at, reverse=reverse)
-    elif sort_by == EventSortField.UPDATED_AT:
-        events.sort(key=lambda e: e.updated_at, reverse=reverse)
-    elif sort_by == EventSortField.PRIORITY:
-        priority_order = {"critical": 0, "high": 1, "normal": 2, "low": 3}
-        events.sort(key=lambda e: priority_order.get(e.priority.value, 2), reverse=reverse)
-    elif sort_by == EventSortField.STATUS:
-        events.sort(key=lambda e: e.status.value, reverse=reverse)
-
-    # Apply pagination
-    total = len(events)
-    events = events[offset : offset + limit]
 
     # Convert to summaries
     summaries = [
@@ -411,10 +534,12 @@ async def get_event(
     - Processing status and timestamps
     - Metadata and error information (if failed)
     """
-    if event_id not in _events_store:
+    row = await db_session.get_event(event_id)
+
+    if not row:
         raise EventNotFoundError(event_id)
 
-    return _events_store[event_id]
+    return deserialize_event_from_db(row)
 
 
 @router.delete(
@@ -445,10 +570,12 @@ async def cancel_event(
     - Clean up intermediate data
     - Mark the event as cancelled
     """
-    if event_id not in _events_store:
+    row = await db_session.get_event(event_id)
+
+    if not row:
         raise EventNotFoundError(event_id)
 
-    event = _events_store[event_id]
+    event = deserialize_event_from_db(row)
 
     # Check if event can be cancelled
     if event.status in [EventStatus.COMPLETED, EventStatus.FAILED, EventStatus.CANCELLED]:
@@ -457,8 +584,14 @@ async def cancel_event(
         )
 
     # Update event status
-    event.status = EventStatus.CANCELLED
-    event.updated_at = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    await db_session.update_event(
+        event_id,
+        {
+            "status": EventStatus.CANCELLED.value,
+            "updated_at": now.isoformat(),
+        }
+    )
 
     # Would trigger cancellation in orchestrator agent
     logger.info(
@@ -466,7 +599,3 @@ async def cancel_event(
         f"Previous status: {event.status.value} | "
         f"Correlation: {correlation_id}"
     )
-
-    # Delete from store (or keep with cancelled status, depending on requirements)
-    # For now, keep the event but mark as cancelled
-    _events_store[event_id] = event

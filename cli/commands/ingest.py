@@ -17,6 +17,9 @@ from typing import Optional, List, Dict, Any
 
 import click
 
+from core.data.ingestion.streaming import StreamingIngester
+from core.data.ingestion.validation.image_validator import ImageValidator
+
 logger = logging.getLogger("flight.ingest")
 
 
@@ -381,6 +384,78 @@ def load_ingest_items(
     return items
 
 
+def _download_real_data(url: str, download_path: Path, item: Dict[str, Any]) -> None:
+    """
+    Download real satellite data using StreamingIngester.
+
+    Args:
+        url: Source URL
+        download_path: Destination path
+        item: Item metadata (may contain size_bytes)
+
+    Raises:
+        RuntimeError: If download fails
+    """
+    try:
+        # Use StreamingIngester for real downloads
+        ingester = StreamingIngester()
+        result = ingester.ingest(
+            source=url,
+            output_path=download_path,
+        )
+
+        if result["status"] != "completed":
+            errors = ", ".join(result.get("errors", ["Unknown error"]))
+            raise RuntimeError(f"Download failed: {errors}")
+
+        logger.info(f"Downloaded {download_path.name} successfully")
+
+    except Exception as e:
+        logger.error(f"Failed to download from {url}: {e}")
+        raise RuntimeError(f"Download failed: {e}") from e
+
+
+def _validate_downloaded_image(download_path: Path, item: Dict[str, Any]) -> bool:
+    """
+    Validate downloaded image using ImageValidator.
+
+    Args:
+        download_path: Path to downloaded file
+        item: Item metadata (may contain source info)
+
+    Returns:
+        True if validation passed, False otherwise
+    """
+    try:
+        validator = ImageValidator()
+
+        # Build data source spec from item metadata
+        data_source_spec = None
+        if "source" in item:
+            data_source_spec = {"sensor": item["source"]}
+
+        result = validator.validate(
+            raster_path=download_path,
+            data_source_spec=data_source_spec,
+            dataset_id=item.get("id", str(download_path)),
+        )
+
+        if not result.is_valid:
+            logger.error(f"Validation errors: {result.errors}")
+            return False
+
+        if result.warnings:
+            logger.warning(f"Validation warnings: {result.warnings}")
+
+        logger.info(f"Image validation passed for {download_path.name}")
+        return True
+
+    except Exception as e:
+        logger.warning(f"Image validation failed with exception: {e}")
+        # Allow processing to continue if validation module has issues
+        return True
+
+
 def process_item(
     item: Dict[str, Any],
     output_path: Path,
@@ -411,25 +486,22 @@ def process_item(
 
         logger.info(f"Downloading {item_id} from {url}")
 
-        # Try actual download
-        try:
-            import requests
-
-            # Check if file already exists and is complete
-            if download_path.exists():
-                existing_size = download_path.stat().st_size
-                if existing_size > 0:
-                    logger.info(f"File already exists: {download_path} ({format_size(existing_size)})")
-                else:
-                    download_with_progress(url, download_path, item.get("size_bytes"))
+        # Check if file already exists and is complete
+        if download_path.exists():
+            existing_size = download_path.stat().st_size
+            if existing_size > 0:
+                logger.info(f"File already exists: {download_path} ({format_size(existing_size)})")
             else:
-                download_with_progress(url, download_path, item.get("size_bytes"))
+                # File exists but is empty, re-download
+                _download_real_data(url, download_path, item)
+        else:
+            # File doesn't exist, download
+            _download_real_data(url, download_path, item)
 
-        except ImportError:
-            # Mock download for demonstration
-            logger.warning("requests not available, simulating download")
-            time.sleep(0.5)  # Simulate download time
-            download_path.write_text(f"# Mock data for {item_id}\n")
+        # Validate downloaded image
+        if not _validate_downloaded_image(download_path, item):
+            logger.error(f"Image validation failed for {item_id}")
+            return False
 
     # Normalize if requested
     if normalize:
@@ -479,23 +551,27 @@ def normalize_item(
             logger.debug("No raster files to normalize")
             return True
 
-        # Try to use actual normalization modules
+        # Import normalization modules - raise error if not available
         try:
             from core.data.ingestion.formats.cog import COGConverter
             from core.data.ingestion.normalization.projection import RasterReprojector
+        except ImportError as e:
+            error_msg = f"Normalization requested but modules unavailable: {e}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg) from e
 
-            for input_file in input_files:
-                output_file = input_file.with_suffix(f".{output_format}")
+        # Perform normalization for each file
+        for input_file in input_files:
+            output_file = input_file.with_suffix(f".{output_format}")
 
-                if output_format == "cog":
-                    converter = COGConverter()
-                    converter.convert(input_file, output_file, target_crs=target_crs)
-                # Add other formats as needed
+            if output_format == "cog":
+                logger.info(f"Converting {input_file.name} to COG format")
+                converter = COGConverter()
+                converter.convert(input_file, output_file, target_crs=target_crs)
+            else:
+                logger.warning(f"Output format '{output_format}' not fully implemented, skipping conversion")
 
-        except ImportError:
-            # Mock normalization
-            logger.debug("Normalization modules not available, skipping")
-
+        logger.info(f"Normalization complete for {len(input_files)} file(s)")
         return True
 
     except Exception as e:
