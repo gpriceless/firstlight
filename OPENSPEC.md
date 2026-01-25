@@ -986,8 +986,8 @@ stacking:
 
 #### Functional Acceptance
 
-- [ ] **SC-1:** `flight discover` returns `band_urls` for Sentinel-2 items with all 6 default bands
-- [ ] **SC-2:** `flight ingest` downloads each band file separately to scene directory
+- [x] **SC-1:** `flight discover` returns `band_urls` for Sentinel-2 items with all 6 default bands *(Completed 2026-01-25)*
+- [x] **SC-2:** `flight ingest` downloads each band file separately to scene directory *(Completed 2026-01-25)*
 - [ ] **SC-3:** Band files are stacked into VRT with correct band metadata
 - [ ] **SC-4:** Image validation passes for stacked VRT files
 - [ ] **SC-5:** NDVI algorithm executes successfully on ingested Sentinel-2 data
@@ -995,7 +995,7 @@ stacking:
 - [ ] **SC-7:** Burn severity algorithm executes successfully (proves SWIR bands)
 - [ ] **SC-8:** Partial band failures are handled with proper retry and error reporting
 - [ ] **SC-9:** `--visualization-only` flag downloads TCI with relaxed validation
-- [ ] **SC-10:** Backward compatibility maintained for single-URL discovery results
+- [x] **SC-10:** Backward compatibility maintained for single-URL discovery results *(Completed 2026-01-25)*
 
 #### Performance Acceptance
 
@@ -1796,9 +1796,9 @@ The following tasks should be added to ROADMAP.md Epic 1.7:
 | 1.7.0 | Review interface contracts in OPENSPEC addendum | [ ] | None |
 | 1.7.1a | Create `/core/data/discovery/band_config.py` | [ ] | 1.7.0 |
 | 1.7.1b | Modify `stac_client.py` discover_data() | [ ] | 1.7.1a |
-| 1.7.2a | Add BandDownloadResult dataclass | [ ] | 1.7.0 |
-| 1.7.2b | Implement download_bands() function | [ ] | 1.7.1b, 1.7.2a |
-| 1.7.2c | Add resume detection logic | [ ] | 1.7.2b |
+| 1.7.2a | Add BandDownloadResult dataclass | [x] *(2026-01-25)* | 1.7.0 |
+| 1.7.2b | Implement download_bands() function | [x] *(2026-01-25)* | 1.7.1b, 1.7.2a |
+| 1.7.2c | Add resume detection logic | [x] *(2026-01-25)* | 1.7.2b |
 | 1.7.3a | Create band_stack.py with create_band_stack() | [ ] | 1.7.0 |
 | 1.7.3b | Add mixed resolution handling | [ ] | 1.7.3a |
 | 1.7.5a | Add VRT detection in image_validator.py | [ ] | 1.7.3a |
