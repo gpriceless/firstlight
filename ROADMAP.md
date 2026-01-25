@@ -216,9 +216,9 @@ The `"visual"` asset is TCI.tif (RGB composite for visualization), not the indiv
 |------|-------------|--------|-----------|------------|
 | 1.7.1 | STAC client returns individual band URLs | [x] Complete (2026-01-25) | First | None |
 | 1.7.2 | Ingestion pipeline handles multi-file downloads | [x] Complete (2026-01-25) | No | 1.7.1 |
-| 1.7.3 | Band stacking utility (VRT creation) | [ ] | **Yes** | 1.7.1 |
+| 1.7.3 | Band stacking utility (VRT creation) | [x] Complete (2026-01-25) | **Yes** | 1.7.1 |
 | 1.7.4 | Add `--skip-validation` workaround flag | [ ] | **Yes** | None |
-| 1.7.5 | Validator updates for stacked files | [ ] | No | 1.7.2, 1.7.3 |
+| 1.7.5 | Validator updates for stacked files | [x] Complete (2026-01-25) | No | 1.7.2, 1.7.3 |
 | 1.7.6 | Integration testing with real Sentinel-2 | [ ] | No | 1.7.1-1.7.5 |
 
 ##### Task Details
@@ -290,10 +290,10 @@ The `"visual"` asset is TCI.tif (RGB composite for visualization), not the indiv
 
 ##### Success Criteria
 
-- [ ] `flight discover` returns `band_urls` for Sentinel-2 items
+- [x] `flight discover` returns `band_urls` for Sentinel-2 items *(Completed 2026-01-25)*
 - [ ] `flight ingest` downloads all spectral bands (blue, green, red, nir, swir16, swir22)
-- [ ] Band stacking creates valid VRT/GeoTIFF with correct band order
-- [ ] Image validation passes for stacked multi-band files
+- [x] Band stacking creates valid VRT/GeoTIFF with correct band order *(Completed 2026-01-25)*
+- [x] Image validation passes for stacked multi-band files *(Completed 2026-01-25)*
 - [ ] Full pipeline works: discover -> ingest -> validate -> analyze
 - [ ] Integration tests pass with real Sentinel-2 data
 
