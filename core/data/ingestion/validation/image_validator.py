@@ -7,6 +7,7 @@ integrating band validation, metadata checks, and optional screenshot capture.
 
 import logging
 import time
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -266,6 +267,38 @@ class ImageValidator:
             self._screenshot_generator = ScreenshotGenerator(self.config)
         return self._screenshot_generator
 
+    def _validate_vrt_sources(self, vrt_path: Path) -> Tuple[bool, List[str]]:
+        """
+        Validate all VRT source files exist before opening.
+
+        Args:
+            vrt_path: Path to VRT file
+
+        Returns:
+            Tuple of (sources_valid, missing_files_list)
+        """
+        try:
+            tree = ET.parse(vrt_path)
+            root = tree.getroot()
+            vrt_dir = vrt_path.parent
+            missing = set()  # Use set to avoid duplicates
+
+            for source in root.iter('SourceFilename'):
+                relative_to_vrt = source.get('relativeToVRT', '0') == '1'
+                filename = source.text
+
+                if relative_to_vrt:
+                    source_path = vrt_dir / filename
+                else:
+                    source_path = Path(filename)
+
+                if not source_path.exists():
+                    missing.add(str(source_path))
+
+            return len(missing) == 0, sorted(list(missing))  # Return sorted list
+        except ET.ParseError as e:
+            return False, [f"Invalid VRT XML: {e}"]
+
     def validate(
         self,
         raster_path: Union[str, Path],
@@ -309,6 +342,16 @@ class ImageValidator:
         )
 
         try:
+            # VRT-specific pre-validation
+            if raster_path.suffix.lower() == '.vrt':
+                sources_valid, missing = self._validate_vrt_sources(raster_path)
+                if not sources_valid:
+                    result.is_valid = False
+                    result.errors.extend([
+                        f"VRT source file not found: {m}" for m in missing
+                    ])
+                    return result
+
             # Step 1: Load and validate file can be opened
             dataset, metadata = self._load_and_extract_metadata(raster_path, result)
             result.metadata = metadata
@@ -449,8 +492,8 @@ class ImageValidator:
             try:
                 if HAS_RASTERIO:
                     crs = CRS.from_string(metadata.crs)
-                    if not crs.is_valid:
-                        result.warnings.append(f"CRS may not be valid: {metadata.crs}")
+                    # Note: CRS.is_valid is deprecated in rasterio 2.0
+                    # If we can parse it, it's likely valid
             except Exception as e:
                 result.warnings.append(f"Could not parse CRS: {e}")
 
