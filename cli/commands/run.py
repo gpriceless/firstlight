@@ -516,33 +516,39 @@ def run_ingest(
 
         if data_mode == DATA_MODE_REAL:
             # Real mode: Use the actual ingest logic to download satellite data
-            try:
-                from cli.commands.ingest import process_item
+            # Fail hard if ingest fails - never silently fall back to synthetic
+            from cli.commands.ingest import process_item
 
-                ingested = 0
-                for item in items:
-                    try:
-                        success = process_item(
-                            item=item,
-                            output_path=output_path,
-                            output_format="cog",
-                            normalize=True,
-                            target_crs=None,
-                            target_resolution=None,
-                        )
-                        if success:
-                            ingested += 1
-                    except Exception as e:
-                        logger.warning(f"Failed to ingest {item.get('id')}: {e}")
+            ingested = 0
+            failed = []
+            for item in items:
+                try:
+                    success = process_item(
+                        item=item,
+                        output_path=output_path,
+                        output_format="cog",
+                        normalize=True,
+                        target_crs=None,
+                        target_resolution=None,
+                    )
+                    if success:
+                        ingested += 1
+                    else:
+                        failed.append(item.get('id', 'unknown'))
+                except Exception as e:
+                    logger.error(f"Failed to ingest {item.get('id')}: {e}")
+                    failed.append(item.get('id', 'unknown'))
 
-                return {"count": ingested, "path": str(output_path), "mode": "real"}
+            if ingested == 0 and items:
+                raise RuntimeError(
+                    f"Real data ingestion failed: 0 of {len(items)} items ingested successfully. "
+                    f"Failed items: {failed[:5]}{'...' if len(failed) > 5 else ''}"
+                )
 
-            except ImportError as e:
-                logger.warning(f"Real ingest modules not available: {e}, falling back to synthetic")
-                data_mode = DATA_MODE_SYNTHETIC
+            return {"count": ingested, "path": str(output_path), "mode": "real", "failed": failed}
 
         # Synthetic mode: Generate realistic synthetic data
-        if data_mode == DATA_MODE_SYNTHETIC:
+        elif data_mode == DATA_MODE_SYNTHETIC:
             return _generate_synthetic_ingest_data(
                 items=items,
                 output_path=output_path,
@@ -665,27 +671,22 @@ def run_analyze(
 
     statistics = {}
 
-    # Try to run real analysis
+    # Run analysis based on data mode
     if data_mode == DATA_MODE_REAL:
-        try:
-            result = _run_real_analysis(
-                input_path=input_path,
-                output_path=output_path,
-                event_type=event_type,
-                algorithm=algorithm,
-                profile_config=profile_config,
-            )
-            if result.get("success"):
-                statistics = result.get("statistics", {})
-            else:
-                logger.warning(f"Real analysis failed, falling back to synthetic")
-                data_mode = DATA_MODE_SYNTHETIC
-        except Exception as e:
-            logger.warning(f"Real analysis error: {e}, falling back to synthetic")
-            data_mode = DATA_MODE_SYNTHETIC
+        # Real mode: fail hard if analysis fails - never mix synthetic data
+        result = _run_real_analysis(
+            input_path=input_path,
+            output_path=output_path,
+            event_type=event_type,
+            algorithm=algorithm,
+            profile_config=profile_config,
+        )
+        if not result.get("success"):
+            error_msg = result.get("error", "Unknown analysis error")
+            raise RuntimeError(f"Real analysis failed: {error_msg}")
+        statistics = result.get("statistics", {})
 
-    # Synthetic analysis
-    if data_mode == DATA_MODE_SYNTHETIC:
+    elif data_mode == DATA_MODE_SYNTHETIC:
         result = _run_synthetic_analysis(
             input_path=input_path,
             output_path=output_path,
@@ -963,54 +964,55 @@ def run_validate(
     import random
 
     if data_mode == DATA_MODE_REAL:
-        try:
-            from cli.commands.validate import run_quality_checks
+        # Real mode: fail hard if validation fails - never use synthetic scores
+        from cli.commands.validate import run_quality_checks
 
-            # Run actual quality checks
-            check_results = run_quality_checks(
-                input_path=input_path,
-                checks=["spatial_coherence", "value_range", "coverage"],
-            )
+        # Run actual quality checks
+        check_results = run_quality_checks(
+            input_path=input_path,
+            checks=["spatial_coherence", "value_range", "coverage"],
+        )
 
-            # Calculate overall score
-            scores = [r.get("score", 0) for r in check_results]
-            score = sum(scores) / len(scores) if scores else 0.0
-            passed = all(r.get("passed", False) for r in check_results)
+        # Calculate overall score
+        scores = [r.get("score", 0) for r in check_results]
+        score = sum(scores) / len(scores) if scores else 0.0
+        passed = all(r.get("passed", False) for r in check_results)
 
-            report = {
-                "score": score,
-                "passed": passed,
-                "checks": check_results,
-                "mode": "real",
-            }
+        report = {
+            "score": score,
+            "passed": passed,
+            "checks": check_results,
+            "mode": "real",
+        }
 
-            with open(output_path / "validation_report.json", "w") as f:
-                json.dump(report, f, indent=2, default=str)
+        with open(output_path / "validation_report.json", "w") as f:
+            json.dump(report, f, indent=2, default=str)
 
-            return report
+        return report
 
-        except Exception as e:
-            logger.warning(f"Real validation failed: {e}, using synthetic")
+    elif data_mode == DATA_MODE_SYNTHETIC:
+        # Synthetic validation - only used when --synthetic flag is set
+        score = random.uniform(0.75, 0.98)
+        passed = score >= 0.7
 
-    # Synthetic validation
-    score = random.uniform(0.75, 0.98)
-    passed = score >= 0.7
+        report = {
+            "score": score,
+            "passed": passed,
+            "checks": [
+                {"check_id": "spatial_coherence", "passed": True, "score": random.uniform(0.8, 1.0)},
+                {"check_id": "value_range", "passed": True, "score": random.uniform(0.85, 1.0)},
+                {"check_id": "coverage", "passed": True, "score": random.uniform(0.7, 0.95)},
+            ],
+            "mode": "synthetic",
+        }
 
-    report = {
-        "score": score,
-        "passed": passed,
-        "checks": [
-            {"check_id": "spatial_coherence", "passed": True, "score": random.uniform(0.8, 1.0)},
-            {"check_id": "value_range", "passed": True, "score": random.uniform(0.85, 1.0)},
-            {"check_id": "coverage", "passed": True, "score": random.uniform(0.7, 0.95)},
-        ],
-        "mode": "synthetic",
-    }
+        with open(output_path / "validation_report.json", "w") as f:
+            json.dump(report, f, indent=2)
 
-    with open(output_path / "validation_report.json", "w") as f:
-        json.dump(report, f, indent=2)
+        return report
 
-    return report
+    else:
+        raise ValueError(f"Unknown data mode: {data_mode}")
 
 
 def run_export(
