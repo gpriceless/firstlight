@@ -232,6 +232,12 @@ def download_with_progress(url: str, dest_path: Path, expected_size: Optional[in
     default=None,
     help="Target resolution in meters. Preserve original if not specified.",
 )
+@click.option(
+    "--skip-validation",
+    is_flag=True,
+    default=False,
+    help="Skip image validation (WARNING: may download unusable files)",
+)
 @click.pass_obj
 def ingest(
     ctx,
@@ -245,6 +251,7 @@ def ingest(
     normalize: bool,
     crs: Optional[str],
     resolution: Optional[float],
+    skip_validation: bool,
 ):
     """
     Download and normalize satellite data to analysis-ready format.
@@ -266,6 +273,14 @@ def ingest(
     """
     output_path = Path(output_path)
     output_path.mkdir(parents=True, exist_ok=True)
+
+    # Display warning if validation is skipped
+    if skip_validation:
+        click.echo(
+            "[WARNING] Validation skipped. Downloaded files may not be "
+            "suitable for spectral analysis (missing NIR/SWIR bands).",
+            err=True,
+        )
 
     # Initialize progress tracker
     tracker = ProgressTracker(output_path)
@@ -320,6 +335,7 @@ def ingest(
                 normalize=normalize,
                 target_crs=crs,
                 target_resolution=resolution,
+                skip_validation=skip_validation,
             )
 
             if success:
@@ -384,7 +400,9 @@ def load_ingest_items(
     return items
 
 
-def _download_real_data(url: str, download_path: Path, item: Dict[str, Any]) -> None:
+def _download_real_data(
+    url: str, download_path: Path, item: Dict[str, Any], skip_validation: bool = False
+) -> None:
     """
     Download real satellite data using StreamingIngester.
 
@@ -392,6 +410,7 @@ def _download_real_data(url: str, download_path: Path, item: Dict[str, Any]) -> 
         url: Source URL
         download_path: Destination path
         item: Item metadata (may contain size_bytes)
+        skip_validation: Skip image validation
 
     Raises:
         RuntimeError: If download fails
@@ -402,6 +421,7 @@ def _download_real_data(url: str, download_path: Path, item: Dict[str, Any]) -> 
         result = ingester.ingest(
             source=url,
             output_path=download_path,
+            skip_validation=skip_validation,
         )
 
         if result["status"] != "completed":
@@ -463,6 +483,7 @@ def process_item(
     normalize: bool,
     target_crs: Optional[str],
     target_resolution: Optional[float],
+    skip_validation: bool = False,
 ) -> bool:
     """
     Process a single data item: download and optionally normalize.
@@ -493,15 +514,18 @@ def process_item(
                 logger.info(f"File already exists: {download_path} ({format_size(existing_size)})")
             else:
                 # File exists but is empty, re-download
-                _download_real_data(url, download_path, item)
+                _download_real_data(url, download_path, item, skip_validation)
         else:
             # File doesn't exist, download
-            _download_real_data(url, download_path, item)
+            _download_real_data(url, download_path, item, skip_validation)
 
-        # Validate downloaded image
-        if not _validate_downloaded_image(download_path, item):
-            logger.error(f"Image validation failed for {item_id}")
-            return False
+        # Validate downloaded image (unless validation is skipped)
+        if not skip_validation:
+            if not _validate_downloaded_image(download_path, item):
+                logger.error(f"Image validation failed for {item_id}")
+                return False
+        else:
+            logger.info(f"Image validation skipped for {item_id}")
 
     # Normalize if requested
     if normalize:
