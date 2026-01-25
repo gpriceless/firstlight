@@ -215,7 +215,7 @@ The `"visual"` asset is TCI.tif (RGB composite for visualization), not the indiv
 | Task | Description | Status | Parallel? | Depends On |
 |------|-------------|--------|-----------|------------|
 | 1.7.1 | STAC client returns individual band URLs | [x] Complete (2026-01-25) | First | None |
-| 1.7.2 | Ingestion pipeline handles multi-file downloads | [ ] | No | 1.7.1 |
+| 1.7.2 | Ingestion pipeline handles multi-file downloads | [x] Complete (2026-01-25) | No | 1.7.1 |
 | 1.7.3 | Band stacking utility (VRT creation) | [ ] | **Yes** | 1.7.1 |
 | 1.7.4 | Add `--skip-validation` workaround flag | [ ] | **Yes** | None |
 | 1.7.5 | Validator updates for stacked files | [ ] | No | 1.7.2, 1.7.3 |

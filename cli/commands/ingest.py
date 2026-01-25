@@ -11,9 +11,11 @@ import logging
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Callable
 
 import click
 
@@ -21,6 +23,19 @@ from core.data.ingestion.streaming import StreamingIngester
 from core.data.ingestion.validation.image_validator import ImageValidator
 
 logger = logging.getLogger("flight.ingest")
+
+
+@dataclass
+class BandDownloadResult:
+    """Result of downloading a single band."""
+    band_name: str
+    url: str
+    local_path: Optional[Path]
+    size_bytes: int
+    download_time_s: float
+    success: bool
+    error: Optional[str] = None
+    retries: int = 0
 
 
 class ProgressTracker:
@@ -161,6 +176,127 @@ def download_with_progress(url: str, dest_path: Path, expected_size: Optional[in
     except Exception as e:
         logger.error(f"Download failed: {e}")
         return False
+
+
+def _download_band_file(url: str, output_path: Path) -> None:
+    """Download a single band file using HTTP streaming."""
+    import requests
+
+    response = requests.get(url, stream=True, timeout=300)
+    response.raise_for_status()
+
+    with open(output_path, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
+
+
+def download_bands(
+    band_urls: Dict[str, str],
+    output_dir: Path,
+    item_id: str,
+    parallel_downloads: int = 4,
+    max_retries: int = 3,
+    progress_callback: Optional[Callable] = None,
+) -> Dict[str, BandDownloadResult]:
+    """
+    Download multiple band files for a single scene.
+
+    Args:
+        band_urls: Mapping of band name to URL
+        output_dir: Directory to save band files
+        item_id: Item ID for logging
+        parallel_downloads: Number of concurrent downloads
+        max_retries: Retry attempts per band
+        progress_callback: Called with (band_name, status, progress)
+
+    Returns:
+        Mapping of band name to download result
+    """
+    results = {}
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    def download_single_band(band_name: str, url: str) -> BandDownloadResult:
+        band_path = output_dir / f"{band_name}.tif"
+        start_time = time.time()
+
+        # Check for existing complete file
+        if band_path.exists() and band_path.stat().st_size > 0:
+            # Try to validate it's a valid raster
+            try:
+                import rasterio
+                with rasterio.open(band_path) as ds:
+                    _ = ds.count  # Quick validity check
+                logger.info(f"Band {band_name} already downloaded: {format_size(band_path.stat().st_size)}")
+                return BandDownloadResult(
+                    band_name=band_name,
+                    url=url,
+                    local_path=band_path,
+                    size_bytes=band_path.stat().st_size,
+                    download_time_s=0,
+                    success=True,
+                )
+            except Exception:
+                # File is corrupt, re-download
+                logger.warning(f"Band {band_name} file corrupt, re-downloading")
+                band_path.unlink(missing_ok=True)
+
+        # Download with retries
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Downloading band {band_name} (attempt {attempt + 1}/{max_retries})")
+                _download_band_file(url, band_path)
+                elapsed = time.time() - start_time
+
+                if progress_callback:
+                    progress_callback(band_name, "complete", 1.0)
+
+                logger.info(
+                    f"Downloaded band {band_name}: {format_size(band_path.stat().st_size)} "
+                    f"in {elapsed:.1f}s"
+                )
+
+                return BandDownloadResult(
+                    band_name=band_name,
+                    url=url,
+                    local_path=band_path,
+                    size_bytes=band_path.stat().st_size,
+                    download_time_s=elapsed,
+                    success=True,
+                    retries=attempt,
+                )
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt
+                    logger.warning(
+                        f"Download failed for band {band_name}: {e}. "
+                        f"Retrying in {wait_time}s..."
+                    )
+                    time.sleep(wait_time)  # Exponential backoff
+                    continue
+                logger.error(f"Failed to download band {band_name} after {max_retries} attempts: {e}")
+                return BandDownloadResult(
+                    band_name=band_name,
+                    url=url,
+                    local_path=None,
+                    size_bytes=0,
+                    download_time_s=time.time() - start_time,
+                    success=False,
+                    error=str(e),
+                    retries=attempt + 1,
+                )
+
+    # Download bands in parallel
+    with ThreadPoolExecutor(max_workers=parallel_downloads) as executor:
+        futures = {
+            executor.submit(download_single_band, name, url): name
+            for name, url in band_urls.items()
+        }
+
+        for future in as_completed(futures):
+            band_name = futures[future]
+            results[band_name] = future.result()
+
+    return results
 
 
 @click.command("ingest")
@@ -491,13 +627,58 @@ def process_item(
     item_id = item.get("id", "unknown")
     source = item.get("source", "unknown")
     url = item.get("url")
+    band_urls = item.get("band_urls", {})
 
     # Create output directory for this item
     item_dir = output_path / source / item_id
     item_dir.mkdir(parents=True, exist_ok=True)
 
-    # Download if URL available
-    if url:
+    # Multi-band download path
+    if band_urls:
+        logger.info(f"Downloading {len(band_urls)} bands for {item_id}")
+        band_results = download_bands(band_urls, item_dir, item_id)
+
+        # Check for failures
+        failed_bands = [r for r in band_results.values() if not r.success]
+        if failed_bands:
+            for r in failed_bands:
+                logger.error(f"Failed to download {r.band_name}: {r.error}")
+            return False
+
+        # Get paths for successful downloads
+        band_paths = {
+            name: result.local_path
+            for name, result in band_results.items()
+            if result.success and result.local_path
+        }
+
+        # Calculate total download size and time
+        total_size = sum(r.size_bytes for r in band_results.values() if r.success)
+        total_time = sum(r.download_time_s for r in band_results.values() if r.success)
+        logger.info(
+            f"Downloaded {len(band_paths)} bands: {format_size(total_size)} "
+            f"in {total_time:.1f}s"
+        )
+
+        # Create band stack (placeholder - Task 1.7.3 will implement this)
+        stack_path = item_dir / f"{item_id}_stack.vrt"
+        try:
+            from core.data.ingestion.band_stack import create_band_stack
+            stack_result = create_band_stack(band_paths, stack_path)
+            logger.info(f"Created VRT stack: {stack_result.path}")
+
+            # Validate the stack (unless validation skipped)
+            if not skip_validation:
+                if not _validate_downloaded_image(stack_result.path, item):
+                    logger.error(f"VRT stack validation failed for {item_id}")
+                    return False
+        except ImportError:
+            # band_stack.py not yet implemented, just log the band files
+            logger.info(f"Downloaded band files to {item_dir} (VRT stacking pending)")
+            logger.debug(f"Band files: {list(band_paths.keys())}")
+
+    # Legacy single-URL path
+    elif url:
         # Determine filename from URL
         filename = url.split("/")[-1].split("?")[0]
         if not filename or len(filename) < 3:
