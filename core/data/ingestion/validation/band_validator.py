@@ -170,18 +170,29 @@ class BandValidator:
         """
         mapping = {}
 
-        # First try to match by band description
+        # Priority 1: Direct match on VRT/GeoTIFF Description (case-insensitive)
+        # This is the most reliable for stacked VRT files
+        for generic_name in expected_bands.keys():
+            for band_idx, desc in band_descriptions.items():
+                if desc and desc.lower() == generic_name.lower():
+                    mapping[generic_name] = band_idx
+                    break
+
+        # Priority 2: Match by possible sensor band names (B02, B03, etc.)
         for generic_name, possible_names in expected_bands.items():
+            if generic_name in mapping:
+                continue  # Already matched
             for band_idx, desc in band_descriptions.items():
                 if desc:
                     desc_upper = desc.upper()
                     for possible in possible_names:
-                        if possible.upper() in desc_upper or desc_upper == possible.upper():
+                        if possible.upper() in desc_upper:
                             mapping[generic_name] = band_idx
                             break
                 if generic_name in mapping:
                     break
 
+        # Priority 3: Positional fallback (only if band count matches)
         # For unmatched bands, use positional fallback for common band orders
         if band_count >= 4:
             positional_defaults = {
