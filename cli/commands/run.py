@@ -722,10 +722,8 @@ def _run_real_analysis(
     if algorithm not in ALGORITHMS:
         raise ValueError(f"Unknown algorithm: {algorithm}")
 
-    algo_info = ALGORITHMS[algorithm]
-
-    # Load and initialize the algorithm
-    algo_instance = load_algorithm(algorithm, algo_info, params=None)
+    # Load and initialize the algorithm (params=None for defaults)
+    algo_instance = load_algorithm(algorithm, params=None)
 
     # Find input data files
     raster_files = list(input_path.rglob("*.tif"))
