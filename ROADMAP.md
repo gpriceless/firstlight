@@ -1,6 +1,6 @@
 # FirstLight: Implementation Roadmap
 
-**Last Updated:** 2026-01-23
+**Last Updated:** 2026-01-25
 **Status:** Core Platform Complete, Interface Wiring In Progress
 
 ---
@@ -76,7 +76,9 @@ The FirstLight platform has a **production-ready core** (170K+ lines, 518+ tests
 | 1.2.5 | Integrate image validation | [ ] |
 | 1.2.6 | Add integration tests for ingest | [ ] |
 
-**Dependencies:** None - can start immediately
+**Dependencies:** **Epic 1.7 (Multi-Band Asset Download)** - Real Sentinel-2 ingestion requires multi-band download capability
+
+**BLOCKER:** Epic 1.7 must complete before Epic 1.2 can process real Sentinel-2 data. See `docs/SENTINEL2_INGESTION_BUG_REPORT.md` for details.
 
 ---
 
@@ -155,6 +157,159 @@ The FirstLight platform has a **production-ready core** (170K+ lines, 518+ tests
 
 **Dependencies:** None - can start immediately
 **Completion Summary:** See `EPIC_1.6_COMPLETION_SUMMARY.md`
+
+---
+
+#### Epic 1.7: Multi-Band Asset Download Refactor (P0 - Critical)
+
+**Status:** Not Started
+**Priority:** P0 - Blocks all real Sentinel-2 data processing
+**Bug Report:** `docs/SENTINEL2_INGESTION_BUG_REPORT.md`
+
+**Problem Statement:**
+The STAC client returns URLs for True Color Images (TCI.tif - 3-band RGB composites) while the validator expects individual spectral bands (blue, green, red, nir). This is a fundamental mismatch that causes all real Sentinel-2 downloads to fail validation.
+
+**Root Cause:** Line 446 in `core/data/discovery/stac_client.py`:
+```python
+"url": item.assets.get("visual") or item.assets.get("data") or "",
+```
+
+The `"visual"` asset is TCI.tif (RGB composite for visualization), not the individual spectral bands needed for scientific analysis.
+
+**Solution:** Refactor the data flow to download individual spectral band files and stack them for analysis.
+
+##### Task Dependency Graph
+
+```
+                    ┌─────────────────────────┐
+                    │ 1.7.1 STAC Client       │
+                    │ (Return Band URLs)      │
+                    └───────────┬─────────────┘
+                                │
+            ┌───────────────────┼───────────────────┐
+            │                   │                   │
+            v                   v                   v
+┌───────────────────┐ ┌─────────────────────┐ ┌─────────────────────┐
+│ 1.7.2 Ingestion   │ │ 1.7.3 Band Stacking │ │ 1.7.4 Immediate     │
+│ Pipeline          │ │ Utility (NEW)       │ │ Workaround          │
+│ (Multi-file DL)   │ │                     │ │ (--skip-validation) │
+└─────────┬─────────┘ └─────────┬───────────┘ └─────────────────────┘
+          │                     │                   (parallel, optional)
+          └──────────┬──────────┘
+                     │
+                     v
+          ┌─────────────────────┐
+          │ 1.7.5 Validator     │
+          │ Updates             │
+          └─────────┬───────────┘
+                    │
+                    v
+          ┌─────────────────────┐
+          │ 1.7.6 Integration   │
+          │ Testing             │
+          └─────────────────────┘
+```
+
+##### Tasks
+
+| Task | Description | Status | Parallel? | Depends On |
+|------|-------------|--------|-----------|------------|
+| 1.7.1 | STAC client returns individual band URLs | [x] Complete (2026-01-25) | First | None |
+| 1.7.2 | Ingestion pipeline handles multi-file downloads | [ ] | No | 1.7.1 |
+| 1.7.3 | Band stacking utility (VRT creation) | [ ] | **Yes** | 1.7.1 |
+| 1.7.4 | Add `--skip-validation` workaround flag | [ ] | **Yes** | None |
+| 1.7.5 | Validator updates for stacked files | [ ] | No | 1.7.2, 1.7.3 |
+| 1.7.6 | Integration testing with real Sentinel-2 | [ ] | No | 1.7.1-1.7.5 |
+
+##### Task Details
+
+**1.7.1: STAC Client Changes**
+- **File:** `core/data/discovery/stac_client.py`
+- **Changes:**
+  - Add `SENTINEL2_ANALYSIS_BANDS` constant mapping band names to asset keys
+  - Modify `discover_data()` to return `band_urls` dict instead of single `url`
+  - Preserve backward compatibility for non-Sentinel sources
+- **Effort:** Medium
+
+**1.7.2: Ingestion Pipeline Changes**
+- **Files:** `cli/commands/ingest.py`, `core/data/ingestion/streaming.py`
+- **Changes:**
+  - Update `process_item()` to iterate over `band_urls`
+  - Download each band file to separate path
+  - Call band stacking after all bands downloaded
+  - Update progress reporting for multi-file downloads
+- **Effort:** Medium-High
+
+**1.7.3: Band Stacking Utility (NEW FILE)**
+- **File:** `core/data/ingestion/band_stack.py` (new)
+- **Changes:**
+  - Create `create_band_stack(band_paths: Dict[str, Path], output_path: Path) -> Path`
+  - Generate VRT file combining individual bands
+  - Support band ordering configuration
+  - Add band metadata to output
+- **Effort:** Medium
+
+**1.7.4: Immediate Workaround (Optional)**
+- **Files:** `cli/commands/ingest.py`, `core/data/ingestion/streaming.py`
+- **Changes:**
+  - Add `--skip-validation` CLI flag
+  - Add warning message when flag used
+  - Document that TCI files are for visualization only
+- **Effort:** Low
+- **Note:** This is a temporary workaround for users who need data immediately
+
+**1.7.5: Validator Updates**
+- **Files:** `core/data/ingestion/validation/image_validator.py`, `band_validator.py`
+- **Changes:**
+  - Detect VRT stacked files
+  - Validate band presence in stack
+  - Update band matching logic for stacked format
+- **Effort:** Low-Medium
+
+**1.7.6: Integration Testing**
+- **Files:** `tests/integration/test_sentinel2_ingestion.py` (new)
+- **Changes:**
+  - Test full flow: discover -> download bands -> stack -> validate
+  - Test with real Earth Search STAC catalog
+  - Test error handling for missing bands
+  - Test with VCR recording for offline testing
+- **Effort:** Medium
+
+##### Files Affected
+
+| File | Change Type | Description |
+|------|-------------|-------------|
+| `core/data/discovery/stac_client.py` | Modify | Return individual band URLs |
+| `cli/commands/ingest.py` | Modify | Handle multi-band downloads |
+| `cli/commands/discover.py` | Minor | Update output format for band_urls |
+| `core/data/ingestion/streaming.py` | Modify | Support multi-file ingestion |
+| `core/data/ingestion/band_stack.py` | **New** | Band stacking utility |
+| `core/data/ingestion/validation/image_validator.py` | Minor | Adjust for stacked files |
+| `core/data/ingestion/validation/band_validator.py` | Minor | Update band matching |
+| `tests/integration/test_sentinel2_ingestion.py` | **New** | Integration tests |
+
+##### Success Criteria
+
+- [ ] `flight discover` returns `band_urls` for Sentinel-2 items
+- [ ] `flight ingest` downloads all spectral bands (blue, green, red, nir, swir16, swir22)
+- [ ] Band stacking creates valid VRT/GeoTIFF with correct band order
+- [ ] Image validation passes for stacked multi-band files
+- [ ] Full pipeline works: discover -> ingest -> validate -> analyze
+- [ ] Integration tests pass with real Sentinel-2 data
+
+##### Parallelization Strategy
+
+**Can Run in Parallel:**
+- Task 1.7.3 (Band Stacking) and Task 1.7.4 (Workaround) can run in parallel with Task 1.7.2 once 1.7.1 completes
+- Task 1.7.4 can start immediately (independent workaround)
+
+**Must Be Sequential:**
+- Task 1.7.1 must complete first (STAC client provides data structure)
+- Task 1.7.2 depends on 1.7.1 (ingestion needs new data format)
+- Task 1.7.5 depends on 1.7.2 and 1.7.3 (validator needs stacked files)
+- Task 1.7.6 depends on all above (end-to-end testing)
+
+**Estimated Total Effort:** 3-4 days with 2 parallel workers
 
 ---
 
@@ -309,19 +464,34 @@ The FirstLight platform has a **production-ready core** (170K+ lines, 518+ tests
 ## Parallel Work Streams
 
 ### Stream A: CLI Commands (Independent)
-- Epic 1.1 (Analyze)
-- Epic 1.2 (Ingest)
-- Epic 1.3 (Validate)
-- Epic 1.6 (Discover)
+- Epic 1.1 (Analyze) - COMPLETE
+- Epic 1.3 (Validate) - COMPLETE
+- Epic 1.6 (Discover) - COMPLETE
 
 ### Stream B: API Hardening (Independent)
 - Epic 3.1 (Database)
-- Epic 3.2 (JWT)
-- Epic 3.3 (Intent)
+- Epic 3.2 (JWT) - Partial (core validation complete)
+- Epic 3.3 (Intent) - COMPLETE
 
-### Stream C: Sequential Work
+### Stream C: Multi-Band Ingestion (Critical Path)
+**This stream unblocks real Sentinel-2 data processing.**
+
+```
+Epic 1.7.1 (STAC Client)
+        │
+        ├──> Epic 1.7.2 (Ingestion) ──┐
+        │                              │
+        └──> Epic 1.7.3 (Stacking) ───┼──> Epic 1.7.5 (Validator) ──> Epic 1.7.6 (Integration)
+                                      │
+Epic 1.7.4 (Workaround) ──────────────┘  [Can start immediately, independent]
+```
+
+After Epic 1.7 completes:
+- Epic 1.2 (Wire CLI Ingest) can proceed with real Sentinel-2 data
+
+### Stream D: Sequential Work
 - Epic 1.4 (Export) - After 1.1
-- Epic 1.5 (Run) - After 1.1, 1.3, 1.4
+- Epic 1.5 (Run) - After 1.1, 1.2, 1.3, 1.4, **1.7**
 - Epic 2.1 (Agent) - After Phase 1 patterns established
 - Epic 4.x (Testing) - After relevant phases complete
 
@@ -330,12 +500,19 @@ The FirstLight platform has a **production-ready core** (170K+ lines, 518+ tests
 ## Success Criteria
 
 ### Phase 1 Complete When:
-- [ ] `flight analyze` produces real classification results
-- [ ] `flight ingest` downloads real satellite data
+- [x] `flight analyze` produces real classification results *(Completed)*
+- [ ] `flight ingest` downloads real satellite data *(Blocked by Epic 1.7)*
 - [x] `flight validate` produces real QC scores *(Completed 2026-01-23)*
 - [ ] `flight export` creates valid GeoTIFF/GeoJSON/PDF
 - [ ] `flight run` executes full pipeline end-to-end
 - [x] `flight discover` never falls back to mocks *(Completed 2026-01-23)*
+
+### Epic 1.7 (Multi-Band Ingestion) Complete When:
+- [ ] STAC client returns individual band URLs for Sentinel-2
+- [ ] Ingestion pipeline downloads all required spectral bands
+- [ ] Band stacking creates valid VRT with correct band ordering
+- [ ] Validation passes for stacked multi-band files
+- [ ] Integration tests pass with real Sentinel-2 data from Earth Search
 
 ### Phase 2 Complete When:
 - [ ] Agent pipeline executes real algorithms
@@ -544,10 +721,16 @@ See `.claude/agents/PROJECT_MEMORY.md` for:
 ## Risk Assessment
 
 ### High Risk Items
-1. **Database migration complexity** - If existing in-memory data must be preserved
+1. **Sentinel-2 Ingestion Mismatch (Epic 1.7)** - STAC client returns TCI.tif instead of individual bands
+   - Impact: Blocks all real Sentinel-2 processing
+   - Status: Root cause identified, solution designed
+   - Mitigation: Epic 1.7 addresses this with multi-band download refactor
+   - Workaround: `--skip-validation` flag (Task 1.7.4) for immediate use
+
+2. **Database migration complexity** - If existing in-memory data must be preserved
    - Mitigation: Clean slate for production deployment
 
-2. **STAC catalog availability** - Real tests depend on external services
+3. **STAC catalog availability** - Real tests depend on external services
    - Mitigation: VCR-style response recording for tests
 
 ### Medium Risk Items
@@ -567,29 +750,41 @@ See `.claude/agents/PROJECT_MEMORY.md` for:
 
 | File | Current State | Changes Required |
 |------|---------------|------------------|
-| `cli/commands/analyze.py` | MockAlgorithm | Wire to AlgorithmRegistry |
-| `cli/commands/ingest.py` | Text placeholder | Wire to StreamingIngester |
-| `cli/commands/validate.py` | random.uniform() | Wire to SanitySuite |
+| `cli/commands/analyze.py` | ~~MockAlgorithm~~ | ~~Wire to AlgorithmRegistry~~ COMPLETE |
+| `cli/commands/ingest.py` | Text placeholder | Wire to StreamingIngester (after Epic 1.7) |
+| `cli/commands/validate.py` | ~~random.uniform()~~ | ~~Wire to SanitySuite~~ COMPLETE |
 | `cli/commands/export.py` | Mock files | Wire to ProductGenerator |
 | `cli/commands/run.py` | Multiple stubs | Wire all sub-commands |
-| `cli/commands/discover.py` | Mock fallback | Remove fallback |
+| `cli/commands/discover.py` | ~~Mock fallback~~ | ~~Remove fallback~~ COMPLETE |
 | `agents/pipeline/main.py` | Stub execution | Wire to algorithms |
 | `api/dependencies.py` | NotImplementedError | Add database layer |
-| `api/dependencies.py` | TODO JWT | Implement validation |
-| `api/routes/events.py` | TODO intent | Wire to IntentResolver |
+| `api/dependencies.py` | ~~TODO JWT~~ | ~~Implement validation~~ COMPLETE |
+| `api/routes/events.py` | ~~TODO intent~~ | ~~Wire to IntentResolver~~ COMPLETE |
+
+### Epic 1.7 File Changes (Multi-Band Ingestion)
+
+| File | Current State | Changes Required |
+|------|---------------|------------------|
+| `core/data/discovery/stac_client.py` | Returns single `visual` URL | Return `band_urls` dict with individual band URLs |
+| `cli/commands/ingest.py` | Downloads single file | Handle multi-file downloads per item |
+| `core/data/ingestion/streaming.py` | Single-file ingestion | Support multi-file ingestion + stacking |
+| `core/data/ingestion/band_stack.py` | **Does not exist** | **NEW:** VRT/band stacking utility |
+| `core/data/ingestion/validation/image_validator.py` | Expects 4+ bands in single file | Validate stacked VRT files |
+| `tests/integration/test_sentinel2_ingestion.py` | **Does not exist** | **NEW:** End-to-end Sentinel-2 tests |
 
 ---
 
 ## Core Libraries to Wire
 
-| Core Module | CLI Target | API Target | Agent Target |
-|-------------|------------|------------|--------------|
-| `core.analysis.library.AlgorithmRegistry` | analyze.py | - | pipeline/main.py |
-| `core.data.ingestion.StreamingIngester` | ingest.py | - | - |
-| `core.quality.sanity.SanitySuite` | validate.py | - | quality/main.py |
-| `core.quality.reporting.ProductGenerator` | export.py | products.py | reporting/main.py |
-| `core.intent.IntentResolver` | - | events.py | - |
-| `core.data.discovery.STACClient` | discover.py | - | discovery/main.py |
+| Core Module | CLI Target | API Target | Agent Target | Status |
+|-------------|------------|------------|--------------|--------|
+| `core.analysis.library.AlgorithmRegistry` | analyze.py | - | pipeline/main.py | COMPLETE |
+| `core.data.ingestion.StreamingIngester` | ingest.py | - | - | Blocked (Epic 1.7) |
+| `core.data.ingestion.band_stack` | ingest.py | - | - | **NEW** (Epic 1.7) |
+| `core.quality.sanity.SanitySuite` | validate.py | - | quality/main.py | COMPLETE |
+| `core.quality.reporting.ProductGenerator` | export.py | products.py | reporting/main.py | Pending |
+| `core.intent.IntentResolver` | - | events.py | - | COMPLETE |
+| `core.data.discovery.STACClient` | discover.py | - | discovery/main.py | COMPLETE (needs 1.7 update) |
 
 ---
 

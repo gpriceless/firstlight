@@ -1025,6 +1025,7 @@ class StreamingIngester:
         tile_size: Tuple[int, int] = (512, 512),
         overlap: int = 0,
         progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        skip_validation: bool = False,
     ) -> Dict[str, Any]:
         """
         Ingest data from source with streaming processing.
@@ -1036,6 +1037,7 @@ class StreamingIngester:
             tile_size: Tile size for processing
             overlap: Tile overlap
             progress_callback: Progress callback
+            skip_validation: Skip image validation
 
         Returns:
             Ingestion result dictionary
@@ -1075,20 +1077,23 @@ class StreamingIngester:
             else:
                 source_path = Path(source)
 
-            # NEW: Validate downloaded image before processing
-            validation_result = self._validate_image(source_path, result)
-            if validation_result is not None and not validation_result.is_valid:
-                result["status"] = "failed"
-                result["errors"].extend(validation_result.errors)
-                result["validation"] = validation_result.to_dict()
-                logger.error(f"Image validation failed for {source}: {validation_result.errors}")
-                return result
+            # Validate downloaded image before processing (unless skipped)
+            if not skip_validation:
+                validation_result = self._validate_image(source_path, result)
+                if validation_result is not None and not validation_result.is_valid:
+                    result["status"] = "failed"
+                    result["errors"].extend(validation_result.errors)
+                    result["validation"] = validation_result.to_dict()
+                    logger.error(f"Image validation failed for {source}: {validation_result.errors}")
+                    return result
 
-            if validation_result is not None:
-                if validation_result.warnings:
-                    logger.warning(f"Image validation warnings for {source}: {validation_result.warnings}")
-                    result["validation_warnings"] = validation_result.warnings
-                result["validation"] = validation_result.to_dict()
+                if validation_result is not None:
+                    if validation_result.warnings:
+                        logger.warning(f"Image validation warnings for {source}: {validation_result.warnings}")
+                        result["validation_warnings"] = validation_result.warnings
+                    result["validation"] = validation_result.to_dict()
+            else:
+                logger.info("Image validation skipped by user request")
 
             # Process tiles
             if tile_processor is not None:
