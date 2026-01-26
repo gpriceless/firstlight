@@ -1,0 +1,410 @@
+/**
+ * FirstLight Print Stylesheet
+ *
+ * Optimized CSS for high-quality PDF generation.
+ * Includes page setup, typography, and print-specific overrides.
+ */
+
+/* ==========================================================================
+   Page Setup
+   ========================================================================== */
+
+@page {
+    size: letter portrait;
+    margin: 1in;
+
+    /* Running headers and footers */
+    @top-center {
+        content: "FirstLight Analysis Report";
+        font-family: sans-serif;
+        font-size: 10pt;
+        color: #718096;
+    }
+
+    @bottom-center {
+        content: "Page " counter(page) " of " counter(pages);
+        font-family: sans-serif;
+        font-size: 10pt;
+        color: #718096;
+    }
+}
+
+/* Cover page - no headers/footers */
+@page cover {
+    margin: 0;
+    @top-center { content: none; }
+    @bottom-center { content: none; }
+}
+
+/* First page after cover - restart page numbering */
+@page :first {
+    counter-reset: page 1;
+}
+
+/* ==========================================================================
+   Base Typography
+   ========================================================================== */
+
+body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.4;
+    color: #000;
+}
+
+/* Prevent orphans and widows */
+p {
+    orphans: 3;
+    widows: 3;
+}
+
+h1, h2, h3, h4 {
+    break-after: avoid;
+    color: #1A365D;
+}
+
+h1 {
+    font-size: 24pt;
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+h2 {
+    font-size: 18pt;
+    margin-top: 1.5em;
+    margin-bottom: 0.75rem;
+}
+
+h3 {
+    font-size: 14pt;
+    margin-top: 1em;
+    margin-bottom: 0.5rem;
+}
+
+h4 {
+    font-size: 12pt;
+    margin-top: 0.75em;
+    margin-bottom: 0.5rem;
+}
+
+/* ==========================================================================
+   Page Breaks
+   ========================================================================== */
+
+/* Force page breaks for major sections */
+.fl-report-section {
+    break-before: page;
+}
+
+/* Keep these elements together */
+.fl-map-container,
+.fl-metric-card,
+.fl-alert-box,
+.fl-stat-grid,
+figure {
+    break-inside: avoid;
+}
+
+/* Prevent page breaks after headings */
+h1, h2, h3, h4, h5, h6 {
+    break-after: avoid;
+}
+
+/* ==========================================================================
+   Interactive Elements - Hide in Print
+   ========================================================================== */
+
+.fl-before-after__slider,
+.fl-collapsible__toggle,
+.fl-interactive-controls,
+.fl-web-only,
+button,
+input,
+select,
+textarea {
+    display: none !important;
+}
+
+/* ==========================================================================
+   Before/After Comparisons
+   ========================================================================== */
+
+/* Show both images side by side in print */
+.fl-before-after {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    break-inside: avoid;
+}
+
+.fl-before-after__before,
+.fl-before-after__after {
+    position: static !important;
+    width: 48% !important;
+    display: inline-block;
+    vertical-align: top;
+}
+
+/* Add labels for clarity */
+.fl-before-after__before::before {
+    content: "BEFORE";
+    display: block;
+    font-weight: bold;
+    font-size: 10pt;
+    color: #4A5568;
+    margin-bottom: 0.5rem;
+}
+
+.fl-before-after__after::before {
+    content: "AFTER";
+    display: block;
+    font-weight: bold;
+    font-size: 10pt;
+    color: #4A5568;
+    margin-bottom: 0.5rem;
+}
+
+/* ==========================================================================
+   Images and Maps
+   ========================================================================== */
+
+img {
+    max-width: 100%;
+    height: auto;
+    /* Optimize for print quality */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+}
+
+.fl-map-container {
+    margin: 1rem 0;
+    page-break-inside: avoid;
+}
+
+.fl-map-container img {
+    width: 100%;
+    height: auto;
+    border: 1px solid #E2E8F0;
+}
+
+.fl-map-caption {
+    font-size: 10pt;
+    color: #718096;
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+/* ==========================================================================
+   Component Styling
+   ========================================================================== */
+
+/* Metric cards */
+.fl-metric-card {
+    border: 1px solid #CBD5E0;
+    padding: 0.75rem;
+    margin: 0.5rem;
+    border-radius: 4pt;
+    break-inside: avoid;
+}
+
+.fl-metric-card__value {
+    font-size: 18pt;
+    font-weight: bold;
+    color: #2D3748;
+}
+
+.fl-metric-card__label {
+    font-size: 10pt;
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Alert boxes */
+.fl-alert-box {
+    border-left: 4pt solid #E53E3E;
+    padding: 0.75rem;
+    margin: 0.75rem 0;
+    background: #FFF5F5;
+    break-inside: avoid;
+}
+
+.fl-alert-box--warning {
+    border-left-color: #F97316;
+    background: #FFFBEB;
+}
+
+.fl-alert-box--info {
+    border-left-color: #2B6CB0;
+    background: #EBF8FF;
+}
+
+/* Stat grid */
+.fl-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin: 1rem 0;
+    break-inside: avoid;
+}
+
+/* ==========================================================================
+   Tables
+   ========================================================================== */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 10pt;
+    break-inside: auto;
+}
+
+thead {
+    display: table-header-group; /* Repeat on every page */
+}
+
+th {
+    background: #EDF2F7;
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 2pt solid #CBD5E0;
+    font-weight: bold;
+}
+
+td {
+    padding: 0.5rem;
+    border-bottom: 1pt solid #E2E8F0;
+}
+
+tr {
+    break-inside: avoid;
+}
+
+/* ==========================================================================
+   Links
+   ========================================================================== */
+
+a {
+    color: #2B6CB0;
+    text-decoration: none;
+}
+
+/* Internal links (table of contents) */
+a[href^="#"] {
+    border-bottom: 1px dotted #2B6CB0;
+}
+
+/* Print URLs after external links */
+a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    color: #718096;
+}
+
+/* ==========================================================================
+   Cover Page
+   ========================================================================== */
+
+.fl-cover {
+    page: cover;
+    text-align: center;
+    min-height: 10in;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 2in 1in;
+}
+
+.fl-cover__logo {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2B6CB0;
+}
+
+.fl-cover__title {
+    font-size: 3rem;
+    font-weight: 800;
+    color: #1A365D;
+    margin: 2rem 0 1rem;
+}
+
+.fl-cover__stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+
+.fl-footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1pt solid #E2E8F0;
+    font-size: 9pt;
+    color: #718096;
+}
+
+/* ==========================================================================
+   Black & White Printing Support (CMYK hints)
+   ========================================================================== */
+
+/*
+ * CMYK Color Approximations (for professional print services)
+ *
+ * Primary Blue: C:76 M:40 Y:0 K:31 (#2B6CB0)
+ * Flood Minor: C:42 M:17 Y:0 K:4 (#90CDF4)
+ * Flood Moderate: C:71 M:33 Y:0 K:12 (#4299E1)
+ * Flood Significant: C:76 M:40 Y:0 K:31 (#2B6CB0)
+ * Flood Severe: C:67 M:38 Y:0 K:49 (#2C5282)
+ * Flood Extreme: C:73 M:43 Y:0 K:64 (#1A365D)
+ *
+ * For B&W printing without patterns, these will convert to appropriate grayscales.
+ * For pattern overlays, see CARTOGRAPHIC_SPEC.md Section 7.4
+ */
+
+/* ==========================================================================
+   Font Embedding
+   ========================================================================== */
+
+/*
+ * WeasyPrint will automatically embed fonts referenced here.
+ * For professional printing, consider converting text to outlines
+ * or embedding specific font files.
+ */
+
+/* ==========================================================================
+   Continued Indicators
+   ========================================================================== */
+
+/* Add "continued" markers for split content */
+.fl-continued::after {
+    content: "(Continued on next page)";
+    display: block;
+    text-align: right;
+    font-size: 9pt;
+    color: #718096;
+    font-style: italic;
+    margin-top: 0.5rem;
+}
+
+/* ==========================================================================
+   Professional Print Requirements
+   ========================================================================== */
+
+/*
+ * For 300 DPI output:
+ * - Set dpi=300 in PDFConfig
+ * - Map images should be exported at 300 DPI
+ *
+ * For bleed (offset printing):
+ * - Set include_bleed=True in PDFConfig
+ * - Adds 3mm bleed around page edges
+ *
+ * Font embedding:
+ * - Set embed_fonts=True in PDFConfig (default)
+ * - Ensures consistent rendering across systems
+ */

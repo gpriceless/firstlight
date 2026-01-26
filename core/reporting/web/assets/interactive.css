@@ -1,0 +1,390 @@
+/**
+ * FirstLight Interactive Report Styles
+ *
+ * CSS for interactive web report components including:
+ * - Before/after slider
+ * - Sticky header
+ * - Collapsible sections
+ * - Mobile responsive layouts
+ */
+
+/* Before/After Slider */
+.fl-before-after {
+    margin: 2rem 0;
+    background: white;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.fl-before-after__header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.fl-before-after__title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #2D3748;
+}
+
+.fl-before-after__subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #718096;
+}
+
+.fl-before-after__container {
+    padding: 1.5rem;
+}
+
+.fl-before-after__wrapper {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 4px;
+    background: #F7FAFC;
+}
+
+.fl-before-after__before {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.fl-before-after__overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 50%;
+    height: 100%;
+    overflow: hidden;
+    transition: width 0.01s ease;
+}
+
+.fl-before-after__after {
+    display: block;
+    width: 200%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.fl-before-after__slider {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    background: #3182CE;
+    cursor: ew-resize;
+    z-index: 10;
+}
+
+.fl-before-after__handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 48px;
+    height: 48px;
+    background: white;
+    border: 2px solid #3182CE;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #3182CE;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    pointer-events: none;
+    user-select: none;
+}
+
+.fl-before-after__labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+    padding: 0 0.5rem;
+}
+
+.fl-before-after__label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #4A5568;
+}
+
+/* Sticky Header */
+.fl-sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: white;
+    border-bottom: 1px solid #E2E8F0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.fl-sticky-header__content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.fl-sticky-header__title {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #2D3748;
+}
+
+.fl-sticky-header__actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.fl-sticky-header__button {
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid #CBD5E0;
+    border-radius: 4px;
+    color: #2D3748;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.fl-sticky-header__button:hover {
+    background: #F7FAFC;
+    border-color: #A0AEC0;
+}
+
+.fl-sticky-header__button:active {
+    transform: translateY(1px);
+}
+
+/* Collapsible Sections */
+.fl-collapsible {
+    margin: 1.5rem 0;
+}
+
+.fl-collapsible__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: #F7FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    user-select: none;
+}
+
+.fl-collapsible__header:hover {
+    background: #EDF2F7;
+}
+
+.fl-collapsible__title {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #2D3748;
+}
+
+.fl-collapsible__icon {
+    width: 20px;
+    height: 20px;
+    color: #718096;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.fl-collapsible--expanded .fl-collapsible__icon {
+    transform: rotate(180deg);
+}
+
+.fl-collapsible__content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.fl-collapsible--expanded .fl-collapsible__content {
+    max-height: 5000px;
+}
+
+.fl-collapsible__body {
+    padding: 1.5rem;
+    border: 1px solid #E2E8F0;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    background: white;
+}
+
+/* Map Container */
+.fl-map-container {
+    margin: 2rem 0;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+}
+
+.fl-map-container iframe,
+.fl-map-container .folium-map {
+    width: 100%;
+    height: 600px;
+    border: none;
+}
+
+/* Mobile Responsive (Tablet) */
+@media (max-width: 768px) {
+    .fl-sticky-header__content {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: flex-start;
+    }
+
+    .fl-sticky-header__actions {
+        width: 100%;
+    }
+
+    .fl-sticky-header__button {
+        flex: 1;
+    }
+
+    .fl-before-after__handle {
+        width: 40px;
+        height: 40px;
+    }
+
+    .fl-map-container iframe,
+    .fl-map-container .folium-map {
+        height: 450px;
+    }
+
+    .fl-collapsible__title {
+        font-size: 1rem;
+    }
+}
+
+/* Mobile Responsive (Phone) */
+@media (max-width: 576px) {
+    .fl-before-after__header {
+        padding: 1rem;
+    }
+
+    .fl-before-after__container {
+        padding: 1rem;
+    }
+
+    .fl-before-after__handle {
+        width: 36px;
+        height: 36px;
+    }
+
+    .fl-before-after__slider {
+        width: 3px;
+    }
+
+    .fl-map-container iframe,
+    .fl-map-container .folium-map {
+        height: 350px;
+    }
+
+    .fl-sticky-header__content {
+        padding: 0.75rem 1rem;
+    }
+
+    .fl-sticky-header__title {
+        font-size: 1rem;
+    }
+
+    .fl-sticky-header__button {
+        font-size: 0.8125rem;
+        padding: 0.4rem 0.75rem;
+    }
+
+    .fl-collapsible__header {
+        padding: 0.875rem 1rem;
+    }
+
+    .fl-collapsible__body {
+        padding: 1rem;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .fl-sticky-header,
+    .fl-sticky-header__actions,
+    .fl-collapsible__icon,
+    .no-print {
+        display: none !important;
+    }
+
+    .fl-collapsible__content {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .fl-collapsible__header {
+        cursor: default;
+        background: white;
+        border-bottom: none;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .fl-collapsible__body {
+        page-break-inside: avoid;
+    }
+
+    .fl-before-after__slider,
+    .fl-before-after__handle {
+        display: none;
+    }
+
+    .fl-before-after__overlay {
+        width: 50%;
+        position: static;
+    }
+
+    .fl-before-after__after {
+        width: 100%;
+    }
+
+    .fl-map-container {
+        page-break-inside: avoid;
+    }
+
+    .fl-map-container iframe,
+    .fl-map-container .folium-map {
+        height: 500px;
+    }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .fl-before-after,
+    .fl-collapsible__header,
+    .fl-map-container {
+        border-width: 2px;
+    }
+
+    .fl-sticky-header {
+        border-bottom-width: 2px;
+    }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .fl-before-after__overlay,
+    .fl-collapsible__icon,
+    .fl-collapsible__content,
+    .fl-sticky-header__button {
+        transition: none;
+    }
+}

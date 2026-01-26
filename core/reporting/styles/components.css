@@ -1,0 +1,915 @@
+/**
+ * FirstLight Design System - Component Styles
+ * Version: 1.0.0
+ *
+ * BEM Naming Convention: .fl-component__element--modifier
+ * All components use design tokens from design_tokens.css
+ *
+ * Dependencies: design_tokens.css must be loaded first
+ */
+
+/* ============================================
+   1. METRIC CARDS
+   ============================================
+   Display key statistics with visual hierarchy.
+   Used for KPIs, summary stats, and quick facts.
+   ============================================ */
+
+.fl-metric-card {
+  background: var(--fl-card-bg);
+  border: var(--fl-card-border);
+  border-radius: var(--fl-card-radius);
+  padding: var(--fl-card-padding);
+  box-shadow: var(--fl-card-shadow);
+  transition: box-shadow var(--fl-transition-normal);
+}
+
+.fl-metric-card:hover {
+  box-shadow: var(--fl-shadow-md);
+}
+
+.fl-metric-card__value {
+  font-size: var(--fl-text-4xl);
+  font-weight: var(--fl-font-bold);
+  color: var(--fl-neutral-700);
+  line-height: var(--fl-leading-tight);
+  margin: 0;
+}
+
+.fl-metric-card__label {
+  font-size: var(--fl-text-sm);
+  color: var(--fl-neutral-500);
+  margin-top: var(--fl-space-2);
+  display: block;
+}
+
+.fl-metric-card__subtext {
+  font-size: var(--fl-text-xs);
+  color: var(--fl-neutral-400);
+  margin-top: var(--fl-space-1);
+  display: block;
+}
+
+/* Metric card status variants with left border accent */
+.fl-metric-card--success {
+  border-left: var(--fl-border-width-4) solid var(--fl-success);
+}
+
+.fl-metric-card--warning {
+  border-left: var(--fl-border-width-4) solid var(--fl-warning);
+}
+
+.fl-metric-card--danger {
+  border-left: var(--fl-border-width-4) solid var(--fl-danger);
+}
+
+.fl-metric-card--info {
+  border-left: var(--fl-border-width-4) solid var(--fl-info);
+}
+
+/* Compact variant for dashboard layouts */
+.fl-metric-card--compact {
+  padding: var(--fl-space-4);
+}
+
+.fl-metric-card--compact .fl-metric-card__value {
+  font-size: var(--fl-text-2xl);
+}
+
+/* ============================================
+   2. ALERT BOXES
+   ============================================
+   Contextual feedback messages for warnings,
+   errors, success, and informational content.
+   ============================================ */
+
+.fl-alert {
+  display: flex;
+  gap: var(--fl-space-4);
+  padding: var(--fl-alert-padding);
+  border-radius: var(--fl-alert-radius);
+  border-left: var(--fl-alert-border-width) solid;
+  margin-bottom: var(--fl-space-4);
+}
+
+.fl-alert__icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+}
+
+.fl-alert__content {
+  flex: 1;
+}
+
+.fl-alert__title {
+  font-size: var(--fl-text-lg);
+  font-weight: var(--fl-font-semibold);
+  margin: 0 0 var(--fl-space-2) 0;
+  line-height: var(--fl-leading-snug);
+}
+
+.fl-alert__body {
+  font-size: var(--fl-text-base);
+  margin: 0 0 var(--fl-space-2) 0;
+  line-height: var(--fl-leading-relaxed);
+}
+
+.fl-alert__timestamp {
+  font-size: var(--fl-text-xs);
+  color: var(--fl-neutral-500);
+  display: block;
+}
+
+/* Alert level variants */
+.fl-alert--critical {
+  background: var(--fl-danger-light);
+  border-color: var(--fl-danger);
+}
+
+.fl-alert--critical .fl-alert__icon {
+  color: var(--fl-danger-dark);
+}
+
+.fl-alert--critical .fl-alert__title,
+.fl-alert--critical .fl-alert__body {
+  color: var(--fl-danger-dark);
+}
+
+.fl-alert--warning {
+  background: var(--fl-warning-light);
+  border-color: var(--fl-warning);
+}
+
+.fl-alert--warning .fl-alert__icon {
+  color: var(--fl-warning-dark);
+}
+
+.fl-alert--warning .fl-alert__title,
+.fl-alert--warning .fl-alert__body {
+  color: var(--fl-warning-dark);
+}
+
+.fl-alert--info {
+  background: var(--fl-info-light);
+  border-color: var(--fl-info);
+}
+
+.fl-alert--info .fl-alert__icon {
+  color: var(--fl-info-dark);
+}
+
+.fl-alert--info .fl-alert__title,
+.fl-alert--info .fl-alert__body {
+  color: var(--fl-info-dark);
+}
+
+.fl-alert--success {
+  background: var(--fl-success-light);
+  border-color: var(--fl-success);
+}
+
+.fl-alert--success .fl-alert__icon {
+  color: var(--fl-success-dark);
+}
+
+.fl-alert--success .fl-alert__title,
+.fl-alert--success .fl-alert__body {
+  color: var(--fl-success-dark);
+}
+
+/* ============================================
+   3. SEVERITY BADGES
+   ============================================
+   Compact status indicators for flood/fire
+   severity levels and other categorical data.
+   ============================================ */
+
+.fl-badge {
+  display: inline-block;
+  padding: var(--fl-badge-padding);
+  border-radius: var(--fl-badge-radius);
+  font-size: var(--fl-badge-font-size);
+  font-weight: var(--fl-badge-font-weight);
+  text-transform: var(--fl-badge-text-transform);
+  letter-spacing: var(--fl-badge-letter-spacing);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Flood severity badges */
+.fl-badge--flood-minimal {
+  background: var(--fl-neutral-200);
+  color: var(--fl-slate);
+}
+
+.fl-badge--flood-minor {
+  background: var(--fl-flood-minor);
+  color: var(--fl-navy);
+}
+
+.fl-badge--flood-moderate {
+  background: var(--fl-flood-moderate);
+  color: var(--fl-white);
+}
+
+.fl-badge--flood-significant {
+  background: var(--fl-flood-significant);
+  color: var(--fl-white);
+}
+
+.fl-badge--flood-severe {
+  background: var(--fl-flood-severe);
+  color: var(--fl-white);
+}
+
+.fl-badge--flood-extreme {
+  background: var(--fl-flood-extreme);
+  color: var(--fl-white);
+}
+
+/* Wildfire severity badges */
+.fl-badge--fire-unburned {
+  background: var(--fl-neutral-100);
+  color: var(--fl-slate);
+}
+
+.fl-badge--fire-low {
+  background: var(--fl-fire-low);
+  color: var(--fl-slate);
+}
+
+.fl-badge--fire-mod-low {
+  background: var(--fl-fire-mod-low);
+  color: var(--fl-slate);
+}
+
+.fl-badge--fire-moderate {
+  background: var(--fl-fire-moderate);
+  color: var(--fl-white);
+}
+
+.fl-badge--fire-mod-high {
+  background: var(--fl-fire-mod-high);
+  color: var(--fl-white);
+}
+
+.fl-badge--fire-high {
+  background: var(--fl-fire-high);
+  color: var(--fl-white);
+}
+
+/* Generic status badges */
+.fl-badge--success {
+  background: var(--fl-success);
+  color: var(--fl-white);
+}
+
+.fl-badge--warning {
+  background: var(--fl-warning);
+  color: var(--fl-slate);
+}
+
+.fl-badge--danger {
+  background: var(--fl-danger);
+  color: var(--fl-white);
+}
+
+.fl-badge--info {
+  background: var(--fl-info);
+  color: var(--fl-white);
+}
+
+.fl-badge--uncertain {
+  background: var(--fl-white);
+  color: var(--fl-neutral-500);
+  border: var(--fl-border-width) solid var(--fl-neutral-300);
+}
+
+/* Confidence level badges */
+.fl-badge--conf-high {
+  background: var(--fl-conf-high);
+  color: var(--fl-white);
+}
+
+.fl-badge--conf-medium {
+  background: var(--fl-conf-medium);
+  color: var(--fl-white);
+}
+
+.fl-badge--conf-low {
+  background: var(--fl-conf-low);
+  color: var(--fl-white);
+}
+
+.fl-badge--conf-very-low {
+  background: var(--fl-conf-very-low);
+  color: var(--fl-slate);
+}
+
+/* ============================================
+   4. DATA TABLES
+   ============================================
+   Structured data presentation with sorting,
+   alternating rows, and interactive states.
+   ============================================ */
+
+.fl-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: var(--fl-table-border);
+  font-size: var(--fl-text-sm);
+  background: var(--fl-white);
+  border-radius: var(--fl-radius-md);
+  overflow: hidden;
+}
+
+.fl-table caption {
+  caption-side: top;
+  padding: var(--fl-space-4);
+  font-size: var(--fl-text-base);
+  font-weight: var(--fl-font-semibold);
+  text-align: left;
+  color: var(--fl-neutral-700);
+}
+
+.fl-table thead {
+  background: var(--fl-table-header-bg);
+}
+
+.fl-table th {
+  padding: var(--fl-table-cell-padding);
+  text-align: left;
+  font-size: var(--fl-text-xs);
+  font-weight: var(--fl-font-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--fl-tracking-wider);
+  color: var(--fl-table-header-text);
+  border-bottom: var(--fl-table-border);
+}
+
+.fl-table th[scope="col"] {
+  vertical-align: bottom;
+}
+
+.fl-table td {
+  padding: var(--fl-table-cell-padding);
+  border-bottom: var(--fl-table-border);
+  color: var(--fl-neutral-700);
+  vertical-align: top;
+}
+
+/* Number columns - right align */
+.fl-table th[data-type="number"],
+.fl-table td[data-type="number"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Striped rows variant */
+.fl-table--striped tbody tr:nth-child(even) {
+  background: var(--fl-table-row-bg-alt);
+}
+
+/* Hoverable rows (for interactive tables) */
+.fl-table--hoverable tbody tr {
+  transition: background-color var(--fl-transition-fast);
+  cursor: pointer;
+}
+
+.fl-table--hoverable tbody tr:hover {
+  background: var(--fl-table-hover-bg);
+}
+
+/* Compact variant */
+.fl-table--compact th,
+.fl-table--compact td {
+  padding: var(--fl-space-2) var(--fl-space-3);
+}
+
+/* Bordered variant (internal borders) */
+.fl-table--bordered td,
+.fl-table--bordered th {
+  border-right: var(--fl-table-border);
+}
+
+.fl-table--bordered td:last-child,
+.fl-table--bordered th:last-child {
+  border-right: none;
+}
+
+/* Selected row state */
+.fl-table tbody tr.fl-table__row--selected {
+  background: var(--fl-info-light);
+  border-left: 3px solid var(--fl-info);
+}
+
+/* ============================================
+   5. LEGENDS
+   ============================================
+   Map legend components for categorical and
+   continuous data visualization.
+   ============================================ */
+
+.fl-legend {
+  background: var(--fl-white);
+  padding: var(--fl-space-4);
+  border-radius: var(--fl-radius-md);
+  box-shadow: var(--fl-shadow-sm);
+  font-size: var(--fl-text-xs);
+}
+
+.fl-legend__title {
+  font-size: var(--fl-text-sm);
+  font-weight: var(--fl-font-semibold);
+  color: var(--fl-neutral-700);
+  margin: 0 0 var(--fl-space-3) 0;
+}
+
+/* Categorical legend (discrete items) */
+.fl-legend__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fl-legend-row-gap);
+}
+
+.fl-legend__item {
+  display: flex;
+  align-items: center;
+  gap: var(--fl-space-2);
+}
+
+.fl-legend__color {
+  width: var(--fl-legend-symbol-size);
+  height: var(--fl-legend-symbol-size);
+  border-radius: var(--fl-radius-sm);
+  flex-shrink: 0;
+  border: var(--fl-border-width) solid var(--fl-neutral-300);
+}
+
+.fl-legend__label {
+  color: var(--fl-neutral-600);
+  line-height: var(--fl-leading-tight);
+}
+
+/* Continuous gradient legend */
+.fl-legend--continuous {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fl-space-2);
+}
+
+.fl-legend--continuous .fl-legend__gradient {
+  width: 100%;
+  min-width: var(--fl-legend-bar-width-min);
+  max-width: var(--fl-legend-bar-width-max);
+  height: var(--fl-legend-bar-height);
+  border-radius: var(--fl-radius-sm);
+  border: var(--fl-border-width) solid var(--fl-neutral-300);
+  position: relative;
+}
+
+.fl-legend--continuous .fl-legend__labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--fl-neutral-600);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Flood depth gradient */
+.fl-legend__gradient--flood {
+  background: linear-gradient(
+    to right,
+    var(--fl-flood-none),
+    var(--fl-flood-minor),
+    var(--fl-flood-moderate),
+    var(--fl-flood-significant),
+    var(--fl-flood-severe),
+    var(--fl-flood-extreme)
+  );
+}
+
+/* Wildfire intensity gradient */
+.fl-legend__gradient--fire {
+  background: linear-gradient(
+    to right,
+    var(--fl-fire-none),
+    var(--fl-fire-low),
+    var(--fl-fire-mod-low),
+    var(--fl-fire-moderate),
+    var(--fl-fire-mod-high),
+    var(--fl-fire-high)
+  );
+}
+
+/* Confidence gradient */
+.fl-legend__gradient--confidence {
+  background: linear-gradient(
+    to right,
+    var(--fl-conf-very-low),
+    var(--fl-conf-low),
+    var(--fl-conf-medium),
+    var(--fl-conf-high)
+  );
+}
+
+/* Horizontal layout for narrow spaces */
+.fl-legend--horizontal .fl-legend__items {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--fl-space-3);
+}
+
+/* ============================================
+   6. REPORT LAYOUT COMPONENTS
+   ============================================
+   Structural elements for report composition.
+   ============================================ */
+
+.fl-report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--fl-space-6) 0;
+  border-bottom: var(--fl-border-width-2) solid var(--fl-navy);
+  margin-bottom: var(--fl-space-8);
+}
+
+.fl-report-header__logo {
+  max-height: 48px;
+  width: auto;
+}
+
+.fl-report-header__meta {
+  text-align: right;
+  font-size: var(--fl-text-sm);
+  color: var(--fl-neutral-600);
+}
+
+.fl-report-header__date {
+  font-weight: var(--fl-font-semibold);
+  color: var(--fl-neutral-700);
+}
+
+.fl-report-title {
+  font-size: var(--fl-text-4xl);
+  font-weight: var(--fl-font-bold);
+  color: var(--fl-navy);
+  line-height: var(--fl-leading-tight);
+  margin: 0 0 var(--fl-space-3) 0;
+}
+
+.fl-report-subtitle {
+  font-size: var(--fl-text-xl);
+  font-weight: var(--fl-font-medium);
+  color: var(--fl-neutral-600);
+  line-height: var(--fl-leading-snug);
+  margin: 0;
+}
+
+.fl-report-section {
+  margin-bottom: var(--fl-space-12);
+}
+
+.fl-report-section__title {
+  font-size: var(--fl-text-3xl);
+  font-weight: var(--fl-font-bold);
+  color: var(--fl-navy);
+  margin: 0 0 var(--fl-space-6) 0;
+  line-height: var(--fl-leading-snug);
+}
+
+.fl-report-section__subtitle {
+  font-size: var(--fl-text-xl);
+  font-weight: var(--fl-font-semibold);
+  color: var(--fl-neutral-700);
+  margin: var(--fl-space-8) 0 var(--fl-space-4) 0;
+  line-height: var(--fl-leading-snug);
+}
+
+.fl-report-section__content {
+  font-size: var(--fl-text-base);
+  line-height: var(--fl-leading-extra);
+  color: var(--fl-neutral-700);
+}
+
+.fl-report-section__content p {
+  margin: 0 0 var(--fl-space-4) 0;
+}
+
+.fl-report-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--fl-space-6) 0;
+  border-top: var(--fl-border-width) solid var(--fl-neutral-200);
+  margin-top: var(--fl-space-12);
+  font-size: var(--fl-text-sm);
+  color: var(--fl-neutral-600);
+}
+
+.fl-report-footer__attribution {
+  font-size: var(--fl-text-xs);
+  color: var(--fl-neutral-500);
+  margin-top: var(--fl-space-2);
+}
+
+/* Summary grid for KPI cards */
+.fl-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--fl-space-6);
+  margin-bottom: var(--fl-space-8);
+}
+
+/* Responsive grid variants */
+@media (min-width: 768px) {
+  .fl-summary-grid--2col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .fl-summary-grid--3col {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .fl-summary-grid--4col {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Two-column content layout */
+.fl-content-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--fl-space-8);
+  margin-bottom: var(--fl-space-8);
+}
+
+@media (max-width: 767px) {
+  .fl-content-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================
+   7. MAP CONTAINER
+   ============================================
+   Container for embedded maps with title and
+   attribution.
+   ============================================ */
+
+.fl-map-container {
+  position: relative;
+  margin-bottom: var(--fl-space-8);
+  border-radius: var(--fl-radius-md);
+  overflow: hidden;
+  box-shadow: var(--fl-shadow-sm);
+  background: var(--fl-neutral-100);
+}
+
+.fl-map-title {
+  position: absolute;
+  top: var(--fl-space-4);
+  left: var(--fl-space-4);
+  background: rgba(255, 255, 255, 0.95);
+  padding: var(--fl-space-3) var(--fl-space-4);
+  border-radius: var(--fl-radius-md);
+  box-shadow: var(--fl-shadow-sm);
+  font-size: var(--fl-text-sm);
+  font-weight: var(--fl-font-semibold);
+  color: var(--fl-neutral-700);
+  z-index: var(--fl-z-fixed);
+}
+
+.fl-map-attribution {
+  position: absolute;
+  bottom: var(--fl-space-2);
+  right: var(--fl-space-2);
+  background: rgba(255, 255, 255, 0.8);
+  padding: var(--fl-space-1) var(--fl-space-2);
+  border-radius: var(--fl-radius-sm);
+  font-size: var(--fl-text-xs);
+  color: var(--fl-neutral-600);
+  z-index: var(--fl-z-fixed);
+}
+
+.fl-map-attribution a {
+  color: var(--fl-sky);
+  text-decoration: none;
+}
+
+.fl-map-attribution a:hover {
+  text-decoration: underline;
+}
+
+/* Map image styling */
+.fl-map-container img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Before/After comparison container */
+.fl-map-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--fl-space-4);
+  margin-bottom: var(--fl-space-8);
+}
+
+.fl-map-comparison__item {
+  position: relative;
+}
+
+.fl-map-comparison__label {
+  position: absolute;
+  top: var(--fl-space-3);
+  left: var(--fl-space-3);
+  background: rgba(0, 0, 0, 0.75);
+  color: var(--fl-white);
+  padding: var(--fl-space-2) var(--fl-space-3);
+  border-radius: var(--fl-radius-sm);
+  font-size: var(--fl-text-sm);
+  font-weight: var(--fl-font-semibold);
+  z-index: var(--fl-z-fixed);
+}
+
+@media (max-width: 767px) {
+  .fl-map-comparison {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================
+   8. UTILITY CLASSES
+   ============================================
+   Common patterns for spacing, visibility,
+   and interactive states.
+   ============================================ */
+
+/* Spacing utilities */
+.fl-mb-0 { margin-bottom: 0; }
+.fl-mb-4 { margin-bottom: var(--fl-space-4); }
+.fl-mb-6 { margin-bottom: var(--fl-space-6); }
+.fl-mb-8 { margin-bottom: var(--fl-space-8); }
+
+.fl-mt-0 { margin-top: 0; }
+.fl-mt-4 { margin-top: var(--fl-space-4); }
+.fl-mt-6 { margin-top: var(--fl-space-6); }
+.fl-mt-8 { margin-top: var(--fl-space-8); }
+
+/* Text utilities */
+.fl-text-center { text-align: center; }
+.fl-text-right { text-align: right; }
+.fl-text-muted { color: var(--fl-neutral-500); }
+.fl-text-emphasis { font-weight: var(--fl-font-semibold); }
+
+/* Interactive states */
+.fl-interactive {
+  cursor: pointer;
+  transition: all var(--fl-transition-normal);
+}
+
+.fl-interactive:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--fl-shadow-md);
+}
+
+.fl-interactive:focus {
+  outline: var(--fl-focus-outline);
+  outline-offset: var(--fl-focus-offset);
+}
+
+/* Focus visible for keyboard navigation */
+.fl-interactive:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.fl-interactive:focus-visible {
+  outline: var(--fl-focus-outline);
+  outline-offset: var(--fl-focus-offset);
+}
+
+/* Dividers */
+.fl-divider {
+  border: none;
+  border-top: var(--fl-border-width) solid var(--fl-neutral-200);
+  margin: var(--fl-space-8) 0;
+}
+
+.fl-divider--thick {
+  border-top-width: var(--fl-border-width-2);
+}
+
+/* Page break hint for print */
+.fl-page-break {
+  page-break-before: always;
+}
+
+.fl-avoid-break {
+  page-break-inside: avoid;
+}
+
+/* Hide on print */
+.fl-no-print {
+  /* Handled by design_tokens.css @media print */
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================
+   Adjustments for PDF/print output.
+   ============================================ */
+
+@media print {
+  /* Remove interactive states */
+  .fl-metric-card:hover,
+  .fl-interactive:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* Ensure good page breaks */
+  .fl-metric-card,
+  .fl-alert,
+  .fl-legend,
+  .fl-map-container {
+    page-break-inside: avoid;
+  }
+
+  .fl-report-section {
+    page-break-after: auto;
+  }
+
+  /* Remove box shadows for cleaner print */
+  .fl-metric-card,
+  .fl-legend,
+  .fl-map-container {
+    box-shadow: none;
+  }
+
+  /* Links - show URLs */
+  .fl-report-section__content a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: var(--fl-text-xs);
+    color: var(--fl-neutral-500);
+  }
+
+  /* Ensure table borders print */
+  .fl-table,
+  .fl-table th,
+  .fl-table td {
+    border-color: var(--fl-neutral-400) !important;
+  }
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================
+   Mobile and tablet optimizations.
+   ============================================ */
+
+@media (max-width: 767px) {
+  /* Stack metric cards vertically on mobile */
+  .fl-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Reduce spacing on mobile */
+  .fl-report-section {
+    margin-bottom: var(--fl-space-8);
+  }
+
+  /* Smaller titles on mobile */
+  .fl-report-title {
+    font-size: var(--fl-text-3xl);
+  }
+
+  .fl-report-section__title {
+    font-size: var(--fl-text-2xl);
+  }
+
+  /* Allow horizontal scroll for wide tables */
+  .fl-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Stack report header on mobile */
+  .fl-report-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--fl-space-4);
+  }
+
+  .fl-report-header__meta {
+    text-align: left;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 768px) and (max-width: 991px) {
+  .fl-summary-grid--4col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
