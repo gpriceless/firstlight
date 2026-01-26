@@ -48,6 +48,16 @@ from .utils import (
     normalize_to_uint8,
     stack_bands_to_rgb,
 )
+from .color_scales import (
+    ColorPalette,
+    SeverityLevel,
+    apply_colormap,
+    get_confidence_palette,
+    get_fire_palette,
+    get_flood_palette,
+    get_palette_by_name,
+    hex_to_rgba,
+)
 
 __all__ = [
     # Band combinations (VIS-1.1.3, VIS-1.1.4)
@@ -83,4 +93,13 @@ __all__ = [
     "handle_nodata",
     "detect_partial_coverage",
     "get_valid_data_bounds",
+    # Color scales (VIS-1.3 Task 1.1)
+    "ColorPalette",
+    "SeverityLevel",
+    "apply_colormap",
+    "get_confidence_palette",
+    "get_fire_palette",
+    "get_flood_palette",
+    "get_palette_by_name",
+    "hex_to_rgba",
 ]
