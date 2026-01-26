@@ -480,6 +480,15 @@ def generate_interactive_report(analysis, census, emergency, infrastructure, ful
 
 def _generate_simple_web_report(analysis, census, infrastructure, full_report_data):
     """Generate a simpler web report without interactive maps (fallback)."""
+    # Build infrastructure HTML outside f-string to avoid backslash issues
+    infra_html_parts = []
+    for infra_type, features in infrastructure.items():
+        if features:
+            type_name = infra_type.title().replace('_', ' ')
+            items = ''.join(f'<li>{f.get("name", "Unknown")}</li>' for f in features[:5])
+            infra_html_parts.append(f"<h3>{type_name}s ({len(features)})</h3><ul>{items}</ul>")
+    infra_html = ''.join(infra_html_parts)
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -559,7 +568,7 @@ def _generate_simple_web_report(analysis, census, infrastructure, full_report_da
     <section>
         <h2>Infrastructure in Area</h2>
         <div class="infrastructure">
-            {''.join(f"<h3>{k.title().replace('_', ' ')}s ({len(v)})</h3><ul>{''.join(f'<li>{f.get(\"name\", \"Unknown\")}</li>' for f in v[:5])}</ul>" for k, v in infrastructure.items() if v)}
+            {infra_html}
         </div>
     </section>
 
