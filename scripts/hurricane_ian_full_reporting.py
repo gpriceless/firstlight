@@ -438,10 +438,10 @@ def generate_interactive_report(analysis, census, emergency, infrastructure, ful
 
         # Create map bounds
         bounds = MapBounds(
-            west=BBOX[0],
-            south=BBOX[1],
-            east=BBOX[2],
-            north=BBOX[3]
+            min_lon=BBOX[0],
+            min_lat=BBOX[1],
+            max_lon=BBOX[2],
+            max_lat=BBOX[3]
         )
 
         # Convert infrastructure to list format
@@ -930,10 +930,10 @@ def generate_static_map(analysis):
         from core.reporting.maps.base import MapBounds, MapConfig
 
         bounds = MapBounds(
-            west=BBOX[0],
-            south=BBOX[1],
-            east=BBOX[2],
-            north=BBOX[3]
+            min_lon=BBOX[0],
+            min_lat=BBOX[1],
+            max_lon=BBOX[2],
+            max_lat=BBOX[3]
         )
 
         config = MapConfig(
