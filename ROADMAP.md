@@ -808,9 +808,9 @@ Analysis algorithms produce accurate outputs (flood masks, statistics) but these
 | VIS-1.2.2 | Add temporal image selection (pre-event, post-event) | [ ] | VIS-1.2.1 |
 | VIS-1.2.3 | Implement cloud-free image selection | [ ] | VIS-1.2.2 |
 | VIS-1.2.4 | Ensure extent/resolution matching between pairs | [ ] | VIS-1.2.1 |
-| VIS-1.2.5 | Add date labels to generated images | [ ] | VIS-1.2.1 |
-| VIS-1.2.6 | Implement side-by-side composite output | [ ] | VIS-1.2.4 |
-| VIS-1.2.7 | Implement animated GIF output (optional) | [ ] | VIS-1.2.4 |
+| VIS-1.2.5 | Add date labels to generated images | [x] *(2026-01-26)* | VIS-1.2.1 |
+| VIS-1.2.6 | Implement side-by-side composite output | [x] *(2026-01-26)* | VIS-1.2.4 |
+| VIS-1.2.7 | Implement animated GIF output (optional) | [x] *(2026-01-26)* | VIS-1.2.4 |
 | VIS-1.2.8 | Add integration tests with STAC discovery | [ ] | VIS-1.2.6 |
 
 ### Epic VIS-1.3: Detection Overlay Rendering
