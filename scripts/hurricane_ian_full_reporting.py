@@ -122,19 +122,19 @@ def get_emergency_resources():
     er = EmergencyResources()
 
     # Get Florida flood resources
-    state_info = er.get_state_info('FL')
-    resources = er.get_disaster_resources('FL', DisasterType.FLOOD)
-    contacts = er.get_emergency_contacts('FL')
+    state_info = er.get_state_resources('FL')
+    resources = er.get_disaster_specific_resources(DisasterType.FLOOD)
+    national_contacts = er.get_national_resources()
 
     console.print(f'  [green]OK[/] State: {state_info.state_name}')
-    console.print(f'  [green]OK[/] Emergency Management: {state_info.emergency_management_agency}')
-    console.print(f'  [green]OK[/] Contacts: {len(contacts)}')
-    console.print(f'  [green]OK[/] Resources: {len(resources)}')
+    console.print(f'  [green]OK[/] Emergency Management URL: {state_info.emergency_mgmt_url}')
+    console.print(f'  [green]OK[/] National Contacts: {len(national_contacts)}')
+    console.print(f'  [green]OK[/] Disaster Resources: {len(resources)}')
 
     return {
         'state_info': state_info,
         'resources': resources,
-        'contacts': contacts
+        'contacts': national_contacts
     }
 
 
