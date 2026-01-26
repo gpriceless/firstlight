@@ -786,16 +786,16 @@ Analysis algorithms produce accurate outputs (flood masks, statistics) but these
 | Task | Description | Status | Depends On |
 |------|-------------|--------|------------|
 | VIS-1.1.1 | Create `core/reporting/imagery/` module structure | [x] | None |
-| VIS-1.1.2 | Implement `ImageryRenderer` class | [ ] | VIS-1.1.1 |
+| VIS-1.1.2 | Implement `ImageryRenderer` class | [x] *(Completed 2026-01-26)* | VIS-1.1.1 |
 | VIS-1.1.3 | Add Sentinel-2 band composites (true color, false color, SWIR) | [x] | VIS-1.1.2 |
 | VIS-1.1.4 | Add Landsat band composites | [x] | VIS-1.1.2 |
 | VIS-1.1.5 | Implement histogram stretch algorithms | [x] | VIS-1.1.2 |
-| VIS-1.1.6 | Add cloud masking using SCL band | [ ] | VIS-1.1.3 |
-| VIS-1.1.7 | Implement PNG/TIFF export with georeferencing | [ ] | VIS-1.1.2 |
-| VIS-1.1.8 | Add unit tests for renderer | [ ] | VIS-1.1.7 |
+| VIS-1.1.6 | Add cloud masking using SCL band | [x] *(Completed 2026-01-26)* | VIS-1.1.3 |
+| VIS-1.1.7 | Implement PNG/TIFF export with georeferencing | [x] *(Completed 2026-01-26)* | VIS-1.1.2 |
+| VIS-1.1.8 | Add unit tests for renderer | [x] *(Completed 2026-01-26)* | VIS-1.1.7 |
 | VIS-1.1.9 | **[NEW]** Add SAR (Sentinel-1) visualization support | [x] | VIS-1.1.2 |
 | VIS-1.1.10 | **[NEW]** Add partial coverage detection and nodata visualization | [x] | VIS-1.1.2 |
-| VIS-1.1.11 | **[NEW]** Add graceful degradation for missing bands | [ ] | VIS-1.1.3 |
+| VIS-1.1.11 | **[NEW]** Add graceful degradation for missing bands | [x] *(Completed 2026-01-26)* | VIS-1.1.3 |
 
 ### Epic VIS-1.2: Before/After Image Generation
 
