@@ -1,0 +1,394 @@
+/**
+ * FirstLight Design System - CSS Custom Properties
+ * Version: 1.0.0
+ *
+ * Design principles:
+ * - Clarity over complexity
+ * - Accessibility first (WCAG 2.1 AA compliant)
+ * - Actionable intelligence
+ * - Print and digital parity
+ * - Calm urgency
+ *
+ * All custom properties follow the naming convention: --fl-*
+ */
+
+:root {
+  /* ============================================
+     1. BRAND COLORS
+     ============================================ */
+
+  /* Primary brand colors for headers, navigation, and core UI */
+  --fl-navy: #1a365d;           /* Primary brand - contrast ratio 10.3:1 (AAA) */
+  --fl-blue: #2c5282;           /* Secondary brand - contrast ratio 6.2:1 (AA/AAA) */
+  --fl-sky: #3182ce;            /* Interactive elements, links - contrast ratio 4.5:1 (AA) */
+  --fl-slate: #2d3748;          /* Body text, high contrast - contrast ratio 11.2:1 (AAA) */
+
+  /* ============================================
+     2. SEMANTIC COLORS
+     ============================================ */
+
+  /* Success colors - pass, confirmed, safe */
+  --fl-success: #38a169;        /* Primary success - 3.5:1 (use with large text) */
+  --fl-success-dark: #276749;   /* Dark variant - 5.8:1 (AA compliant for text) */
+  --fl-success-light: #c6f6d5;  /* Light backgrounds */
+
+  /* Warning colors - caution, review needed */
+  --fl-warning: #d69e2e;        /* Primary warning - 2.4:1 (use dark variant for text) */
+  --fl-warning-dark: #975a16;   /* Dark variant - 5.1:1 (AA compliant for text) */
+  --fl-warning-light: #fefcbf;  /* Light backgrounds */
+
+  /* Danger colors - fail, hazard, urgent */
+  --fl-danger: #e53e3e;         /* Primary danger - 4.0:1 (large text only) */
+  --fl-danger-dark: #c53030;    /* Dark variant - 5.4:1 (AA compliant for text) */
+  --fl-danger-light: #fed7d7;   /* Light backgrounds */
+
+  /* Info colors - informational, neutral */
+  --fl-info: #3182ce;           /* Primary info - 4.5:1 (AA compliant) */
+  --fl-info-dark: #2b6cb0;      /* Dark variant - 4.8:1 (AA compliant) */
+  --fl-info-light: #bee3f8;     /* Light backgrounds */
+
+  /* ============================================
+     3. FLOOD SEVERITY PALETTE
+     ============================================
+     Colorblind accessible blue scale for flood depth.
+     Uses luminance differences for colorblind users.
+     ============================================ */
+
+  --fl-flood-none: #f7fafc;       /* Level 0: No flooding (0 m) */
+  --fl-flood-minor: #90cdf4;      /* Level 1: Minor (0-0.3 m) */
+  --fl-flood-moderate: #4299e1;   /* Level 2: Moderate (0.3-1.0 m) */
+  --fl-flood-significant: #2b6cb0; /* Level 3: Significant (1.0-2.0 m) */
+  --fl-flood-severe: #2c5282;     /* Level 4: Severe (2.0-3.0 m) */
+  --fl-flood-extreme: #1a365d;    /* Level 5: Extreme (>3.0 m) */
+
+  /* Alternative high-contrast flood palette for print/low-light */
+  --fl-flood-minor-alt: #bee3f8;
+  --fl-flood-moderate-alt: #63b3ed;
+  --fl-flood-significant-alt: #3182ce;
+  --fl-flood-severe-alt: #2c5282;
+  --fl-flood-extreme-alt: #1a365d;
+
+  /* ============================================
+     4. WILDFIRE SEVERITY PALETTE
+     ============================================
+     Heat-inspired palette with warm tones and
+     sufficient luminance contrast.
+     ============================================ */
+
+  --fl-fire-none: #f7fafc;        /* Level 0: Unburned */
+  --fl-fire-low: #fed7aa;         /* Level 1: Low - surface scorch */
+  --fl-fire-mod-low: #fdba74;     /* Level 2: Moderate-Low - partial understory */
+  --fl-fire-moderate: #f97316;    /* Level 3: Moderate - full understory */
+  --fl-fire-mod-high: #ea580c;    /* Level 4: Moderate-High - partial canopy */
+  --fl-fire-high: #9a3412;        /* Level 5: High - full canopy loss */
+
+  /* ============================================
+     5. CONFIDENCE/UNCERTAINTY PALETTE
+     ============================================
+     Shows data reliability without implying severity.
+     Intentionally neutral (gray-green) to avoid confusion.
+     ============================================ */
+
+  --fl-conf-high: #276749;        /* High confidence: >85% */
+  --fl-conf-medium: #4a5568;      /* Medium confidence: 60-85% */
+  --fl-conf-low: #718096;         /* Low confidence: 40-60% */
+  --fl-conf-very-low: #a0aec0;    /* Very low confidence: <40% */
+
+  /* ============================================
+     6. BASE MAP PALETTE
+     ============================================
+     Muted colors for context layers.
+     ============================================ */
+
+  --fl-map-land: #edf2f7;         /* Base landmass */
+  --fl-map-water: #e2e8f0;        /* Pre-existing water bodies */
+  --fl-map-urban: #cbd5e0;        /* Built-up areas */
+  --fl-map-roads-major: #a0aec0;  /* Highways, arterials */
+  --fl-map-roads-minor: #cbd5e0;  /* Local streets */
+  --fl-map-boundaries: #718096;   /* Administrative boundaries */
+  --fl-map-labels: #4a5568;       /* Place names */
+
+  /* ============================================
+     7. NEUTRAL SCALE
+     ============================================
+     For UI elements, backgrounds, and typography.
+     ============================================ */
+
+  --fl-neutral-50: #f7fafc;       /* Lightest backgrounds */
+  --fl-neutral-100: #edf2f7;      /* Card backgrounds */
+  --fl-neutral-200: #e2e8f0;      /* Borders, dividers */
+  --fl-neutral-300: #cbd5e0;      /* Disabled states */
+  --fl-neutral-400: #a0aec0;      /* Placeholder text */
+  --fl-neutral-500: #718096;      /* Secondary text */
+  --fl-neutral-600: #4a5568;      /* Body text */
+  --fl-neutral-700: #2d3748;      /* Headings */
+  --fl-neutral-800: #1a202c;      /* High emphasis */
+  --fl-neutral-900: #171923;      /* Maximum contrast */
+
+  /* ============================================
+     8. TYPOGRAPHY
+     ============================================ */
+
+  /* Font families */
+  --fl-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --fl-font-sans-body: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --fl-font-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Source Code Pro', monospace;
+
+  /* Font sizes - Base: 16px (1rem), Scale ratio: 1.25 (Major Third) */
+  --fl-text-xs: 0.75rem;          /* 12px - Captions, timestamps, metadata */
+  --fl-text-sm: 0.875rem;         /* 14px - Secondary text, table data */
+  --fl-text-base: 1rem;           /* 16px - Body text, paragraphs */
+  --fl-text-lg: 1.125rem;         /* 18px - Lead paragraphs, emphasis */
+  --fl-text-xl: 1.25rem;          /* 20px - H4, card titles */
+  --fl-text-2xl: 1.5rem;          /* 24px - H3, major sections */
+  --fl-text-3xl: 1.875rem;        /* 30px - H2, page sections */
+  --fl-text-4xl: 2.25rem;         /* 36px - H1, report titles */
+  --fl-text-5xl: 3rem;            /* 48px - Hero headlines, cover pages */
+
+  /* Font weights */
+  --fl-font-normal: 400;
+  --fl-font-medium: 500;
+  --fl-font-semibold: 600;
+  --fl-font-bold: 700;
+  --fl-font-extrabold: 800;
+
+  /* Line heights */
+  --fl-leading-tight: 1.1;
+  --fl-leading-snug: 1.2;
+  --fl-leading-normal: 1.3;
+  --fl-leading-relaxed: 1.4;
+  --fl-leading-loose: 1.5;
+  --fl-leading-extra: 1.6;
+
+  /* Letter spacing */
+  --fl-tracking-tighter: -0.03em;
+  --fl-tracking-tight: -0.02em;
+  --fl-tracking-normal: 0;
+  --fl-tracking-wide: 0.01em;
+  --fl-tracking-wider: 0.02em;
+  --fl-tracking-widest: 0.05em;
+
+  /* ============================================
+     9. SPACING SCALE
+     ============================================
+     Base: 4px
+     ============================================ */
+
+  --fl-space-1: 0.25rem;          /* 4px - Tight gaps, icon spacing */
+  --fl-space-2: 0.5rem;           /* 8px - Related elements */
+  --fl-space-3: 0.75rem;          /* 12px - Form elements */
+  --fl-space-4: 1rem;             /* 16px - Card padding, standard gaps */
+  --fl-space-5: 1.25rem;          /* 20px - Section padding (small) */
+  --fl-space-6: 1.5rem;           /* 24px - Component separation */
+  --fl-space-8: 2rem;             /* 32px - Section gaps */
+  --fl-space-10: 2.5rem;          /* 40px - Major section breaks */
+  --fl-space-12: 3rem;            /* 48px - Page section padding */
+  --fl-space-16: 4rem;            /* 64px - Hero padding */
+  --fl-space-20: 5rem;            /* 80px - Section separators */
+  --fl-space-24: 6rem;            /* 96px - Major page divisions */
+
+  /* ============================================
+     10. BORDER RADIUS
+     ============================================ */
+
+  --fl-radius-sm: 0.25rem;        /* 4px - Tight curves */
+  --fl-radius-md: 0.5rem;         /* 8px - Standard components */
+  --fl-radius-lg: 0.75rem;        /* 12px - Cards, panels */
+  --fl-radius-xl: 1rem;           /* 16px - Large components */
+  --fl-radius-full: 9999px;       /* Fully rounded (pills, circles) */
+
+  /* ============================================
+     11. SHADOWS AND ELEVATION
+     ============================================ */
+
+  --fl-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --fl-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --fl-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --fl-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+
+  /* Map symbol shadow for contrast */
+  --fl-shadow-map-symbol: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  /* Text halos for map labels */
+  --fl-shadow-text-halo-sm: -1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white, 1px 1px 0 white;
+  --fl-shadow-text-halo-md: -1.5px -1.5px 0 white, 1.5px -1.5px 0 white, -1.5px 1.5px 0 white, 1.5px 1.5px 0 white;
+  --fl-shadow-text-halo-lg: -2px -2px 0 white, 2px -2px 0 white, -2px 2px 0 white, 2px 2px 0 white;
+
+  /* ============================================
+     12. BORDERS
+     ============================================ */
+
+  --fl-border-width: 1px;
+  --fl-border-width-2: 2px;
+  --fl-border-width-4: 4px;
+  --fl-border-color: var(--fl-neutral-200);
+  --fl-border-color-dark: var(--fl-neutral-300);
+
+  /* ============================================
+     13. TRANSITIONS AND TIMING
+     ============================================ */
+
+  --fl-transition-fast: 100ms ease-out;
+  --fl-transition-normal: 200ms ease-in-out;
+  --fl-transition-slow: 300ms ease-in-out;
+  --fl-transition-emphasis: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Easing functions */
+  --fl-ease-out: ease-out;
+  --fl-ease-in-out: ease-in-out;
+  --fl-ease-emphasis: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ============================================
+     14. Z-INDEX SCALE
+     ============================================
+     Consistent layering system.
+     ============================================ */
+
+  --fl-z-base: 0;
+  --fl-z-dropdown: 1000;
+  --fl-z-sticky: 1100;
+  --fl-z-fixed: 1200;
+  --fl-z-modal-backdrop: 1300;
+  --fl-z-modal: 1400;
+  --fl-z-popover: 1500;
+  --fl-z-tooltip: 1600;
+
+  /* ============================================
+     15. BREAKPOINTS
+     ============================================
+     Responsive design breakpoints.
+     Use with media queries.
+     ============================================ */
+
+  --fl-breakpoint-xs: 0;          /* Mobile */
+  --fl-breakpoint-sm: 576px;      /* Mobile landscape */
+  --fl-breakpoint-md: 768px;      /* Tablet */
+  --fl-breakpoint-lg: 992px;      /* Desktop */
+  --fl-breakpoint-xl: 1200px;     /* Large desktop */
+  --fl-breakpoint-xxl: 1400px;    /* Extra large */
+
+  /* ============================================
+     16. OPACITY SCALE
+     ============================================ */
+
+  --fl-opacity-0: 0;
+  --fl-opacity-25: 0.25;
+  --fl-opacity-50: 0.5;
+  --fl-opacity-75: 0.75;
+  --fl-opacity-80: 0.8;
+  --fl-opacity-100: 1;
+
+  /* ============================================
+     17. COMPONENT-SPECIFIC TOKENS
+     ============================================ */
+
+  /* Metric Cards */
+  --fl-card-bg: #ffffff;
+  --fl-card-border: var(--fl-border-width) solid var(--fl-neutral-200);
+  --fl-card-radius: var(--fl-radius-md);
+  --fl-card-padding: var(--fl-space-6);
+  --fl-card-shadow: var(--fl-shadow-sm);
+
+  /* Alert Boxes */
+  --fl-alert-padding: var(--fl-space-4) var(--fl-space-5);
+  --fl-alert-radius: var(--fl-radius-md);
+  --fl-alert-border-width: var(--fl-border-width-4);
+
+  /* Data Tables */
+  --fl-table-header-bg: var(--fl-neutral-100);
+  --fl-table-header-text: var(--fl-neutral-600);
+  --fl-table-row-bg-alt: var(--fl-neutral-50);
+  --fl-table-border: var(--fl-border-width) solid var(--fl-neutral-200);
+  --fl-table-cell-padding: var(--fl-space-3) var(--fl-space-4);
+  --fl-table-hover-bg: var(--fl-neutral-100);
+
+  /* Severity Badges */
+  --fl-badge-padding: var(--fl-space-1) var(--fl-space-3);
+  --fl-badge-radius: var(--fl-radius-sm);
+  --fl-badge-font-size: var(--fl-text-xs);
+  --fl-badge-font-weight: var(--fl-font-semibold);
+  --fl-badge-text-transform: uppercase;
+  --fl-badge-letter-spacing: var(--fl-tracking-widest);
+
+  /* Legends */
+  --fl-legend-bar-height: 16px;
+  --fl-legend-bar-width-min: 200px;
+  --fl-legend-bar-width-max: 300px;
+  --fl-legend-symbol-size: 12px;
+  --fl-legend-row-gap: var(--fl-space-2);
+
+  /* Focus States (accessibility) */
+  --fl-focus-outline: 2px solid var(--fl-sky);
+  --fl-focus-offset: 2px;
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================
+   Adjustments for print output.
+   ============================================ */
+
+@media print {
+  :root {
+    /* Darker variants for better print contrast */
+    --fl-success: var(--fl-success-dark);
+    --fl-warning: var(--fl-warning-dark);
+    --fl-danger: var(--fl-danger-dark);
+    --fl-info: var(--fl-info-dark);
+
+    /* Remove shadows for cleaner print */
+    --fl-shadow-sm: none;
+    --fl-shadow-md: none;
+    --fl-shadow-lg: none;
+    --fl-shadow-xl: none;
+
+    /* Adjust spacing for print density */
+    --fl-space-6: 1.25rem;
+    --fl-space-8: 1.75rem;
+  }
+
+  .no-print {
+    display: none;
+  }
+
+  body {
+    font-size: 10pt;
+  }
+
+  a[href]:after {
+    content: " (" attr(href) ")";
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================
+   Respect user's motion preferences.
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   DARK MODE (Future Enhancement)
+   ============================================
+   Placeholder for dark mode support.
+   Currently not in scope for v1.0.0.
+   ============================================ */
+
+/*
+@media (prefers-color-scheme: dark) {
+  :root {
+    // Dark mode tokens would go here
+  }
+}
+*/

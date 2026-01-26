@@ -1,7 +1,7 @@
 # OpenSpec: Active Specifications
 
 **Status:** In-Progress Specifications Only
-**Last Updated:** 2026-01-23
+**Last Updated:** 2026-01-26
 **Archive:** See `docs/OPENSPEC_ARCHIVE.md` for completed specifications
 
 ---
@@ -236,6 +236,100 @@ config/
 
 ---
 
+## 4. Human-Readable Reporting Overhaul (REPORT-2.0)
+
+**Status:** APPROVED (2026-01-26)
+**Priority:** P0/P1 (Foundation P0, Extensions P1)
+**Detailed Spec:** `docs/specs/OPENSPEC_REPORTING_OVERHAUL_DRAFT.md`
+**Estimated Effort:** 8 weeks
+
+---
+
+### Problem Statement
+
+FirstLight produces geospatially accurate flood, wildfire, and storm analysis, but reports are designed for technical GIS specialists. Emergency managers need actionable intelligence in seconds, not technical data requiring interpretation.
+
+**Current Gaps:**
+- No before/after comparison imagery
+- No infrastructure overlays (hospitals, schools, shelters)
+- No population impact estimates
+- No plain-language explanations
+- No interactive maps
+- No emergency resource links
+
+### Solution Overview
+
+Transform reports into accessible, actionable intelligence products serving emergency managers, local officials, affected residents, and media.
+
+### Features
+
+| Feature ID | Feature | Priority | Complexity | Dependencies |
+|------------|---------|----------|------------|--------------|
+| **R2.1** | Design System Implementation | P0 | Medium | None (Foundation) |
+| **R2.2** | Plain-Language Report Templates | P0 | Medium | R2.1 |
+| **R2.3** | Map Visualization Overhaul | P0 | Large | R2.1 |
+| **R2.4** | Data Integrations (Census, Infrastructure) | P1 | Medium | None (Parallel) |
+| **R2.5** | Interactive Web Reports | P1 | Large | R2.2, R2.3, R2.4 (soft) |
+| **R2.6** | Print-Ready PDF Outputs | P1 | Medium | R2.2, R2.3 |
+
+### Dependency Graph
+
+```
+R2.1 (Design System) ◀── START HERE
+    |
+    +---> R2.2 (Templates)
+    +---> R2.3 (Map Viz)
+    +---> R2.4 (Data Integrations) [PARALLEL]
+              |
+              +---> R2.5 (Web Reports)
+                        |
+                        +---> R2.6 (Print)
+```
+
+### Implementation Phases
+
+| Phase | Duration | Deliverables |
+|-------|----------|--------------|
+| Phase 1 | 2 weeks | Design system, basic templates |
+| Phase 2 | 2 weeks | Map visualization, data integrations |
+| Phase 3 | 2 weeks | Interactive web reports |
+| Phase 4 | 2 weeks | Print outputs, polish, accessibility audit |
+
+### Success Metrics
+
+| Metric | Current | Target |
+|--------|---------|--------|
+| Time to Key Finding | 5-10 minutes | < 30 seconds |
+| Audience Accessibility | GIS specialists only | Non-technical officials |
+| Emergency Resource Visibility | 0% | 100% |
+| Mobile Readability | 0% | 100% |
+| WCAG AA Compliance | Unknown | 100% |
+
+### Key Technical Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| PDF Library | WeasyPrint | CSS-based rendering |
+| Interactive Maps | Leaflet/Folium | Lightweight, free |
+| Infrastructure Data | HIFLD primary, OSM fallback | Official + comprehensive |
+| Before/After UX | Slider component | Most intuitive |
+
+### Integration Points
+
+- **CLI:** New `flight report` subcommand
+- **Output:** `{output_dir}/reports/` alongside existing outputs
+- **Configuration:** New `reporting` section in flight config
+
+### Existing Capabilities Used
+
+This epic builds on existing FirstLight capabilities:
+- Flood/wildfire/storm detection algorithms (provide the data)
+- Image validation (ensures quality inputs)
+- STAC discovery (locates imagery)
+- Multi-band ingestion (provides analysis-ready data)
+
+---
+
 ## Architecture Decisions Pending
 
 ### Distributed Processing
@@ -251,6 +345,13 @@ config/
 - [ ] Screenshot storage location and retention policy
 - [ ] Integration with existing QC pipeline
 - [ ] Alerting strategy for validation failures
+
+### Reporting (REPORT-2.0)
+
+- [ ] PDF library fallback (WeasyPrint vs ReportLab)
+- [ ] Census API key management
+- [ ] Tile provider fallback configuration
+- [ ] Before/after image caching strategy
 
 ---
 

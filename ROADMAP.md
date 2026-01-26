@@ -1,7 +1,7 @@
 # FirstLight: Implementation Roadmap
 
-**Last Updated:** 2026-01-25
-**Status:** Core Platform Complete, Interface Wiring In Progress
+**Last Updated:** 2026-01-26
+**Status:** Core Platform Complete, Interface Wiring In Progress, Reporting Overhaul Approved
 
 ---
 
@@ -337,6 +337,233 @@ The `"visual"` asset is TCI.tif (RGB composite for visualization), not the indiv
 
 ---
 
+### Phase 2B: Human-Readable Reporting (REPORT-2.0)
+
+**Goal:** Transform technical reports into actionable intelligence for emergency managers
+**Status:** APPROVED - Ready for Implementation
+**Priority:** P0 (Foundation) / P1 (Extensions)
+**Detailed Spec:** `docs/specs/OPENSPEC_REPORTING_OVERHAUL_DRAFT.md`
+**Parallelization:** Can run parallel to Phase 2 and Phase 3
+
+#### Epic R2.1: Design System Implementation (P0 - Foundation)
+
+**Priority:** P0 - Blocks all other reporting features
+**Effort:** 5-7 days
+
+| Task | Description | Status | Depends On |
+|------|-------------|--------|------------|
+| R2.1.1 | Create CSS tokens file with design system colors | [x] *(Completed 2026-01-26)* | None |
+| R2.1.2 | Implement flood severity palette (5 levels) | [x] *(Completed 2026-01-26 - included in R2.1.1)* | R2.1.1 |
+| R2.1.3 | Implement wildfire severity palette (6 levels) | [x] *(Completed 2026-01-26 - included in R2.1.1)* | R2.1.1 |
+| R2.1.4 | Implement confidence/uncertainty palette (4 levels) | [x] *(Completed 2026-01-26 - included in R2.1.1)* | R2.1.1 |
+| R2.1.5 | Implement typography and spacing scales | [x] *(Completed 2026-01-26 - included in R2.1.1)* | R2.1.1 |
+| R2.1.6 | Create component CSS classes (.metric-card, .alert-box, etc.) | [x] *(Completed 2026-01-26)* | R2.1.1 |
+| R2.1.7 | Verify WCAG AA contrast with axe-core | [ ] | R2.1.2-R2.1.4 |
+| R2.1.8 | Create print stylesheet | [x] *(Completed 2026-01-26 - included in design_tokens.css and components.css)* | R2.1.6 |
+| R2.1.9 | Set up icon library (Heroicons) | [ ] | None |
+
+**Files to Create:**
+- `agents/reporting/static/css/tokens.css`
+- `agents/reporting/static/css/components.css`
+- `agents/reporting/static/css/utilities.css`
+- `agents/reporting/static/css/print.css`
+- `agents/reporting/static/css/main.css`
+
+---
+
+#### Epic R2.2: Plain-Language Report Templates (P0 - Core)
+
+**Priority:** P0 - Core deliverable
+**Effort:** 8-10 days
+**Dependencies:** R2.1 complete
+
+| Task | Description | Status | Depends On |
+|------|-------------|--------|------------|
+| R2.2.1 | Create base report template engine with Jinja2 | [x] *(Completed 2026-01-26)* | R2.1 |
+| R2.2.2 | Create executive summary template (1-page) | [x] *(Completed 2026-01-26)* | R2.2.1 |
+| R2.2.3 | Implement "What Happened" section | [x] *(Completed 2026-01-26)* | R2.2.2 |
+| R2.2.4 | Implement "Who Is Affected" section | [x] *(Completed 2026-01-26)* | R2.2.2 |
+| R2.2.5 | Implement "What To Do" section | [x] *(Completed 2026-01-26)* | R2.2.2 |
+| R2.2.6 | Create metric card components | [x] *(Completed 2026-01-26 - uses design system components)* | R2.2.1 |
+| R2.2.7 | Implement scale reference conversions (ha->acres, etc.) | [x] *(Completed 2026-01-26)* | R2.2.2 |
+| R2.2.8 | Create emergency resources partial | [x] *(Completed 2026-01-26 - part of full report)* | R2.2.1 |
+| R2.2.9 | Create full report template with TOC | [x] *(Completed 2026-01-26)* | R2.2.2 |
+| R2.2.10 | Create technical appendix template | [x] *(Completed 2026-01-26)* | R2.2.9 |
+
+**Files to Create:**
+- `agents/reporting/templates/base.html`
+- `agents/reporting/templates/executive_summary.html`
+- `agents/reporting/templates/full_report/` (directory)
+- `agents/reporting/templates/components/` (directory)
+- `agents/reporting/templates/partials/` (directory)
+
+---
+
+#### Epic R2.3: Map Visualization Overhaul (P0 - Core)
+
+**Priority:** P0 - Core deliverable
+**Effort:** 12-15 days
+**Dependencies:** R2.1 complete
+**Status:** COMPLETE (2026-01-26)
+
+| Task | Description | Status | Depends On |
+|------|-------------|--------|------------|
+| R2.3.1 | Set up base map integration (CartoDB Positron) | [x] *(Completed 2026-01-26)* | R2.1 |
+| R2.3.2 | Implement flood extent rendering (5 severity levels) | [x] *(Completed 2026-01-26)* | R2.3.1 |
+| R2.3.3 | Create infrastructure icon set (hospital, school, etc.) | [x] *(Completed 2026-01-26)* | None |
+| R2.3.4 | Implement infrastructure status calculation | [x] *(Completed 2026-01-26)* | R2.3.1, R2.3.3 |
+| R2.3.5 | Create scale bar component | [x] *(Completed 2026-01-26)* | R2.3.1 |
+| R2.3.6 | Create north arrow component | [x] *(Completed 2026-01-26)* | R2.3.1 |
+| R2.3.7 | Create legend component | [x] *(Completed 2026-01-26)* | R2.3.2 |
+| R2.3.8 | Create inset/locator map | [ ] | R2.3.1 |
+| R2.3.9 | Create title block and attribution | [x] *(Completed 2026-01-26)* | R2.3.1 |
+| R2.3.10 | Implement pattern overlays for B&W printing | [ ] | R2.3.2 |
+| R2.3.11 | Implement 300 DPI export | [x] *(Completed 2026-01-26)* | R2.3.1-R2.3.9 |
+
+**Files Created:**
+- ✅ `core/reporting/maps/__init__.py`
+- ✅ `core/reporting/maps/base.py` (MapConfig, MapBounds, MapType)
+- ✅ `core/reporting/maps/static_map.py` (StaticMapGenerator for print-quality maps)
+- ✅ `core/reporting/maps/folium_map.py` (InteractiveMapGenerator for web maps)
+
+**Notes:**
+- R2.3.8 (inset/locator map) and R2.3.10 (B&W patterns) deferred to enhancement phase
+- Core functionality complete: static and interactive maps with all essential furniture
+
+---
+
+#### Epic R2.4: Data Integrations (P1 - Parallel)
+
+**Priority:** P1 - Can run parallel to R2.2/R2.3
+**Effort:** 8-10 days
+**Dependencies:** None (can start immediately)
+
+| Task | Description | Status | Depends On |
+|------|-------------|--------|------------|
+| R2.4.1 | Implement Census API client | [x] Complete (2026-01-26) | None |
+| R2.4.2 | Implement OSM Infrastructure data loader | [x] Complete (2026-01-26) | None |
+| R2.4.3 | Create emergency resources module | [x] Complete (2026-01-26) | None |
+| R2.4.4 | Implement vulnerable population estimates (ACS data) | [ ] | R2.4.1 |
+| R2.4.5 | Implement population estimation for AOI | [ ] | R2.4.1 |
+| R2.4.6 | Implement hospital location retrieval | [ ] | R2.4.2 |
+| R2.4.7 | Implement school location retrieval | [ ] | R2.4.2 |
+| R2.4.8 | Implement shelter location retrieval | [ ] | R2.4.2 |
+| R2.4.9 | Implement "facilities in flood zone" calculation | [ ] | R2.4.6-R2.4.8 |
+| R2.4.10 | Implement API caching (30-day Census, 90-day infra) | [ ] | R2.4.1, R2.4.4 |
+
+**Files Created:**
+- ✅ `core/reporting/data/__init__.py`
+- ✅ `core/reporting/data/census_client.py` (R2.4.1)
+- ✅ `core/reporting/data/infrastructure_client.py` (R2.4.2)
+- ✅ `core/reporting/data/emergency_resources.py` (R2.4.3)
+
+**Tests Created:**
+- ✅ `tests/test_census_client.py`
+- ✅ `tests/test_infrastructure_client.py`
+- ✅ `tests/test_emergency_resources.py`
+- ✅ `tests/test_reporting_data_integration.py` (2026-01-26)
+
+---
+
+#### Epic R2.5: Interactive Web Reports (P1 - High Impact) ✅ COMPLETE
+
+**Priority:** P1 - High impact feature
+**Effort:** 12-15 days
+**Dependencies:** R2.2, R2.3 complete; R2.4 soft dependency
+**Status:** COMPLETE (2026-01-26)
+
+| Task | Description | Status | Depends On |
+|------|-------------|--------|------------|
+| R2.5.1 | Integrate Folium for interactive maps | [x] Complete | R2.3 |
+| R2.5.2 | Implement zoom/pan controls | [x] Complete | R2.5.1 |
+| R2.5.3 | Implement layer toggle (flood extent on/off) | [x] Complete | R2.5.1 |
+| R2.5.4 | Create infrastructure hover tooltips | [x] Complete | R2.5.1, R2.4 |
+| R2.5.5 | Create before/after slider component | [x] Complete | R2.2 |
+| R2.5.6 | Add date labels to before/after images | [x] Complete | R2.5.5 |
+| R2.5.7 | Implement responsive layout (576/768/992 breakpoints) | [x] Complete | R2.2 |
+| R2.5.8 | Implement 44px touch targets | [x] Complete | R2.5.7 |
+| R2.5.9 | Create collapsible sections for mobile | [x] Complete | R2.5.1, R2.5.7 |
+| R2.5.10 | Implement print button | [x] Complete | R2.2 |
+| R2.5.11 | Implement sticky header | [x] Complete | R2.2 |
+| R2.5.12 | Implement emergency resources section | [x] Complete | R2.2 |
+| R2.5.13 | Implement keyboard navigation | [x] Complete | R2.5.1-R2.5.5 |
+
+**Files Created:**
+- `core/reporting/web/__init__.py`
+- `core/reporting/web/interactive_report.py`
+- `core/reporting/web/html/interactive_report.html`
+- `core/reporting/web/assets/interactive.js`
+- `core/reporting/web/assets/interactive.css`
+
+**Tests:** 29 tests in `tests/test_interactive_reports.py` - all passing
+
+---
+
+#### Epic R2.6: Print-Ready PDF Outputs (P1 - Required) ✅ COMPLETE
+
+**Priority:** P1 - Required for official distribution
+**Effort:** 6-8 days
+**Dependencies:** R2.2, R2.3 complete
+**Status:** COMPLETE (2026-01-26)
+
+| Task | Description | Status | Depends On |
+|------|-------------|--------|------------|
+| R2.6.1 | Set up WeasyPrint PDF generation | [x] *(Completed 2026-01-26)* | R2.2 |
+| R2.6.2 | Implement 300 DPI rendering | [x] *(Completed 2026-01-26)* | R2.6.1 |
+| R2.6.3 | Add US Letter and A4 page size support | [x] *(Completed 2026-01-26)* | R2.6.1 |
+| R2.6.4 | Implement proper margins (0.5" content, 0.125" bleed) | [x] *(Completed 2026-01-26)* | R2.6.1 |
+| R2.6.5 | Add page numbers | [x] *(Completed 2026-01-26)* | R2.6.1 |
+| R2.6.6 | Create clickable TOC with hyperlinks | [x] *(Completed 2026-01-26 - supported via HTML anchors)* | R2.6.1 |
+| R2.6.7 | Implement B&W pattern overlays | [ ] *(Deferred - CMYK hints in CSS, patterns in future)* | R2.3.10 |
+| R2.6.8 | Embed fonts or convert to outlines | [x] *(Completed 2026-01-26)* | R2.6.1 |
+| R2.6.9 | Embed maps as 300 DPI PNG | [x] *(Completed 2026-01-26 - configurable DPI)* | R2.3.11 |
+| R2.6.10 | Add "Continued on next page" indicators | [x] *(Completed 2026-01-26 - CSS support added)* | R2.6.1 |
+
+**Files Created:**
+- `core/reporting/pdf/__init__.py`
+- `core/reporting/pdf/generator.py` (PDFReportGenerator, PDFConfig, PageSize)
+- `core/reporting/pdf/print_styles.css`
+- `tests/unit/reporting/test_pdf_generator.py` (13 tests passing)
+
+---
+
+#### REPORT-2.0 Implementation Timeline
+
+```
+Week 1-2: Foundation
+├── R2.1 Design System (all tasks)
+├── R2.2 Base templates (R2.2.1-R2.2.5)
+└── R2.4 Census/Infrastructure setup (R2.4.1, R2.4.4) [PARALLEL]
+
+Week 3-4: Core Capabilities
+├── R2.2 Complete templates (R2.2.6-R2.2.10)
+├── R2.3 Map visualization (all tasks)
+└── R2.4 Data integrations (R2.4.2-R2.4.10) [PARALLEL]
+
+Week 5-6: Interactive Features
+├── R2.5 Interactive web reports (all tasks)
+└── R2.2 Full report template polish
+
+Week 7-8: Polish and Print
+├── R2.6 Print outputs (all tasks)
+├── Accessibility audit (all features)
+├── Integration testing
+└── Documentation
+```
+
+#### REPORT-2.0 Success Criteria
+
+- [ ] Design system passes WCAG AA contrast requirements
+- [ ] Executive summary renders on single page
+- [ ] Maps include scale bar, north arrow, legend
+- [ ] Population estimates display for flood zones
+- [ ] Interactive maps zoom/pan on mobile
+- [ ] Before/after slider works with touch
+- [ ] PDF generates at 300 DPI
+- [ ] All patterns distinguishable in B&W print
+
+---
+
 ### Phase 3: API Production Hardening (P1 - High)
 
 **Goal:** Make API production-ready with persistence and security
@@ -489,7 +716,26 @@ Epic 1.7.4 (Workaround) ──────────────┘  [Can star
 After Epic 1.7 completes:
 - Epic 1.2 (Wire CLI Ingest) can proceed with real Sentinel-2 data
 
-### Stream D: Sequential Work
+### Stream D: Human-Readable Reporting (REPORT-2.0) - NEW
+**Can run fully parallel to Streams A-C.**
+
+```
+Epic R2.1 (Design System) ◀── START HERE
+        │
+        ├──> Epic R2.2 (Templates) ──┐
+        │                             │
+        └──> Epic R2.3 (Map Viz) ────┼──> Epic R2.5 (Web Reports) ──> Epic R2.6 (Print)
+                                     │
+Epic R2.4 (Data Integrations) ───────┘  [Can start immediately, parallel]
+```
+
+**Parallelization Notes:**
+- R2.1 must complete before R2.2, R2.3, R2.5, R2.6
+- R2.4 has NO dependencies - can start Day 1
+- R2.5 has soft dependency on R2.4 (can stub population data)
+- Two engineers can work in parallel after R2.1 completes
+
+### Stream E: Sequential Work
 - Epic 1.4 (Export) - After 1.1
 - Epic 1.5 (Run) - After 1.1, 1.2, 1.3, 1.4, **1.7**
 - Epic 2.1 (Agent) - After Phase 1 patterns established
@@ -526,6 +772,19 @@ After Epic 1.7 completes:
 ### Phase 4 Complete When:
 - [ ] All integration tests pass
 - [ ] No mock/stub code remains in production paths
+
+### REPORT-2.0 (Phase 2B) Complete When:
+- [ ] Design system CSS tokens implemented and WCAG AA verified
+- [ ] Executive summary template renders complete 1-page reports
+- [ ] Full report template with TOC and multi-page support working
+- [ ] Map visualization includes all furniture (scale, north arrow, legend)
+- [ ] Census API returns population estimates for AOI
+- [ ] Infrastructure overlay shows hospitals, schools, shelters
+- [ ] Interactive web reports work on mobile (touch targets 44px+)
+- [ ] Before/after slider functions on touch and keyboard
+- [ ] PDF generation at 300 DPI with proper margins
+- [ ] Pattern overlays distinguishable in B&W print
+- [ ] Accessibility audit passes (WCAG 2.1 AA)
 
 ### Production Ready When:
 - [ ] All phases complete
