@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{{ report_data.event_name }} - Interactive Emergency Intelligence Report">
+    <title>{{ report_data.event_name }} - Interactive Report</title>
+
+    {% if not config.embed_css %}
+    <link rel="stylesheet" href="../../styles/design_tokens.css">
+    <link rel="stylesheet" href="../../styles/components.css">
+    <link rel="stylesheet" href="../assets/interactive.css">
+    {% endif %}
+
+    <style>
+        /* Base styles */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: #2D3748;
+            background: #F7FAFC;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+
+        .fl-report-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+        }
+
+        .fl-report-content {
+            padding: 2rem 1.5rem;
+        }
+
+        .fl-report-section {
+            margin: 3rem 0;
+        }
+
+        .fl-report-section__title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1A365D;
+            margin: 0 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid #3182CE;
+        }
+
+        /* Key metrics grid */
+        .fl-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .fl-metric-card {
+            padding: 1.5rem;
+            background: white;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .fl-metric-card--danger { border-left-color: #E53E3E; }
+        .fl-metric-card--warning { border-left-color: #D69E2E; }
+        .fl-metric-card--info { border-left-color: #3182CE; }
+        .fl-metric-card--success { border-left-color: #38A169; }
+
+        .fl-metric-card__value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2D3748;
+            margin: 0 0 0.5rem 0;
+        }
+
+        .fl-metric-card__label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .fl-metric-card__subtext {
+            font-size: 0.875rem;
+            color: #A0AEC0;
+            margin-top: 0.5rem;
+        }
+
+        /* Alert boxes */
+        .fl-alert {
+            padding: 1.25rem 1.5rem;
+            border: 1px solid;
+            border-left: 4px solid;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+        }
+
+        .fl-alert--info {
+            background: #EBF8FF;
+            border-color: #90CDF4;
+            border-left-color: #3182CE;
+        }
+
+        .fl-alert--danger {
+            background: #FFF5F5;
+            border-color: #FEB2B2;
+            border-left-color: #E53E3E;
+        }
+
+        .fl-alert__title {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: #2B6CB0;
+            text-transform: uppercase;
+            margin: 0 0 0.75rem 0;
+        }
+
+        .fl-alert--danger .fl-alert__title {
+            color: #C53030;
+        }
+
+        .fl-alert__body p {
+            margin: 0.5rem 0;
+        }
+
+        /* Footer */
+        .fl-report-footer {
+            padding: 2rem 1.5rem;
+            background: #EDF2F7;
+            border-top: 1px solid #E2E8F0;
+            text-align: center;
+        }
+
+        .fl-report-footer__text {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.875rem;
+            color: #718096;
+        }
+
+        .fl-report-footer__disclaimer {
+            margin: 0;
+            font-size: 0.75rem;
+            color: #A0AEC0;
+            font-style: italic;
+        }
+
+        {% if config.embed_css %}
+        {{ css|safe }}
+        {% endif %}
+    </style>
+</head>
+<body>
+    <!-- Sticky Header -->
+    <div class="fl-sticky-header">
+        <div class="fl-sticky-header__content">
+            <h1 class="fl-sticky-header__title">{{ report_data.event_name }}</h1>
+            <div class="fl-sticky-header__actions no-print">
+                <button class="fl-sticky-header__button" data-action="print">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;">
+                        <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+                        <rect x="6" y="14" width="12" height="8"/>
+                    </svg>
+                    Print
+                </button>
+                <button class="fl-sticky-header__button" onclick="window.location.href='#help'">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/>
+                    </svg>
+                    Help
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="fl-report-container">
+        <div class="fl-report-content">
+            <!-- Title Block -->
+            <div style="text-align: center; padding: 2rem 0;">
+                <h2 style="font-size: 2.25rem; font-weight: 800; color: #1A365D; margin: 0 0 0.5rem 0;">
+                    {{ report_data.event_name|upper }}
+                </h2>
+                <p style="font-size: 1.125rem; color: #718096; margin: 0;">
+                    {{ report_data.location }} &bull;
+                    {{ report_data.event_type|capitalize }} &bull;
+                    {{ report_data.event_date.strftime('%B %d, %Y') }}
+                </p>
+            </div>
+
+            <!-- Key Metrics -->
+            <div class="fl-metrics-grid">
+                {% if report_data.affected_area_hectares %}
+                <div class="fl-metric-card fl-metric-card--danger">
+                    <div class="fl-metric-card__value">{{ report_data.affected_area_hectares|int|format_number }}</div>
+                    <div class="fl-metric-card__label">Hectares Affected</div>
+                    <div class="fl-metric-card__subtext">
+                        {{ (report_data.affected_area_hectares * 2.471)|int|format_number }} acres
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if report_data.who_is_affected.estimated_population %}
+                <div class="fl-metric-card fl-metric-card--info">
+                    <div class="fl-metric-card__value">~{{ report_data.who_is_affected.estimated_population|format_number }}</div>
+                    <div class="fl-metric-card__label">People Affected</div>
+                    <div class="fl-metric-card__subtext">Estimated population</div>
+                </div>
+                {% endif %}
+
+                {% if report_data.who_is_affected.infrastructure %}
+                <div class="fl-metric-card fl-metric-card--warning">
+                    <div class="fl-metric-card__value">
+                        {{ report_data.who_is_affected.infrastructure.values()|sum }}
+                    </div>
+                    <div class="fl-metric-card__label">Critical Facilities</div>
+                    <div class="fl-metric-card__subtext">Potentially impacted</div>
+                </div>
+                {% endif %}
+
+                {% if report_data.confidence_score %}
+                <div class="fl-metric-card fl-metric-card--success">
+                    <div class="fl-metric-card__value">{{ (report_data.confidence_score * 100)|int }}%</div>
+                    <div class="fl-metric-card__label">Confidence</div>
+                    <div class="fl-metric-card__subtext">Analysis confidence</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Interactive Map -->
+            {% if map_html and config.include_interactive_map %}
+            <div class="fl-report-section">
+                <h2 class="fl-report-section__title">Interactive Map</h2>
+                <div class="fl-map-container">
+                    {{ map_html|safe }}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Before/After Slider -->
+            {% if slider_html and config.include_before_after_slider %}
+            <div class="fl-report-section">
+                {{ slider_html|safe }}
+            </div>
+            {% endif %}
+
+            <!-- What Happened Section -->
+            {% if config.collapsible_sections %}
+            <div class="fl-collapsible fl-collapsible--expanded">
+                <div class="fl-collapsible__header">
+                    <h2 class="fl-collapsible__title">What Happened</h2>
+                    <svg class="fl-collapsible__icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </div>
+                <div class="fl-collapsible__content">
+                    <div class="fl-collapsible__body">
+                        <div class="fl-alert fl-alert--info">
+                            <div class="fl-alert__title">In Plain Language</div>
+                            <div class="fl-alert__body">
+                                <p>{{ report_data.executive_summary }}</p>
+                            </div>
+                        </div>
+
+                        {% if report_data.what_happened.event_description %}
+                        <p>{{ report_data.what_happened.event_description }}</p>
+                        {% endif %}
+
+                        {% if report_data.what_happened.timeline %}
+                        <h3 style="font-size: 1.25rem; font-weight: 600; color: #2C5282; margin: 1.5rem 0 1rem 0;">Timeline</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            {% for entry in report_data.what_happened.timeline %}
+                            <li style="margin: 0.75rem 0; padding-left: 2rem; position: relative;">
+                                <strong style="color: #2D3748;">{{ entry.date }}:</strong> {{ entry.event }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="fl-report-section">
+                <h2 class="fl-report-section__title">What Happened</h2>
+                <div class="fl-alert fl-alert--info">
+                    <div class="fl-alert__title">In Plain Language</div>
+                    <div class="fl-alert__body">
+                        <p>{{ report_data.executive_summary }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Who Is Affected Section -->
+            {% if config.collapsible_sections %}
+            <div class="fl-collapsible">
+                <div class="fl-collapsible__header">
+                    <h2 class="fl-collapsible__title">Who Is Affected</h2>
+                    <svg class="fl-collapsible__icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </div>
+                <div class="fl-collapsible__content">
+                    <div class="fl-collapsible__body">
+                        {% if report_data.who_is_affected.estimated_population %}
+                        <p>
+                            <strong>Population:</strong> An estimated
+                            {{ report_data.who_is_affected.estimated_population|format_number }} people
+                            are within the affected area.
+                        </p>
+                        {% endif %}
+
+                        {% if report_data.who_is_affected.estimated_housing_units %}
+                        <p>
+                            <strong>Housing:</strong> Approximately
+                            {{ report_data.who_is_affected.estimated_housing_units|format_number }} housing units
+                            may be impacted.
+                        </p>
+                        {% endif %}
+
+                        {% if report_data.who_is_affected.infrastructure %}
+                        <p><strong>Critical Infrastructure:</strong></p>
+                        <ul>
+                            {% for facility_type, count in report_data.who_is_affected.infrastructure.items() %}
+                            <li>{{ count }} {{ facility_type }}{{ 's' if count != 1 else '' }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="fl-report-section">
+                <h2 class="fl-report-section__title">Who Is Affected</h2>
+                <!-- Non-collapsible content here -->
+            </div>
+            {% endif %}
+
+            <!-- Emergency Resources Section -->
+            {% if report_data.emergency.emergency_contacts or report_data.emergency.what_to_do %}
+            <div class="fl-report-section" id="help">
+                <h2 class="fl-report-section__title">Emergency Resources</h2>
+
+                {% if report_data.emergency.what_to_do %}
+                <div class="fl-alert fl-alert--danger">
+                    <div class="fl-alert__title">What To Do</div>
+                    <div class="fl-alert__body">
+                        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                            {% for action in report_data.emergency.what_to_do %}
+                            <li style="margin: 0.5rem 0;">{{ action }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if report_data.emergency.emergency_contacts %}
+                <h3 style="font-size: 1.25rem; font-weight: 600; color: #2C5282; margin: 1.5rem 0 1rem 0;">
+                    Emergency Contacts
+                </h3>
+                <div style="display: grid; gap: 1rem;">
+                    {% for contact in report_data.emergency.emergency_contacts %}
+                    <div style="padding: 1rem; background: #F7FAFC; border-left: 4px solid #E53E3E; border-radius: 4px;">
+                        <div style="font-weight: 600; color: #2D3748;">{{ contact.name }}</div>
+                        <div style="font-size: 1.25rem; font-weight: 700; color: #E53E3E; margin: 0.25rem 0;">
+                            {{ contact.number }}
+                        </div>
+                        {% if contact.type %}
+                        <div style="font-size: 0.875rem; color: #718096;">{{ contact.type }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Technical Details -->
+            {% if config.collapsible_sections %}
+            <div class="fl-collapsible">
+                <div class="fl-collapsible__header">
+                    <h2 class="fl-collapsible__title">Technical Details</h2>
+                    <svg class="fl-collapsible__icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </div>
+                <div class="fl-collapsible__content">
+                    <div class="fl-collapsible__body">
+                        <p><strong>Data Sources:</strong></p>
+                        <ul>
+                            {% for source in report_data.technical.data_sources %}
+                            <li>{{ source }}</li>
+                            {% endfor %}
+                        </ul>
+
+                        <p><strong>Methodology:</strong></p>
+                        <p>{{ report_data.technical.methodology }}</p>
+
+                        <p><strong>Confidence Score:</strong> {{ (report_data.technical.confidence_score * 100)|int }}%</p>
+
+                        {% if report_data.technical.qc_results %}
+                        <p><strong>Quality Control Results:</strong></p>
+                        <ul>
+                            {% for check, result in report_data.technical.qc_results.items() %}
+                            <li>{{ check }}: {{ result }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Footer -->
+        <footer class="fl-report-footer">
+            <p class="fl-report-footer__text">
+                Generated by FirstLight Emergency Intelligence System
+                <br>
+                Report ID: {{ report_data.report_id }} | Generated: {{ generated_at }}
+            </p>
+            <p class="fl-report-footer__disclaimer">
+                This is an automated analysis based on satellite imagery.
+                Please verify critical decisions with local authorities and on-the-ground assessment.
+            </p>
+        </footer>
+    </div>
+
+    {% if config.embed_js %}
+    <script>
+    {{ js|safe }}
+    </script>
+    {% else %}
+    <script src="../assets/interactive.js"></script>
+    {% endif %}
+</body>
+</html>

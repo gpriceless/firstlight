@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ event.name }} - Full Analysis Report</title>
+    <link rel="stylesheet" href="../../styles/design_tokens.css">
+    <link rel="stylesheet" href="../../styles/components.css">
+    <style>
+        body {
+            font-family: var(--font-sans);
+            color: var(--color-neutral-700);
+            background: var(--color-neutral-50);
+            margin: 0;
+            padding: 0;
+        }
+
+        .fl-document {
+            max-width: 8.5in;
+            margin: 0 auto;
+            background: white;
+        }
+
+        .fl-page {
+            padding: 0.5in;
+            page-break-after: always;
+        }
+
+        /* Cover Page */
+        .fl-cover {
+            text-align: center;
+            min-height: 10in;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .fl-cover__logo {
+            margin-top: 2in;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-primary-700);
+        }
+
+        .fl-cover__type {
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: var(--color-neutral-500);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            margin-top: 1rem;
+        }
+
+        .fl-cover__title {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--color-primary-900);
+            margin: 2rem 0 1rem;
+        }
+
+        .fl-cover__location {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--color-neutral-700);
+            margin-bottom: 0.5rem;
+        }
+
+        .fl-cover__date {
+            font-size: 1.25rem;
+            color: var(--color-neutral-500);
+        }
+
+        .fl-cover__stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .fl-cover__stat {
+            padding: 1rem;
+            border: 1px solid var(--color-neutral-200);
+            border-radius: 0.5rem;
+        }
+
+        .fl-cover__stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-neutral-800);
+        }
+
+        .fl-cover__stat-label {
+            font-size: 0.875rem;
+            color: var(--color-neutral-500);
+            text-transform: uppercase;
+            margin-top: 0.25rem;
+        }
+
+        .fl-cover__meta {
+            font-size: 0.875rem;
+            color: var(--color-neutral-400);
+            margin-top: 2rem;
+        }
+
+        /* Table of Contents */
+        .fl-toc__title {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: var(--color-primary-900);
+            margin-bottom: 0.5rem;
+            border-bottom: 3px solid var(--color-primary-500);
+            padding-bottom: 0.5rem;
+            display: inline-block;
+            min-width: 200px;
+        }
+
+        .fl-toc__list {
+            list-style: none;
+            padding: 0;
+            margin: 2rem 0;
+        }
+
+        .fl-toc__item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px dotted var(--color-neutral-300);
+        }
+
+        .fl-toc__item--section {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--color-neutral-800);
+            margin-top: 1rem;
+        }
+
+        .fl-toc__item--subsection {
+            font-size: 0.875rem;
+            color: var(--color-neutral-600);
+            padding-left: 1.5rem;
+        }
+
+        .fl-toc__page {
+            color: var(--color-neutral-500);
+        }
+
+        /* Section Pages */
+        .fl-section-header {
+            border-bottom: 1px solid var(--color-neutral-200);
+            padding-bottom: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .fl-section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-primary-900);
+            border-bottom: 3px solid var(--color-primary-500);
+            padding-bottom: 0.5rem;
+            display: inline-block;
+        }
+
+        .fl-subsection-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-primary-700);
+            margin: 2rem 0 1rem;
+        }
+
+        /* Plain Language Box */
+        .fl-plain-language {
+            background: var(--color-info-50);
+            border: 1px solid var(--color-info-300);
+            border-left: 4px solid var(--color-info-500);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .fl-plain-language__title {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--color-info-700);
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+        }
+
+        .fl-plain-language__body {
+            font-size: 1rem;
+            line-height: 1.7;
+            color: var(--color-neutral-800);
+        }
+
+        /* Timeline */
+        .fl-timeline {
+            margin: 2rem 0;
+            padding: 1rem;
+            background: var(--color-neutral-50);
+            border-radius: 0.5rem;
+        }
+
+        .fl-timeline__item {
+            display: flex;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-left: 3px solid var(--color-primary-500);
+            padding-left: 1rem;
+            margin-left: 0.5rem;
+        }
+
+        .fl-timeline__date {
+            font-weight: 600;
+            color: var(--color-primary-700);
+            min-width: 80px;
+        }
+
+        .fl-timeline__event {
+            color: var(--color-neutral-700);
+        }
+
+        /* Area Breakdown Table */
+        .fl-breakdown-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+
+        .fl-breakdown-table th {
+            background: var(--color-neutral-100);
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--color-neutral-300);
+        }
+
+        .fl-breakdown-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--color-neutral-200);
+        }
+
+        /* Infrastructure Cards */
+        .fl-infrastructure-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .fl-infrastructure-card {
+            border: 1px solid var(--color-neutral-200);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        .fl-infrastructure-card__header {
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--color-neutral-200);
+        }
+
+        .fl-infrastructure-card__header--hospital {
+            background: var(--color-danger-50);
+            color: var(--color-danger-800);
+            border-left: 4px solid var(--color-danger-500);
+        }
+
+        .fl-infrastructure-card__header--school {
+            background: var(--color-warning-50);
+            color: var(--color-warning-800);
+            border-left: 4px solid var(--color-warning-500);
+        }
+
+        .fl-infrastructure-card__body {
+            padding: 1rem;
+        }
+
+        .fl-infrastructure-card__count {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-neutral-800);
+        }
+
+        /* Emergency Alert */
+        .fl-emergency-alert {
+            background: var(--color-danger-50);
+            border: 1px solid var(--color-danger-300);
+            border-left: 4px solid var(--color-danger-500);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .fl-emergency-alert__title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--color-danger-800);
+            margin-bottom: 1rem;
+        }
+
+        .fl-emergency-alert__actions {
+            list-style: disc;
+            padding-left: 1.5rem;
+            color: var(--color-danger-900);
+        }
+
+        .fl-emergency-alert__actions li {
+            margin: 0.5rem 0;
+        }
+
+        .fl-emergency-alert__contacts {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--color-danger-300);
+        }
+
+        .fl-emergency-alert__contact {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--color-danger-800);
+            margin: 0.5rem 0;
+        }
+
+        /* Technical Appendix */
+        .fl-appendix {
+            background: var(--color-neutral-50);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .fl-appendix__section {
+            margin: 1.5rem 0;
+        }
+
+        .fl-appendix__label {
+            font-weight: 600;
+            color: var(--color-neutral-700);
+            margin-bottom: 0.5rem;
+        }
+
+        .fl-appendix__value {
+            color: var(--color-neutral-600);
+            font-size: 0.875rem;
+        }
+
+        .fl-qc-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .fl-qc-result {
+            padding: 0.75rem;
+            background: white;
+            border: 1px solid var(--color-neutral-200);
+            border-radius: 0.25rem;
+        }
+
+        .fl-qc-result__label {
+            font-size: 0.75rem;
+            color: var(--color-neutral-500);
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+
+        .fl-qc-result__value {
+            font-weight: 600;
+            color: var(--color-neutral-800);
+        }
+
+        /* Print styles */
+        @media print {
+            .fl-document {
+                max-width: 100%;
+            }
+            body {
+                background: white;
+            }
+            .fl-page {
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="fl-document">
+        <!-- Page 1: Cover Page -->
+        <div class="fl-page fl-cover">
+            <div>
+                <div class="fl-cover__logo">FirstLight</div>
+                <div class="fl-cover__type">{{ event.type|upper }} Analysis Report</div>
+            </div>
+
+            <div>
+                <h1 class="fl-cover__title">{{ event.name|upper }}</h1>
+                <div class="fl-cover__location">{{ event.location }}</div>
+                <div class="fl-cover__date">{{ event.date }}</div>
+
+                <div class="fl-cover__stats">
+                    <div class="fl-cover__stat">
+                        <div class="fl-cover__stat-value">{{ metrics.severity|upper }}</div>
+                        <div class="fl-cover__stat-label">Impact Level</div>
+                    </div>
+                    {% if metrics.area_hectares %}
+                    <div class="fl-cover__stat">
+                        <div class="fl-cover__stat-value">{{ metrics.area_hectares|format_number }}</div>
+                        <div class="fl-cover__stat-label">Hectares Affected</div>
+                    </div>
+                    {% endif %}
+                    {% if who_is_affected.population %}
+                    <div class="fl-cover__stat">
+                        <div class="fl-cover__stat-value">~{{ who_is_affected.population|format_number }}</div>
+                        <div class="fl-cover__stat-label">People Affected</div>
+                    </div>
+                    {% endif %}
+                    <div class="fl-cover__stat">
+                        <div class="fl-cover__stat-value">{{ metrics.confidence|format_percent }}</div>
+                        <div class="fl-cover__stat-label">Confidence</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="fl-cover__meta">
+                <div>Report ID: {{ report.id }}</div>
+                <div>Generated: {{ report.date }}</div>
+                <div>Classification: {{ report.classification }}</div>
+            </div>
+        </div>
+
+        <!-- Page 2: Table of Contents -->
+        <div class="fl-page">
+            <h2 class="fl-toc__title">Table of Contents</h2>
+
+            <ul class="fl-toc__list">
+                <li class="fl-toc__item fl-toc__item--section">
+                    <span>1. Executive Summary</span>
+                    <span class="fl-toc__page">3</span>
+                </li>
+
+                <li class="fl-toc__item fl-toc__item--section">
+                    <span>2. What Happened</span>
+                    <span class="fl-toc__page">4</span>
+                </li>
+                <li class="fl-toc__item fl-toc__item--subsection">
+                    <span>2.1 Event Overview</span>
+                    <span class="fl-toc__page">4</span>
+                </li>
+                <li class="fl-toc__item fl-toc__item--subsection">
+                    <span>2.2 Timeline</span>
+                    <span class="fl-toc__page">5</span>
+                </li>
+
+                <li class="fl-toc__item fl-toc__item--section">
+                    <span>3. Who Is Affected</span>
+                    <span class="fl-toc__page">6</span>
+                </li>
+                <li class="fl-toc__item fl-toc__item--subsection">
+                    <span>3.1 Population Impact</span>
+                    <span class="fl-toc__page">6</span>
+                </li>
+                <li class="fl-toc__item fl-toc__item--subsection">
+                    <span>3.2 Critical Infrastructure</span>
+                    <span class="fl-toc__page">7</span>
+                </li>
+
+                <li class="fl-toc__item fl-toc__item--section">
+                    <span>4. Maps</span>
+                    <span class="fl-toc__page">8</span>
+                </li>
+
+                <li class="fl-toc__item fl-toc__item--section">
+                    <span>5. Emergency Resources</span>
+                    <span class="fl-toc__page">10</span>
+                </li>
+
+                <li class="fl-toc__item fl-toc__item--section">
+                    <span>Appendix A: Technical Details</span>
+                    <span class="fl-toc__page">11</span>
+                </li>
+                <li class="fl-toc__item fl-toc__item--subsection">
+                    <span>A.1 Methodology</span>
+                    <span class="fl-toc__page">11</span>
+                </li>
+                <li class="fl-toc__item fl-toc__item--subsection">
+                    <span>A.2 Data Sources</span>
+                    <span class="fl-toc__page">12</span>
+                </li>
+                <li class="fl-toc__item fl-toc__item--subsection">
+                    <span>A.3 Quality Control</span>
+                    <span class="fl-toc__page">12</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Page 3: Executive Summary -->
+        <div class="fl-page">
+            <div class="fl-section-header">
+                <h2 class="fl-section-title">1. Executive Summary</h2>
+            </div>
+
+            <div class="fl-plain-language">
+                <div class="fl-plain-language__title">Summary</div>
+                <div class="fl-plain-language__body">
+                    {{ executive_summary }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Page 4-5: What Happened -->
+        <div class="fl-page">
+            <div class="fl-section-header">
+                <h2 class="fl-section-title">2. What Happened</h2>
+            </div>
+
+            <h3 class="fl-subsection-title">2.1 Event Overview</h3>
+
+            <div class="fl-plain-language">
+                <div class="fl-plain-language__title">In Plain Language</div>
+                <div class="fl-plain-language__body">
+                    {{ what_happened.description }}
+                </div>
+            </div>
+
+            {% if what_happened.affected_areas %}
+            <p>The {{ what_happened.severity_description }} was concentrated in:</p>
+            <ul>
+                {% for area in what_happened.affected_areas %}
+                <li>{{ area }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+
+            <h3 class="fl-subsection-title">2.2 Timeline</h3>
+
+            {% if what_happened.timeline %}
+            <div class="fl-timeline">
+                {% for item in what_happened.timeline %}
+                <div class="fl-timeline__item">
+                    <div class="fl-timeline__date">{{ item.date }}</div>
+                    <div class="fl-timeline__event">{{ item.event }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if what_happened.area_breakdown %}
+            <h3 class="fl-subsection-title">2.3 Impact by Area</h3>
+
+            <table class="fl-breakdown-table">
+                <thead>
+                    <tr>
+                        <th>Area</th>
+                        <th>Severity</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for area in what_happened.area_breakdown %}
+                    <tr>
+                        <td>{{ area.name }}</td>
+                        <td><span class="fl-badge fl-badge--{{ area.severity }}">{{ area.severity|upper }}</span></td>
+                        <td>{{ area.details }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+
+        <!-- Page 6-7: Who Is Affected -->
+        <div class="fl-page">
+            <div class="fl-section-header">
+                <h2 class="fl-section-title">3. Who Is Affected</h2>
+            </div>
+
+            <h3 class="fl-subsection-title">3.1 Population Impact</h3>
+
+            <div class="fl-summary-grid fl-summary-grid--3col">
+                <div class="fl-metric-card fl-metric-card--info">
+                    <div class="fl-metric-card__value">~{{ who_is_affected.population|format_number }}</div>
+                    <div class="fl-metric-card__label">People in Affected Area</div>
+                </div>
+
+                <div class="fl-metric-card fl-metric-card--info">
+                    <div class="fl-metric-card__value">~{{ who_is_affected.housing_units|format_number }}</div>
+                    <div class="fl-metric-card__label">Housing Units</div>
+                </div>
+
+                {% if who_is_affected.vulnerable_populations %}
+                <div class="fl-metric-card fl-metric-card--warning">
+                    <div class="fl-metric-card__label">Vulnerable Populations</div>
+                    <div class="fl-metric-card__subtext">{{ who_is_affected.vulnerable_populations }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <p>These estimates are based on US Census data overlaid with detected affected area. Actual numbers may vary.</p>
+
+            <h3 class="fl-subsection-title">3.2 Critical Infrastructure</h3>
+
+            {% if who_is_affected.infrastructure %}
+            <div class="fl-infrastructure-grid">
+                {% for facility_type, count in who_is_affected.infrastructure.items() %}
+                <div class="fl-infrastructure-card">
+                    <div class="fl-infrastructure-card__header fl-infrastructure-card__header--{{ facility_type.lower() }}">
+                        {{ facility_type|upper }}{{ 'S' if count != 1 else '' }} ({{ count }} in affected area)
+                    </div>
+                    <div class="fl-infrastructure-card__body">
+                        {% if facility_type == 'Hospital' %}
+                        <p>Critical medical facilities that may be impacted by the event. Status should be verified with local authorities.</p>
+                        {% elif facility_type == 'School' %}
+                        <p>Educational facilities in the affected area. These may be closed or used as evacuation centers.</p>
+                        {% else %}
+                        <p>{{ count }} {{ facility_type.lower() }}{{ 's' if count != 1 else '' }} identified in the affected area.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if who_is_affected.facilities %}
+            <h4>Facility Details</h4>
+            <p>See Appendix for complete facility list with addresses and status.</p>
+            {% endif %}
+        </div>
+
+        <!-- Page 8-9: Maps -->
+        <div class="fl-page">
+            <div class="fl-section-header">
+                <h2 class="fl-section-title">4. Maps and Imagery</h2>
+            </div>
+
+            <p>[Map placeholders - actual maps would be inserted here during rendering]</p>
+
+            {% if maps %}
+            {% for map_name, map_path in maps.items() %}
+            <h3 class="fl-subsection-title">4.{{ loop.index }} {{ map_name|title }}</h3>
+            <div style="border: 1px solid var(--color-neutral-300); padding: 1rem; text-align: center; background: var(--color-neutral-50);">
+                <p>Map: {{ map_path }}</p>
+                <p style="font-size: 0.875rem; color: var(--color-neutral-500);">
+                    [In production, this would display the rendered map image]
+                </p>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p>No map products available for this report.</p>
+            {% endif %}
+        </div>
+
+        <!-- Page 10: Emergency Resources -->
+        <div class="fl-page">
+            <div class="fl-section-header">
+                <h2 class="fl-section-title">5. Emergency Resources</h2>
+            </div>
+
+            <div class="fl-emergency-alert">
+                <div class="fl-emergency-alert__title">What To Do</div>
+
+                {% if emergency.actions %}
+                <ul class="fl-emergency-alert__actions">
+                    {% for action in emergency.actions %}
+                    <li>{{ action }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                {% if emergency.contacts %}
+                <div class="fl-emergency-alert__contacts">
+                    {% for contact in emergency.contacts %}
+                    <div class="fl-emergency-alert__contact">
+                        {{ contact.name }}: {{ contact.number }}
+                        {% if contact.type %}
+                        <span style="font-weight: 400; font-size: 0.875rem;">({{ contact.type }})</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            {% if emergency.resources %}
+            <h3 class="fl-subsection-title">Additional Resources</h3>
+            <ul>
+                {% for resource in emergency.resources %}
+                <li>
+                    <strong>{{ resource.name }}</strong>
+                    {% if resource.url %} - <a href="{{ resource.url }}">{{ resource.url }}</a>{% endif %}
+                    {% if resource.description %}<br>{{ resource.description }}{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+
+        <!-- Page 11+: Technical Appendix -->
+        <div class="fl-page">
+            <div class="fl-section-header">
+                <h2 class="fl-section-title">Appendix A: Technical Details</h2>
+            </div>
+
+            <div class="fl-appendix">
+                <div class="fl-appendix__section">
+                    <h3 class="fl-subsection-title">A.1 Methodology</h3>
+                    <div class="fl-appendix__value">{{ technical.methodology }}</div>
+                </div>
+
+                {% if technical.data_sources %}
+                <div class="fl-appendix__section">
+                    <h3 class="fl-subsection-title">A.2 Data Sources</h3>
+                    <ul>
+                        {% for source in technical.data_sources %}
+                        <li>{{ source }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <div class="fl-appendix__section">
+                    <h3 class="fl-subsection-title">A.3 Quality Control Results</h3>
+
+                    <div class="fl-qc-results">
+                        {% for check_name, result in technical.qc_results.items() %}
+                        <div class="fl-qc-result">
+                            <div class="fl-qc-result__label">{{ check_name|replace('_', ' ')|title }}</div>
+                            <div class="fl-qc-result__value">{{ result }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <p style="margin-top: 1rem;">
+                        <strong>Overall Confidence:</strong> {{ technical.confidence|format_percent }}
+                    </p>
+                </div>
+
+                {% if technical.processing %}
+                <div class="fl-appendix__section">
+                    <h3 class="fl-subsection-title">A.4 Processing Details</h3>
+                    <div class="fl-appendix__value">
+                        {% for key, value in technical.processing.items() %}
+                        <p><strong>{{ key|replace('_', ' ')|title }}:</strong> {{ value }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if technical.validation %}
+                <div class="fl-appendix__section">
+                    <h3 class="fl-subsection-title">A.5 Validation Metrics</h3>
+                    <div class="fl-appendix__value">
+                        {% for metric, value in technical.validation.items() %}
+                        <p><strong>{{ metric|replace('_', ' ')|title }}:</strong> {{ value }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Footer (repeated on each page in production) -->
+        <footer class="fl-report-footer">
+            <p class="fl-report-footer__text">
+                {{ report.id }} | {{ report.classification }} | Generated {{ generated_at }}
+            </p>
+            <p class="fl-report-footer__disclaimer">
+                This is an automated analysis based on satellite imagery.
+                Critical decisions should be verified with local authorities and on-the-ground assessment.
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
