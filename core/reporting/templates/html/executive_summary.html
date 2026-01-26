@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ event.name }} - Executive Summary</title>
+    <link rel="stylesheet" href="../../styles/design_tokens.css">
+    <link rel="stylesheet" href="../../styles/components.css">
+    <style>
+        body {
+            font-family: var(--font-sans);
+            color: var(--color-neutral-700);
+            background: var(--color-neutral-50);
+            margin: 0;
+            padding: 0;
+        }
+
+        .fl-page-container {
+            max-width: 8.5in;
+            margin: 0 auto;
+            background: white;
+        }
+
+        /* Print styles */
+        @media print {
+            .fl-page-container {
+                max-width: 100%;
+            }
+            body {
+                background: white;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="fl-page-container">
+        <!-- Header -->
+        <div class="fl-report-header">
+            <div class="fl-report-header__brand">
+                <span class="fl-report-header__logo">FirstLight</span>
+                <span class="fl-report-header__title">Emergency Intelligence</span>
+            </div>
+            <div class="fl-report-header__meta">
+                <span class="fl-report-header__date">{{ generated_at }}</span>
+            </div>
+        </div>
+
+        <!-- Title Block -->
+        <div class="fl-report-title">
+            <h1 class="fl-report-title__heading">{{ event.name|upper }}</h1>
+            <p class="fl-report-title__subtitle">
+                {{ event.location }} &bull; {{ event.type|capitalize }} &bull; {{ event.date }}
+            </p>
+            <div class="fl-report-title__badges">
+                <span class="fl-badge fl-badge--{{ metrics.severity }}">{{ metrics.severity|upper }}</span>
+                <span class="fl-badge fl-badge--conf-high">{{ metrics.confidence|format_percent }} CONFIDENCE</span>
+                <span class="fl-badge fl-badge--{{ 'success' if qc_status == 'PASS' else 'warning' }}">QC: {{ qc_status }}</span>
+            </div>
+        </div>
+
+        <!-- Key Metrics Grid -->
+        <div class="fl-summary-grid fl-summary-grid--4col">
+            <div class="fl-metric-card fl-metric-card--danger">
+                <div class="fl-metric-card__value">{{ metrics.area_hectares|format_number }}</div>
+                <div class="fl-metric-card__label">HECTARES AFFECTED</div>
+                <div class="fl-metric-card__subtext">
+                    {{ metrics.area_hectares|format_hectares }}
+                </div>
+            </div>
+
+            <div class="fl-metric-card fl-metric-card--warning">
+                <div class="fl-metric-card__value">{{ metrics.area_percent|format_percent }}</div>
+                <div class="fl-metric-card__label">AREA COVERAGE</div>
+                <div class="fl-metric-card__subtext">Of study area</div>
+            </div>
+
+            {% if impact.population %}
+            <div class="fl-metric-card fl-metric-card--info">
+                <div class="fl-metric-card__value">~{{ impact.population|format_number }}</div>
+                <div class="fl-metric-card__label">PEOPLE AFFECTED</div>
+                <div class="fl-metric-card__subtext">
+                    {{ impact.population|format_population }}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="fl-metric-card fl-metric-card--success">
+                <div class="fl-metric-card__value">{{ metrics.confidence|format_percent }}</div>
+                <div class="fl-metric-card__label">CONFIDENCE</div>
+                <div class="fl-metric-card__subtext">Analysis confidence level</div>
+            </div>
+        </div>
+
+        <!-- What Happened Section -->
+        <section class="fl-report-section">
+            <h2 class="fl-report-section__title">What Happened</h2>
+
+            <div class="fl-alert fl-alert--info">
+                <div class="fl-alert__content">
+                    <div class="fl-alert__title">IN PLAIN LANGUAGE</div>
+                    <div class="fl-alert__body">
+                        <p>{{ plain_language_summary }}</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Impact Assessment Section -->
+        {% if impact.population or impact.housing or impact.infrastructure %}
+        <section class="fl-report-section">
+            <h2 class="fl-report-section__title">Who Is Affected</h2>
+
+            <div class="fl-report-section__content">
+                {% if impact.population %}
+                <div class="fl-report-section__item">
+                    <strong>Population:</strong> An estimated {{ impact.population|format_number }} people ({{ impact.population|format_population }}) are within the affected area.
+                </div>
+                {% endif %}
+
+                {% if impact.housing %}
+                <div class="fl-report-section__item">
+                    <strong>Housing:</strong> Approximately {{ impact.housing|format_number }} housing units may be impacted.
+                </div>
+                {% endif %}
+
+                {% if impact.infrastructure %}
+                <div class="fl-report-section__item">
+                    <strong>Critical Infrastructure:</strong>
+                    <ul class="fl-report-section__list">
+                        {% for facility_type, count in impact.infrastructure.items() %}
+                        <li>{{ count }} {{ facility_type }}{{ 's' if count != 1 else '' }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Data Quality Section -->
+        <section class="fl-report-section">
+            <h2 class="fl-report-section__title">Analysis Details</h2>
+
+            <div class="fl-report-section__content">
+                <div class="fl-report-section__item">
+                    <strong>Data Sources:</strong> {{ data_sources }}
+                </div>
+                <div class="fl-report-section__item">
+                    <strong>Analysis Confidence:</strong> {{ metrics.confidence|format_percent }}
+                </div>
+                <div class="fl-report-section__item">
+                    <strong>Quality Control:</strong>
+                    <span class="fl-badge fl-badge--{{ 'success' if qc_status == 'PASS' else 'warning' }}">
+                        {{ qc_status }}
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="fl-report-footer">
+            <p class="fl-report-footer__text">
+                Generated by FirstLight Emergency Intelligence System on {{ generated_at }}
+            </p>
+            <p class="fl-report-footer__disclaimer">
+                This is an automated analysis based on satellite imagery.
+                Critical decisions should be verified with local authorities and on-the-ground assessment.
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
