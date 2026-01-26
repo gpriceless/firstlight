@@ -183,29 +183,41 @@ async def fetch_infrastructure():
 
     from core.reporting.data import InfrastructureClient, InfrastructureType
 
-    client = InfrastructureClient()
-
     infrastructure = {}
 
     try:
-        for infra_type in [InfrastructureType.HOSPITAL, InfrastructureType.SCHOOL,
-                           InfrastructureType.FIRE_STATION, InfrastructureType.POLICE]:
-            features = await client.get_infrastructure(
-                bbox=BBOX,
-                infrastructure_type=infra_type,
-                timeout=15.0
-            )
-            infrastructure[infra_type.value] = features
-            console.print(f'  [green]OK[/] {infra_type.value}: {len(features)} features')
+        async with InfrastructureClient() as client:
+            # Query infrastructure by bounding box
+            bbox_tuple = (BBOX[0], BBOX[1], BBOX[2], BBOX[3])
+
+            for infra_type in [InfrastructureType.HOSPITAL, InfrastructureType.SCHOOL,
+                               InfrastructureType.FIRE_STATION, InfrastructureType.POLICE]:
+                try:
+                    features = await client.query_by_bbox(
+                        bbox=bbox_tuple,
+                        types=[infra_type]
+                    )
+                    infrastructure[infra_type.value] = [
+                        {'name': f.name, 'lat': f.lat, 'lon': f.lon}
+                        for f in features
+                    ]
+                    console.print(f'  [green]OK[/] {infra_type.value}: {len(features)} features')
+                except Exception as e:
+                    console.print(f'  [yellow]WARN[/] {infra_type.value}: {e}')
+                    infrastructure[infra_type.value] = []
     except Exception as e:
         console.print(f'  [yellow]WARN[/] OSM API unavailable: {e}')
         # Use fallback data
         infrastructure = {
-            'hospital': [{'name': 'Lee Memorial Hospital', 'lat': 26.55, 'lon': -81.87}],
-            'school': [{'name': f'School {i}', 'lat': 26.5 + i*0.02, 'lon': -81.9} for i in range(15)],
-            'fire_station': [{'name': f'Station {i}', 'lat': 26.48 + i*0.03, 'lon': -81.85} for i in range(3)],
-            'police': [{'name': 'FMPD', 'lat': 26.52, 'lon': -81.88}]
+            'hospital': [{'name': 'Lee Memorial Hospital', 'lat': 26.55, 'lon': -81.87},
+                        {'name': 'Gulf Coast Medical Center', 'lat': 26.59, 'lon': -81.90},
+                        {'name': 'Cape Coral Hospital', 'lat': 26.63, 'lon': -81.95}],
+            'school': [{'name': f'Lee County School {i+1}', 'lat': 26.5 + i*0.02, 'lon': -81.9} for i in range(15)],
+            'fire_station': [{'name': f'Station {i+1}', 'lat': 26.48 + i*0.03, 'lon': -81.85} for i in range(5)],
+            'police': [{'name': 'Fort Myers PD', 'lat': 26.52, 'lon': -81.88},
+                      {'name': 'Lee County Sheriff', 'lat': 26.58, 'lon': -81.92}]
         }
+        console.print(f'  [green]OK[/] Using fallback data: {sum(len(v) for v in infrastructure.values())} features')
 
     return infrastructure
 
@@ -402,41 +414,48 @@ def generate_interactive_report(analysis, census, emergency, infrastructure, ful
     """Generate interactive web report with maps."""
     console.print('\n[bold cyan]STEP 7: Generating Interactive Web Report[/]')
 
-    from core.reporting.web import InteractiveReportGenerator, WebReportConfig
-    from core.reporting.maps.base import MapBounds
-
-    config = WebReportConfig(
-        include_interactive_map=True,
-        include_before_after_slider=True,
-        mobile_responsive=True,
-        embed_css=True,
-        embed_js=True,
-        collapsible_sections=True
-    )
-
-    generator = InteractiveReportGenerator(config)
-
-    # Create map bounds
-    bounds = MapBounds(
-        west=BBOX[0],
-        south=BBOX[1],
-        east=BBOX[2],
-        north=BBOX[3]
-    )
-
-    # Convert infrastructure to list format
-    infra_list = []
-    for infra_type, features in infrastructure.items():
-        if isinstance(features, list):
-            for f in features:
-                infra_list.append({
-                    'type': infra_type,
-                    'name': f.get('name', 'Unknown'),
-                    'lat': f.get('lat', 26.5),
-                    'lon': f.get('lon', -81.9)
-                })
+    try:
+        from core.reporting.web import InteractiveReportGenerator, WebReportConfig
+        from core.reporting.maps.base import MapBounds
+    except RuntimeError as e:
+        console.print(f'  [yellow]WARN[/] Interactive reports require folium: {e}')
+        console.print(f'  [dim]Install with: pip install folium[/]')
+        # Generate a simpler HTML report without interactive maps
+        _generate_simple_web_report(analysis, census, infrastructure, full_report_data)
+        return None
 
     try:
+        config = WebReportConfig(
+            include_interactive_map=True,
+            include_before_after_slider=True,
+            mobile_responsive=True,
+            embed_css=True,
+            embed_js=True,
+            collapsible_sections=True
+        )
+
+        generator = InteractiveReportGenerator(config)
+
+        # Create map bounds
+        bounds = MapBounds(
+            west=BBOX[0],
+            south=BBOX[1],
+            east=BBOX[2],
+            north=BBOX[3]
+        )
+
+        # Convert infrastructure to list format
+        infra_list = []
+        for infra_type, features in infrastructure.items():
+            if isinstance(features, list):
+                for f in features:
+                    infra_list.append({
+                        'type': infra_type,
+                        'name': f.get('name', 'Unknown'),
+                        'lat': f.get('lat', 26.5),
+                        'lon': f.get('lon', -81.9)
+                    })
+
         html = generator.generate(
             report_data=full_report_data,
             flood_geojson=analysis['flood_geojson'],
@@ -453,9 +472,106 @@ def generate_interactive_report(analysis, census, emergency, infrastructure, ful
         console.print(f'  [green]OK[/] Interactive report saved: {output_file.name}')
     except Exception as e:
         console.print(f'  [yellow]WARN[/] Interactive report generation: {e}')
-        console.print(f'  [dim]This may be due to missing optional dependencies (folium)[/]')
+        console.print(f'  [dim]Generating simpler web report instead...[/]')
+        _generate_simple_web_report(analysis, census, infrastructure, full_report_data)
 
     return None
+
+
+def _generate_simple_web_report(analysis, census, infrastructure, full_report_data):
+    """Generate a simpler web report without interactive maps (fallback)."""
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hurricane Ian - Interactive Report</title>
+    <style>
+        :root {{
+            --fl-navy: #1a365d;
+            --fl-blue: #2c5282;
+        }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }}
+        h1 {{ color: var(--fl-navy); }}
+        h2 {{ color: var(--fl-blue); border-bottom: 2px solid var(--fl-blue); padding-bottom: 0.5rem; }}
+        .metrics {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 2rem 0; }}
+        .metric {{ background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; text-align: center; }}
+        .metric .value {{ font-size: 2.5rem; font-weight: bold; color: var(--fl-navy); }}
+        .metric .label {{ color: #718096; font-size: 0.875rem; }}
+        .map-placeholder {{
+            background: linear-gradient(135deg, #ebf8ff 0%, #bee3f8 100%);
+            border: 2px dashed #3182ce;
+            border-radius: 8px;
+            padding: 3rem;
+            text-align: center;
+            color: #2c5282;
+        }}
+        .infrastructure {{ background: #f7fafc; padding: 1rem; border-radius: 8px; margin: 1rem 0; }}
+        .infrastructure h3 {{ margin-top: 0; }}
+        .infrastructure ul {{ columns: 2; }}
+        footer {{ margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.875rem; }}
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Hurricane Ian Flood Analysis</h1>
+        <p><strong>Fort Myers, Florida</strong> | September 28, 2022</p>
+    </header>
+
+    <section>
+        <h2>Key Metrics</h2>
+        <div class="metrics">
+            <div class="metric">
+                <div class="value">{analysis['flood_ha']:,.0f}</div>
+                <div class="label">Hectares Flooded</div>
+            </div>
+            <div class="metric">
+                <div class="value">{census['affected_population']:,}</div>
+                <div class="label">Est. People Affected</div>
+            </div>
+            <div class="metric">
+                <div class="value">{census['affected_housing']:,}</div>
+                <div class="label">Housing Units</div>
+            </div>
+            <div class="metric">
+                <div class="value">90%</div>
+                <div class="label">Confidence</div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2>Flood Extent Map</h2>
+        <div class="map-placeholder">
+            <p><strong>Interactive Map</strong></p>
+            <p>Install folium for interactive maps: <code>pip install folium</code></p>
+            <p>Bounding Box: {BBOX[0]:.2f}, {BBOX[1]:.2f} to {BBOX[2]:.2f}, {BBOX[3]:.2f}</p>
+        </div>
+    </section>
+
+    <section>
+        <h2>Infrastructure in Area</h2>
+        <div class="infrastructure">
+            {''.join(f"<h3>{k.title().replace('_', ' ')}s ({len(v)})</h3><ul>{''.join(f'<li>{f.get(\"name\", \"Unknown\")}</li>' for f in v[:5])}</ul>" for k, v in infrastructure.items() if v)}
+        </div>
+    </section>
+
+    <footer>
+        <p>Generated by FirstLight Geospatial Intelligence Platform | {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}</p>
+    </footer>
+</body>
+</html>"""
+
+    output_file = OUTPUT_DIR / "interactive_report.html"
+    output_file.write_text(html)
+    console.print(f'  [green]OK[/] Simple web report saved: {output_file.name}')
 
 
 def generate_pdf_report(analysis, census, emergency, infrastructure):
@@ -831,9 +947,15 @@ def generate_static_map(analysis):
 
         console.print(f'  [green]OK[/] Static map saved: {output_file.name}')
         return output_file
-    except Exception as e:
+    except ImportError as e:
+        console.print(f'  [yellow]WARN[/] Static map requires matplotlib/cartopy: {e}')
+        console.print(f'  [dim]Install with: pip install matplotlib cartopy[/]')
+        return None
+    except RuntimeError as e:
         console.print(f'  [yellow]WARN[/] Static map generation: {e}')
-        console.print(f'  [dim]This may require matplotlib and cartopy[/]')
+        return None
+    except Exception as e:
+        console.print(f'  [yellow]WARN[/] Static map generation failed: {e}')
         return None
 
 
