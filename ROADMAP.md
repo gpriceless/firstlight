@@ -735,11 +735,150 @@ Epic R2.4 (Data Integrations) ───────┘  [Can start immediately, 
 - R2.5 has soft dependency on R2.4 (can stub population data)
 - Two engineers can work in parallel after R2.1 completes
 
-### Stream E: Sequential Work
+### Stream E: Visual Product Generation (VIS-1.0) - NEW
+**Critical gap identified: Analysis outputs not rendered into viewable images.**
+
+```
+Epic VIS-1.1 (Imagery Renderer) ◀── START HERE
+        │
+        ├──> Epic VIS-1.2 (Before/After) ──┐
+        │                                   │
+        └──> Epic VIS-1.3 (Overlay) ───────┼──> Epic VIS-1.5 (Integration)
+                                           │
+Epic VIS-1.4 (Annotations) ────────────────┘  [After VIS-1.3]
+```
+
+**Parallelization Notes:**
+- VIS-1.1 must complete first (provides base rendering capability)
+- VIS-1.2 and VIS-1.3 can run in parallel after VIS-1.1
+- VIS-1.4 depends on VIS-1.3 (annotations need overlays)
+- VIS-1.5 integrates all components into report pipeline
+
+**Dependencies:**
+- Epic 1.7 (Multi-Band Ingestion) - Required for satellite band access
+- REPORT-2.0 (R2.2, R2.5, R2.6) - Visual products wire into templates
+
+### Stream F: Sequential Work
 - Epic 1.4 (Export) - After 1.1
 - Epic 1.5 (Run) - After 1.1, 1.2, 1.3, 1.4, **1.7**
 - Epic 2.1 (Agent) - After Phase 1 patterns established
 - Epic 4.x (Testing) - After relevant phases complete
+
+---
+
+## Visual Product Generation (VIS-1.0)
+
+**Status:** REVIEWED - Ready for Implementation
+**Priority:** P0 (Critical Gap)
+**Full Spec:** See `OPENSPEC.md` Section 5
+**Requirements Review:** Completed 2026-01-26 (see OPENSPEC.md for findings)
+**Estimated Effort:** 5 weeks
+
+### Problem Statement
+
+Analysis algorithms produce accurate outputs (flood masks, statistics) but these are NOT rendered into visual products. Reports show statistics without showing actual satellite imagery or detection results. The before/after slider requires external image URLs that don't exist.
+
+### Epic VIS-1.1: Satellite Imagery Renderer
+
+**Priority:** P0 (Foundation)
+**Effort:** 5-7 days
+
+| Task | Description | Status | Depends On |
+|------|-------------|--------|------------|
+| VIS-1.1.1 | Create `core/reporting/imagery/` module structure | [x] | None |
+| VIS-1.1.2 | Implement `ImageryRenderer` class | [ ] | VIS-1.1.1 |
+| VIS-1.1.3 | Add Sentinel-2 band composites (true color, false color, SWIR) | [x] | VIS-1.1.2 |
+| VIS-1.1.4 | Add Landsat band composites | [x] | VIS-1.1.2 |
+| VIS-1.1.5 | Implement histogram stretch algorithms | [x] | VIS-1.1.2 |
+| VIS-1.1.6 | Add cloud masking using SCL band | [ ] | VIS-1.1.3 |
+| VIS-1.1.7 | Implement PNG/TIFF export with georeferencing | [ ] | VIS-1.1.2 |
+| VIS-1.1.8 | Add unit tests for renderer | [ ] | VIS-1.1.7 |
+| VIS-1.1.9 | **[NEW]** Add SAR (Sentinel-1) visualization support | [x] | VIS-1.1.2 |
+| VIS-1.1.10 | **[NEW]** Add partial coverage detection and nodata visualization | [x] | VIS-1.1.2 |
+| VIS-1.1.11 | **[NEW]** Add graceful degradation for missing bands | [ ] | VIS-1.1.3 |
+
+### Epic VIS-1.2: Before/After Image Generation
+
+**Priority:** P0 (High User Value)
+**Effort:** 5-7 days
+
+| Task | Description | Status | Depends On |
+|------|-------------|--------|------------|
+| VIS-1.2.1 | Implement `BeforeAfterGenerator` class | [ ] | VIS-1.1.7 |
+| VIS-1.2.2 | Add temporal image selection (pre-event, post-event) | [ ] | VIS-1.2.1 |
+| VIS-1.2.3 | Implement cloud-free image selection | [ ] | VIS-1.2.2 |
+| VIS-1.2.4 | Ensure extent/resolution matching between pairs | [ ] | VIS-1.2.1 |
+| VIS-1.2.5 | Add date labels to generated images | [ ] | VIS-1.2.1 |
+| VIS-1.2.6 | Implement side-by-side composite output | [ ] | VIS-1.2.4 |
+| VIS-1.2.7 | Implement animated GIF output (optional) | [ ] | VIS-1.2.4 |
+| VIS-1.2.8 | Add integration tests with STAC discovery | [ ] | VIS-1.2.6 |
+
+### Epic VIS-1.3: Detection Overlay Rendering
+
+**Priority:** P0 (Core Visual Product)
+**Effort:** 8-10 days
+
+| Task | Description | Status | Depends On |
+|------|-------------|--------|------------|
+| VIS-1.3.1 | Implement `OverlayRenderer` class | [ ] | VIS-1.1.7 |
+| VIS-1.3.2 | Add flood extent rendering with severity colors | [ ] | VIS-1.3.1 |
+| VIS-1.3.3 | Add burn severity rendering with dNBR colors | [ ] | VIS-1.3.1 |
+| VIS-1.3.4 | Implement confidence-based transparency | [ ] | VIS-1.3.1 |
+| VIS-1.3.5 | Add vector polygon outline rendering | [ ] | VIS-1.3.1 |
+| VIS-1.3.6 | Implement auto-generated legend component | [ ] | VIS-1.3.2 |
+| VIS-1.3.7 | Add scale bar component | [ ] | VIS-1.3.1 |
+| VIS-1.3.8 | Add north arrow component | [ ] | VIS-1.3.1 |
+| VIS-1.3.9 | Add pattern fills for B&W accessibility | [ ] | VIS-1.3.2 |
+| VIS-1.3.10 | Add unit tests for overlay renderer | [ ] | VIS-1.3.9 |
+
+### Epic VIS-1.4: Contextual Annotation Layer
+
+**Priority:** P1 (Enhances Understanding)
+**Effort:** 5-7 days
+
+| Task | Description | Status | Depends On |
+|------|-------------|--------|------------|
+| VIS-1.4.1 | Implement area comparison engine | [ ] | None |
+| VIS-1.4.2 | Add human-readable conversions (ha -> football fields, etc.) | [ ] | VIS-1.4.1 |
+| VIS-1.4.3 | Implement OSM landmark labeling | [ ] | VIS-1.3.1 |
+| VIS-1.4.4 | Add population impact callouts | [ ] | R2.4 (Census) |
+| VIS-1.4.5 | Implement auto-generated explanatory captions | [ ] | VIS-1.4.1 |
+| VIS-1.4.6 | Add inset locator map generation | [ ] | VIS-1.3.1 |
+| VIS-1.4.7 | Add attribution block component | [ ] | VIS-1.3.1 |
+| VIS-1.4.8 | Add unit tests for annotations | [ ] | VIS-1.4.7 |
+| VIS-1.4.9 | **[NEW]** Add "science behind the statistics" explanation templates | [ ] | VIS-1.4.5 |
+| VIS-1.4.10 | **[NEW]** Add detection method explanation text per algorithm | [ ] | VIS-1.4.9 |
+
+### Epic VIS-1.5: Report Integration
+
+**Priority:** P0 (Wires Everything Together)
+**Effort:** 5-7 days
+
+| Task | Description | Status | Depends On |
+|------|-------------|--------|------------|
+| VIS-1.5.1 | Create `ReportVisualPipeline` orchestrator | [ ] | VIS-1.2.6, VIS-1.3.9 |
+| VIS-1.5.2 | Implement image manifest tracking | [ ] | VIS-1.5.1 |
+| VIS-1.5.3 | Update before/after slider to use local images | [ ] | VIS-1.5.1 |
+| VIS-1.5.4 | Update executive summary map to use detection overlay | [ ] | VIS-1.5.1 |
+| VIS-1.5.5 | Implement image caching to avoid re-generation | [ ] | VIS-1.5.2 |
+| VIS-1.5.6 | Add 300 DPI embedding for PDF reports | [ ] | VIS-1.5.1 |
+| VIS-1.5.7 | Add web-optimized image output (compressed PNG) | [ ] | VIS-1.5.1 |
+| VIS-1.5.8 | Add error handling for unavailable imagery | [ ] | VIS-1.5.1 |
+| VIS-1.5.9 | Add end-to-end integration test | [ ] | VIS-1.5.8 |
+
+### VIS-1.0 Success Criteria
+
+- [ ] Satellite imagery renders to viewable RGB images
+- [ ] Before/after pairs auto-generated from STAC data (no external URLs)
+- [ ] Flood extent overlaid on satellite imagery with severity colors
+- [ ] All visual products have scale bar, legend, attribution
+- [ ] Area comparisons in human-readable terms ("3,500 football fields")
+- [ ] Reports use generated images (not placeholders)
+- [ ] Image generation < 60 seconds per report
+- [ ] **[NEW]** SAR (Sentinel-1) imagery renders with grayscale/pseudocolor
+- [ ] **[NEW]** Graceful degradation when imagery unavailable (placeholder + message)
+- [ ] **[NEW]** Partial coverage visualized with nodata pattern
+- [ ] **[NEW]** Explanatory text explains what remote sensing detected
 
 ---
 
@@ -785,6 +924,16 @@ Epic R2.4 (Data Integrations) ───────┘  [Can start immediately, 
 - [ ] PDF generation at 300 DPI with proper margins
 - [ ] Pattern overlays distinguishable in B&W print
 - [ ] Accessibility audit passes (WCAG 2.1 AA)
+
+### VIS-1.0 (Visual Products) Complete When:
+- [ ] Satellite imagery renders to viewable RGB images (true color, false color)
+- [ ] Before/after pairs auto-generated from STAC data (no external URLs required)
+- [ ] Detection results overlaid on satellite imagery with severity colors
+- [ ] All visual products include scale bar, legend, and attribution
+- [ ] Area comparisons use human-readable terms ("X football fields")
+- [ ] Reports display actual detection evidence (not just statistics)
+- [ ] Image generation completes in < 60 seconds per report
+- [ ] Visual products properly embedded in PDF (300 DPI) and web reports
 
 ### Production Ready When:
 - [ ] All phases complete
