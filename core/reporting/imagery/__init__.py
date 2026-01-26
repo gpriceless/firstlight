@@ -17,6 +17,13 @@ from .band_combinations import (
     get_bands_for_composite,
     get_available_composites,
 )
+from .histogram import (
+    HistogramStretch,
+    apply_stretch,
+    calculate_stddev_bounds,
+    calculate_stretch_bounds,
+    stretch_band,
+)
 from .utils import (
     detect_partial_coverage,
     get_valid_data_bounds,
@@ -33,6 +40,12 @@ __all__ = [
     "SAR_VISUALIZATIONS",
     "get_bands_for_composite",
     "get_available_composites",
+    # Histogram stretching (VIS-1.1 Task 1.2)
+    "HistogramStretch",
+    "apply_stretch",
+    "calculate_stddev_bounds",
+    "calculate_stretch_bounds",
+    "stretch_band",
     # Utilities
     "normalize_to_uint8",
     "stack_bands_to_rgb",
