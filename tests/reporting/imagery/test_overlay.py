@@ -291,7 +291,13 @@ def test_render_with_confidence_alpha(rgb_background, detection_mask, confidence
 
 def test_render_without_confidence_alpha(rgb_background, detection_mask, confidence_gradient):
     """Test that alpha is constant when use_confidence_alpha=False."""
-    config = OverlayConfig(use_confidence_alpha=False, alpha_base=0.8, show_outline=False)
+    config = OverlayConfig(
+        use_confidence_alpha=False,
+        alpha_base=0.8,
+        show_outline=False,
+        show_scale_bar=False,
+        show_north_arrow=False
+    )
     overlay = DetectionOverlay(config)
     result = overlay.render(rgb_background, detection_mask, confidence=confidence_gradient)
 

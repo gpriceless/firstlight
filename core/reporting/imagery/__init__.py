@@ -48,15 +48,18 @@ from .utils import (
     normalize_to_uint8,
     stack_bands_to_rgb,
 )
-from .color_scales import (
-    ColorPalette,
-    SeverityLevel,
-    apply_colormap,
-    get_confidence_palette,
-    get_fire_palette,
-    get_flood_palette,
-    get_palette_by_name,
-    hex_to_rgba,
+from .before_after import (
+    BeforeAfterConfig,
+    BeforeAfterGenerator,
+    BeforeAfterResult,
+    OutputConfig,
+)
+from .comparison import (
+    AlignedPair,
+    ComparisonConfig,
+    calculate_difference,
+    coregister_images,
+    normalize_histograms,
 )
 
 __all__ = [
@@ -93,13 +96,14 @@ __all__ = [
     "handle_nodata",
     "detect_partial_coverage",
     "get_valid_data_bounds",
-    # Color scales (VIS-1.3 Task 1.1)
-    "ColorPalette",
-    "SeverityLevel",
-    "apply_colormap",
-    "get_confidence_palette",
-    "get_fire_palette",
-    "get_flood_palette",
-    "get_palette_by_name",
-    "hex_to_rgba",
+    # Before/After generation (VIS-1.2)
+    "BeforeAfterConfig",
+    "BeforeAfterGenerator",
+    "BeforeAfterResult",
+    # Image comparison (VIS-1.2)
+    "AlignedPair",
+    "ComparisonConfig",
+    "calculate_difference",
+    "coregister_images",
+    "normalize_histograms",
 ]
