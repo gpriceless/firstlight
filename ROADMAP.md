@@ -862,22 +862,23 @@ Analysis algorithms produce accurate outputs (flood masks, statistics) but these
 | VIS-1.4.9 | **[NEW]** Add "science behind the statistics" explanation templates | [ ] | VIS-1.4.5 |
 | VIS-1.4.10 | **[NEW]** Add detection method explanation text per algorithm | [ ] | VIS-1.4.9 |
 
-### Epic VIS-1.5: Report Integration
+### Epic VIS-1.5: Report Integration ✅ COMPLETE
 
 **Priority:** P0 (Wires Everything Together)
 **Effort:** 5-7 days
+**Status:** COMPLETE (2026-01-26)
 
 | Task | Description | Status | Depends On |
 |------|-------------|--------|------------|
-| VIS-1.5.1 | Create `ReportVisualPipeline` orchestrator | [ ] | VIS-1.2.6, VIS-1.3.9 |
-| VIS-1.5.2 | Implement image manifest tracking | [ ] | VIS-1.5.1 |
-| VIS-1.5.3 | Update before/after slider to use local images | [ ] | VIS-1.5.1 |
-| VIS-1.5.4 | Update executive summary map to use detection overlay | [ ] | VIS-1.5.1 |
-| VIS-1.5.5 | Implement image caching to avoid re-generation | [ ] | VIS-1.5.2 |
-| VIS-1.5.6 | Add 300 DPI embedding for PDF reports | [ ] | VIS-1.5.1 |
-| VIS-1.5.7 | Add web-optimized image output (compressed PNG) | [ ] | VIS-1.5.1 |
-| VIS-1.5.8 | Add error handling for unavailable imagery | [ ] | VIS-1.5.1 |
-| VIS-1.5.9 | Add end-to-end integration test | [ ] | VIS-1.5.8 |
+| VIS-1.5.1 | Create `ReportVisualPipeline` orchestrator | [x] *(Completed 2026-01-26)* | VIS-1.2.6, VIS-1.3.9 |
+| VIS-1.5.2 | Implement image manifest tracking | [x] *(Completed 2026-01-26)* | VIS-1.5.1 |
+| VIS-1.5.3 | Update before/after slider to use local images | [x] *(Completed 2026-01-26)* | VIS-1.5.1 |
+| VIS-1.5.4 | Update executive summary map to use detection overlay | [x] *(Completed 2026-01-26)* | VIS-1.5.1 |
+| VIS-1.5.5 | Implement image caching to avoid re-generation | [x] *(Completed 2026-01-26)* | VIS-1.5.2 |
+| VIS-1.5.6 | Add 300 DPI embedding for PDF reports | [x] *(Completed 2026-01-26)* | VIS-1.5.1 |
+| VIS-1.5.7 | Add web-optimized image output (compressed PNG) | [x] *(Completed 2026-01-26)* | VIS-1.5.1 |
+| VIS-1.5.8 | Add error handling for unavailable imagery | [x] *(Completed 2026-01-26)* | VIS-1.5.1 |
+| VIS-1.5.9 | Add end-to-end integration test | [x] *(Completed 2026-01-26)* | VIS-1.5.8 |
 
 ### VIS-1.0 Success Criteria
 
@@ -886,8 +887,8 @@ Analysis algorithms produce accurate outputs (flood masks, statistics) but these
 - [x] Flood extent overlaid on satellite imagery with severity colors *(VIS-1.3 Complete)*
 - [x] All visual products have scale bar, legend, attribution *(VIS-1.3 Complete)*
 - [ ] Area comparisons in human-readable terms ("3,500 football fields") *(VIS-1.4)*
-- [ ] Reports use generated images (not placeholders) *(VIS-1.5)*
-- [ ] Image generation < 60 seconds per report *(VIS-1.5)*
+- [x] Reports use generated images (not placeholders) *(VIS-1.5 Complete - 2026-01-26)*
+- [x] Image generation < 60 seconds per report *(VIS-1.5 Complete - verified via smoke test)*
 - [x] **[NEW]** SAR (Sentinel-1) imagery renders with grayscale/pseudocolor *(VIS-1.1 Complete)*
 - [x] **[NEW]** Graceful degradation when imagery unavailable (placeholder + message) *(VIS-1.1 Complete)*
 - [x] **[NEW]** Partial coverage visualized with nodata pattern *(VIS-1.1 Complete)*

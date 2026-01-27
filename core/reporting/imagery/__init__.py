@@ -61,6 +61,16 @@ from .comparison import (
     coregister_images,
     normalize_histograms,
 )
+from .overlay import (
+    DetectionOverlay,
+    OverlayConfig,
+    OverlayResult,
+)
+from .pipeline import (
+    ReportVisualPipeline,
+    PipelineConfig,
+    ImageManifest,
+)
 
 __all__ = [
     # Band combinations (VIS-1.1.3, VIS-1.1.4)
@@ -106,4 +116,12 @@ __all__ = [
     "calculate_difference",
     "coregister_images",
     "normalize_histograms",
+    # Detection overlays (VIS-1.3)
+    "DetectionOverlay",
+    "OverlayConfig",
+    "OverlayResult",
+    # Report pipeline (VIS-1.5)
+    "ReportVisualPipeline",
+    "PipelineConfig",
+    "ImageManifest",
 ]
