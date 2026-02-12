@@ -9,6 +9,7 @@ from core.reporting.templates.base import ReportTemplateEngine
 from core.reporting.templates.full_report import FullReportData
 from core.reporting.maps.folium_map import InteractiveMapGenerator
 from core.reporting.maps.base import MapBounds
+from core.reporting.imagery import ImageManifest
 
 
 @dataclass
@@ -47,6 +48,7 @@ class InteractiveReportGenerator:
         before_image_url: Optional[str] = None,
         after_image_url: Optional[str] = None,
         bounds: Optional[MapBounds] = None,
+        image_manifest: Optional[ImageManifest] = None,
     ) -> str:
         """
         Generate complete interactive HTML report.
@@ -55,9 +57,10 @@ class InteractiveReportGenerator:
             report_data: Full report data structure
             flood_geojson: Optional GeoJSON for flood extent overlay
             infrastructure: Optional list of infrastructure features
-            before_image_url: Optional URL for before image
-            after_image_url: Optional URL for after image
+            before_image_url: Optional URL for before image (deprecated - use image_manifest)
+            after_image_url: Optional URL for after image (deprecated - use image_manifest)
             bounds: Optional map bounds (required if including map)
+            image_manifest: Optional ImageManifest with locally generated images
 
         Returns:
             Complete HTML document as string
@@ -68,7 +71,8 @@ class InteractiveReportGenerator:
             >>> html = generator.generate(
             ...     report_data=report_data,
             ...     flood_geojson=geojson_dict,
-            ...     bounds=MapBounds(-82.0, 26.3, -81.5, 26.7)
+            ...     bounds=MapBounds(-82.0, 26.3, -81.5, 26.7),
+            ...     image_manifest=manifest
             ... )
         """
         # Generate embedded map HTML if requested
@@ -82,15 +86,25 @@ class InteractiveReportGenerator:
             )
 
         # Generate before/after slider HTML if requested
+        # Prefer image_manifest over deprecated URL parameters
         slider_html = None
-        if (self.config.include_before_after_slider and
-            before_image_url and after_image_url):
-            slider_html = self._generate_before_after_slider(
-                before_url=before_image_url,
-                after_url=after_image_url,
-                before_date=report_data.event_date.strftime("%B %d, %Y"),
-                after_date=report_data.report_date.strftime("%B %d, %Y"),
-            )
+        if self.config.include_before_after_slider:
+            if image_manifest and image_manifest.before_image and image_manifest.after_image:
+                # Use local generated images from manifest
+                slider_html = self._generate_before_after_slider(
+                    before_url=str(image_manifest.before_image),
+                    after_url=str(image_manifest.after_image),
+                    before_date=report_data.event_date.strftime("%B %d, %Y"),
+                    after_date=report_data.report_date.strftime("%B %d, %Y"),
+                )
+            elif before_image_url and after_image_url:
+                # Fallback to deprecated URL parameters
+                slider_html = self._generate_before_after_slider(
+                    before_url=before_image_url,
+                    after_url=after_image_url,
+                    before_date=report_data.event_date.strftime("%B %d, %Y"),
+                    after_date=report_data.report_date.strftime("%B %d, %Y"),
+                )
 
         # Build template context
         context = {
@@ -98,6 +112,7 @@ class InteractiveReportGenerator:
             'report_data': report_data,
             'map_html': map_html,
             'slider_html': slider_html,
+            'image_manifest': image_manifest,
             'css': self._generate_css() if self.config.embed_css else None,
             'js': self._generate_js() if self.config.embed_js else None,
             'generated_at': datetime.now().strftime("%Y-%m-%d %H:%M UTC"),

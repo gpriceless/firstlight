@@ -50,6 +50,8 @@ coverage.xml
 # Test artifacts
 tests/e2e/artifacts/
 *.png
+!docs/images/**/*.png
+!docs/images/**/*.svg
 *.html
 !docs/**/*.html
 
@@ -65,12 +67,41 @@ Thumbs.db
 
 # Local development
 .claude/
+CLAUDE.md
 .orchestrator_locks/
+
+# Development tracking (keep local only)
+IMPLEMENTATION_SPECS.md
+ROADMAP.md
+OPENSPEC.md
+OPENSPEC_PRODUCTION.md
+PROJECT_STATUS.md
+AUDIT_*.md
+QA_REPORT.md
+WORK_ASSIGNMENTS.md
+TASK_R2*.md
+VIS-*.md
+VIS*_COMPLETE.md
+*_COMPLETION_SUMMARY.md
+*_PRESENTATION_*.md
+SECURITY_AUDIT.md
+GITHUB_PRESENTATION_ANALYSIS.md
+docs/qa/QA_REPORT*.md
+docs/specs/REPORT_2.0_WORK_ASSIGNMENTS.md
+docs/R2*.md
+
+# Root smoke tests and one-off scripts (dev artifacts)
+/test_*.py
+/generate_detection_overlay.py
+
+# Google Cloud SDK
+google-cloud-sdk/
 
 # Test outputs
 /tmp/flight_*/
 tmp/
 temp/
+outputs/
 
 # Knowledge base files (large binaries)
 agents/knowledge/
