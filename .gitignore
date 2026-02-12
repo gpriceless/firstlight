@@ -50,6 +50,8 @@ coverage.xml
 # Test artifacts
 tests/e2e/artifacts/
 *.png
+!docs/images/**/*.png
+!docs/images/**/*.svg
 *.html
 !docs/**/*.html
 
@@ -88,8 +90,9 @@ docs/qa/QA_REPORT*.md
 docs/specs/REPORT_2.0_WORK_ASSIGNMENTS.md
 docs/R2*.md
 
-# Root smoke tests (dev artifacts)
+# Root smoke tests and one-off scripts (dev artifacts)
 /test_*.py
+/generate_detection_overlay.py
 
 # Google Cloud SDK
 google-cloud-sdk/
@@ -98,6 +101,7 @@ google-cloud-sdk/
 /tmp/flight_*/
 tmp/
 temp/
+outputs/
 
 # Knowledge base files (large binaries)
 agents/knowledge/

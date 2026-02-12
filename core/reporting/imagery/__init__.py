@@ -66,10 +66,53 @@ from .overlay import (
     OverlayConfig,
     OverlayResult,
 )
+from .area_metrics import (
+    AreaMetrics,
+    calculate_area_metrics,
+    format_area,
+)
 from .pipeline import (
     ReportVisualPipeline,
     PipelineConfig,
     ImageManifest,
+)
+from .locator_map import (
+    create_locator_map,
+)
+from .attribution import (
+    DataSource,
+    create_attribution_block,
+    format_attribution_text,
+    add_license_info,
+    sentinel2_source,
+    landsat8_source,
+    landsat9_source,
+    osm_source,
+    opentopodata_source,
+)
+from .impact_metrics import (
+    FacilityCount,
+    PopulationImpact,
+    calculate_population_impact,
+    format_impact_summary,
+)
+from .captions import (
+    Verbosity,
+    CaptionContext,
+    generate_detection_caption,
+    generate_map_title,
+)
+from .algorithm_descriptions import (
+    ALGORITHM_DESCRIPTIONS,
+    SENSOR_DESCRIPTIONS,
+    get_algorithm_description,
+    get_sensor_description,
+)
+from .methodology_text import (
+    EventType,
+    get_methodology_explanation,
+    get_limitations_text,
+    get_combined_methodology,
 )
 
 __all__ = [
@@ -120,8 +163,44 @@ __all__ = [
     "DetectionOverlay",
     "OverlayConfig",
     "OverlayResult",
+    # Area metrics (VIS-1.4)
+    "AreaMetrics",
+    "calculate_area_metrics",
+    "format_area",
     # Report pipeline (VIS-1.5)
     "ReportVisualPipeline",
     "PipelineConfig",
     "ImageManifest",
+    # Locator maps (VIS-1.4)
+    "create_locator_map",
+    # Attribution (VIS-1.4)
+    "DataSource",
+    "create_attribution_block",
+    "format_attribution_text",
+    "add_license_info",
+    "sentinel2_source",
+    "landsat8_source",
+    "landsat9_source",
+    "osm_source",
+    "opentopodata_source",
+    # Population impact metrics (VIS-1.4)
+    "FacilityCount",
+    "PopulationImpact",
+    "calculate_population_impact",
+    "format_impact_summary",
+    # Caption generation (VIS-1.4)
+    "Verbosity",
+    "CaptionContext",
+    "generate_detection_caption",
+    "generate_map_title",
+    # Algorithm descriptions (VIS-1.4)
+    "ALGORITHM_DESCRIPTIONS",
+    "SENSOR_DESCRIPTIONS",
+    "get_algorithm_description",
+    "get_sensor_description",
+    # Methodology text (VIS-1.4)
+    "EventType",
+    "get_methodology_explanation",
+    "get_limitations_text",
+    "get_combined_methodology",
 ]

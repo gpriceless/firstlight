@@ -84,10 +84,9 @@ def main():
     # Step 3: Initialize generator
     print("\n3. Initializing BeforeAfterGenerator...")
     config = BeforeAfterConfig(
-        event_date=datetime(2024, 8, 15),
-        pre_event_window=(-60, -3),
-        post_event_window=(1, 30),
+        time_window_days=30,
         max_cloud_cover=20.0,
+        min_coverage=80.0,
     )
     generator = BeforeAfterGenerator(config)
 
