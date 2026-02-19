@@ -37,7 +37,10 @@ import yaml
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+
+if TYPE_CHECKING:
+    from agents.orchestrator.backends.base import StateBackend
 
 from agents.base import (
     BaseAgent,
@@ -138,6 +141,7 @@ class OrchestratorAgent(BaseAgent):
         config: Optional[OrchestratorConfig] = None,
         agent_id: Optional[str] = None,
         retry_policy: Optional[BaseRetryPolicy] = None,
+        state_backend: Optional["StateBackend"] = None,
     ):
         """
         Initialize the Orchestrator Agent.
@@ -146,6 +150,8 @@ class OrchestratorAgent(BaseAgent):
             config: Orchestrator configuration
             agent_id: Unique agent identifier
             retry_policy: Retry policy for operations
+            state_backend: Optional StateBackend instance. If not provided,
+                one is created based on the FIRSTLIGHT_STATE_BACKEND setting.
         """
         super().__init__(
             agent_id=agent_id,
@@ -154,9 +160,12 @@ class OrchestratorAgent(BaseAgent):
         )
         self.config = config or OrchestratorConfig()
 
-        # State management
+        # State management (legacy StateManager for internal use)
         self._state_manager: Optional[StateManager] = None
         self._state_manager_initialized = False
+
+        # New pluggable state backend (if provided, takes precedence)
+        self._state_backend: Optional["StateBackend"] = state_backend
 
         # Delegation strategy
         self._delegation = DelegationStrategy(
@@ -186,14 +195,98 @@ class OrchestratorAgent(BaseAgent):
         self._active_executions: Dict[str, ExecutionState] = {}
 
     async def _ensure_state_manager(self) -> None:
-        """Ensure state manager is initialized."""
+        """Ensure state manager and state backend are initialized."""
         if not self._state_manager_initialized:
             self._state_manager = StateManager(self.config.state_db_path)
             await self._state_manager.initialize()
             self._state_manager_initialized = True
             # Set up escalation handler
             self._delegation.add_escalation_handler(self._handle_escalation)
+
+            # Initialize state backend if not already provided
+            if self._state_backend is None:
+                self._state_backend = self._create_state_backend()
+
             logger.info("Orchestrator state manager initialized")
+
+    def _create_state_backend(self) -> "StateBackend":
+        """
+        Create a StateBackend based on the FIRSTLIGHT_STATE_BACKEND setting.
+
+        Imports are done lazily to avoid circular dependencies between
+        agents/ and api/ modules.
+
+        Returns:
+            A configured StateBackend instance.
+        """
+        from agents.orchestrator.backends.sqlite_backend import SQLiteStateBackend
+
+        # Determine the backend type from config, defaulting to sqlite
+        # to avoid breaking existing deployments that lack PostGIS.
+        backend_type = "sqlite"
+        try:
+            from api.config import get_settings
+            settings = get_settings()
+            backend_type = settings.state_backend.value
+        except Exception:
+            logger.debug(
+                "Could not load settings for state_backend, defaulting to sqlite"
+            )
+
+        if backend_type == "sqlite":
+            return SQLiteStateBackend(state_manager=self._state_manager)
+
+        if backend_type == "postgis":
+            from agents.orchestrator.backends.postgis_backend import (
+                PostGISStateBackend,
+            )
+            try:
+                from api.config import get_settings
+                settings = get_settings()
+                db = settings.database
+                return PostGISStateBackend(
+                    host=db.host,
+                    port=db.port,
+                    database=db.name,
+                    user=db.user,
+                    password=db.password,
+                )
+            except Exception as e:
+                logger.warning(
+                    "Failed to create PostGIS backend, falling back to SQLite: %s", e
+                )
+                return SQLiteStateBackend(state_manager=self._state_manager)
+
+        if backend_type == "dual":
+            from agents.orchestrator.backends.dual_write import DualWriteBackend
+            from agents.orchestrator.backends.postgis_backend import (
+                PostGISStateBackend,
+            )
+            sqlite_backend = SQLiteStateBackend(state_manager=self._state_manager)
+            try:
+                from api.config import get_settings
+                settings = get_settings()
+                db = settings.database
+                postgis_backend = PostGISStateBackend(
+                    host=db.host,
+                    port=db.port,
+                    database=db.name,
+                    user=db.user,
+                    password=db.password,
+                )
+                return DualWriteBackend(
+                    primary=postgis_backend,
+                    fallback=sqlite_backend,
+                )
+            except Exception as e:
+                logger.warning(
+                    "Failed to create PostGIS backend for dual mode, "
+                    "falling back to SQLite only: %s", e
+                )
+                return sqlite_backend
+
+        logger.warning("Unknown state backend type: %s, using sqlite", backend_type)
+        return SQLiteStateBackend(state_manager=self._state_manager)
 
     async def process_message(self, message: AgentMessage) -> Optional[AgentMessage]:
         """

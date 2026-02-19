@@ -24,6 +24,14 @@ class Environment(str, Enum):
     TESTING = "testing"
 
 
+class StateBackendType(str, Enum):
+    """State storage backend type for the orchestrator."""
+
+    SQLITE = "sqlite"
+    POSTGIS = "postgis"
+    DUAL = "dual"
+
+
 class LogLevel(str, Enum):
     """Logging levels."""
 
@@ -230,6 +238,12 @@ class Settings(BaseSettings):
     )
     rate_limit_window: int = Field(
         default=60, description="Rate limit window in seconds"
+    )
+
+    # State backend
+    state_backend: StateBackendType = Field(
+        default=StateBackendType.DUAL,
+        description="State storage backend: sqlite, postgis, or dual",
     )
 
     # Nested settings
