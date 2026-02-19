@@ -329,6 +329,19 @@ def create_application() -> FastAPI:
     # Include Partner Integration routes (/internal/v1 prefix)
     app.include_router(internal_router)
 
+    # Mount pygeoapi OGC API Processes at /oapi (if installed)
+    try:
+        from core.ogc.config import create_pygeoapi_app
+
+        pygeoapi_app = create_pygeoapi_app()
+        if pygeoapi_app is not None:
+            app.mount("/oapi", pygeoapi_app)
+            logger.info("pygeoapi mounted at /oapi")
+        else:
+            logger.info("pygeoapi not available, /oapi endpoint disabled")
+    except Exception as e:
+        logger.warning("Failed to mount pygeoapi at /oapi: %s", e)
+
     # Add root redirect to docs
     @app.get("/", include_in_schema=False)
     async def root() -> JSONResponse:
