@@ -185,37 +185,6 @@ services:
     restart: unless-stopped
     command: taskiq worker workers.taskiq_app:broker --workers 2
 
-  # ===========================================================================
-  # detr_geo - Satellite Image Object Detection (GPU)
-  # ===========================================================================
-  detr-geo:
-    image: pytorch/pytorch:2.1.2-cuda12.1-cudnn8-runtime
-    container_name: detr-geo
-    # Uncomment the port if you add an inference API to detr_geo
-    # ports:
-    #   - "8001:8001"
-    environment:
-      NVIDIA_VISIBLE_DEVICES: all
-      CUDA_VISIBLE_DEVICES: "0"
-    volumes:
-      # Mount detr_geo repo (sibling directory by default)
-      - ${DETR_GEO_REPO_PATH:-/workspace/detr-geo}:/workspace/detr-geo
-      - ${DETR_GEO_DATA_PATH:-/workspace/training_output}:/workspace/training_output
-    networks:
-      - firstlight-net
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    # Keep alive so you can exec into the container for inference
-    command: bash -c "pip install -e /workspace/detr-geo[all] -q && tail -f /dev/null"
-    profiles:
-      # Only start with: docker compose --profile gpu up
-      - gpu
-
 # =============================================================================
 # Networks
 # =============================================================================

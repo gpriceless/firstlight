@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
-# setup_pod.sh -- Bootstrap a fresh RunPod pod for FirstLight + detr_geo.
+# setup_pod.sh -- Bootstrap a fresh RunPod pod for FirstLight Control Plane.
 #
 # Installs all system and Python dependencies, sets up PostGIS + Redis,
-# clones both repos, runs database migrations, and starts the API and
+# clones the repo, runs database migrations, and starts the API and
 # Taskiq worker processes in the background.
 #
 # Safe to re-run: idempotent at every step.
 #
-# Repos:
-#   FirstLight  -- https://github.com/gpriceless/firstlight.git
-#   detr_geo    -- https://github.com/gpriceless/detr-geo.git
+# Repo: https://github.com/gpriceless/firstlight.git
 #
 # Usage:
 #   # From a fresh RunPod pod terminal:
@@ -28,9 +26,6 @@ set -euo pipefail
 FIRSTLIGHT_REPO_URL="https://github.com/gpriceless/firstlight.git"
 FIRSTLIGHT_BRANCH="feature/llm-control-plane"
 FIRSTLIGHT_PROJECT_NAME="firstlight"
-
-DETR_GEO_REPO_URL="https://github.com/gpriceless/detr-geo.git"
-DETR_GEO_PROJECT_NAME="detr-geo"
 
 # RunPod persistent volume is at /runpod-volume/; fall back to /workspace
 if [ -d "/runpod-volume" ]; then
@@ -98,12 +93,11 @@ stop_if_running() {
 # Step 0: Intro
 # ---------------------------------------------------------------------------
 
-header "RunPod Setup: FirstLight Control Plane + detr_geo"
+header "RunPod Setup: FirstLight Control Plane"
 
 echo ""
 echo "  This script installs and starts the FirstLight geospatial event"
-echo "  intelligence platform alongside detr_geo for satellite image"
-echo "  object detection."
+echo "  intelligence platform with the LLM Control Plane API."
 echo ""
 echo "  Work directory: ${WORK_DIR}"
 echo ""
@@ -119,21 +113,18 @@ if command -v nvidia-smi &>/dev/null; then
     GPU_MEM=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1 | tr -d ' ')
     info "GPU memory: ${GPU_MEM} MB"
 
-    if [ "$GPU_MEM" -ge 70000 ]; then
-        info "A100 80GB detected -- optimal for both FirstLight + detr_geo"
-    elif [ "$GPU_MEM" -ge 35000 ]; then
-        info "A100 40GB / A40 detected -- good for all workloads"
+    if [ "$GPU_MEM" -ge 35000 ]; then
+        info "A100 / A40 detected -- optimal for all workloads"
     elif [ "$GPU_MEM" -ge 20000 ]; then
-        info "RTX 4090 / 24GB GPU detected -- sufficient for detr_geo inference"
+        info "RTX 4090 / 24GB GPU detected -- good for raster processing"
     elif [ "$GPU_MEM" -ge 10000 ]; then
-        warn "10-20GB GPU -- detr_geo inference OK, training may need smaller batch sizes"
+        info "10-20GB GPU -- sufficient for standard workloads"
     else
-        warn "Low VRAM GPU -- detr_geo inference only, reduce batch sizes"
+        info "GPU available with ${GPU_MEM}MB VRAM"
     fi
 else
     warn "nvidia-smi not found. GPU not detected."
-    warn "FirstLight API will run without GPU acceleration."
-    warn "detr_geo inference will fall back to CPU (slow)."
+    warn "FirstLight API will run CPU-only (sufficient for control plane demo)."
     GPU_MEM=0
 fi
 
@@ -209,20 +200,6 @@ fi
 FIRSTLIGHT_DIR="${WORK_DIR}/${FIRSTLIGHT_PROJECT_NAME}"
 info "FirstLight at: ${FIRSTLIGHT_DIR}"
 
-# --- detr_geo ---
-if [ -d "${WORK_DIR}/${DETR_GEO_PROJECT_NAME}/.git" ]; then
-    info "detr_geo already cloned -- pulling latest main..."
-    cd "${WORK_DIR}/${DETR_GEO_PROJECT_NAME}"
-    git pull origin main || warn "git pull failed (local changes?)"
-else
-    info "Cloning detr_geo..."
-    cd "${WORK_DIR}"
-    git clone "${DETR_GEO_REPO_URL}" "${DETR_GEO_PROJECT_NAME}"
-fi
-
-DETR_GEO_DIR="${WORK_DIR}/${DETR_GEO_PROJECT_NAME}"
-info "detr_geo at: ${DETR_GEO_DIR}"
-
 # ---------------------------------------------------------------------------
 # Step 4: Install Python dependencies
 # ---------------------------------------------------------------------------
@@ -236,11 +213,6 @@ pip install --upgrade pip --quiet
 info "Installing FirstLight[control-plane]..."
 cd "${FIRSTLIGHT_DIR}"
 pip install -e ".[control-plane]" --quiet 2>&1 | tail -5
-
-# Install detr_geo with all extras
-info "Installing detr_geo[all]..."
-cd "${DETR_GEO_DIR}"
-pip install -e ".[all]" --quiet 2>&1 | tail -5
 
 # Install additional tools
 info "Installing additional utilities..."
@@ -287,13 +259,6 @@ try:
     checks.append(('rasterio', rasterio.__version__))
 except ImportError as e:
     checks.append(('rasterio', f'FAILED: {e}'))
-
-try:
-    import torch
-    cuda = torch.cuda.is_available()
-    checks.append(('torch', f'{torch.__version__} (CUDA: {cuda})'))
-except ImportError as e:
-    checks.append(('torch', f'FAILED: {e}'))
 
 for name, status in checks:
     print(f'  {name}: {status}')
@@ -571,10 +536,8 @@ header "Setup Complete"
 
 echo ""
 echo "  Python:       $(python3 --version)"
-echo "  CUDA:         $(python3 -c 'import torch; print(torch.cuda.is_available())' 2>/dev/null || echo 'N/A')"
 echo ""
 echo "  FirstLight:   ${FIRSTLIGHT_DIR}"
-echo "  detr_geo:     ${DETR_GEO_DIR}"
 echo "  Logs:         ${LOG_DIR}/"
 echo ""
 echo "  ============================================================"

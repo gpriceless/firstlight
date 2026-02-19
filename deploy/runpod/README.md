@@ -1,7 +1,7 @@
-# FirstLight + detr_geo - RunPod Deployment
+# FirstLight Control Plane - RunPod Deployment
 
-Quick-start guide for running the FirstLight control plane and detr_geo satellite
-image detection on a RunPod GPU pod.
+Quick-start guide for running the FirstLight geospatial event intelligence
+platform with the LLM Control Plane on a RunPod pod.
 
 ---
 
@@ -15,8 +15,8 @@ image detection on a RunPod GPU pod.
 | Disk | 50 GB+ (persistent volume) |
 | OS | RunPod PyTorch 2.1+ template |
 
-An A40 runs both workloads comfortably. An RTX 4090 works for detr_geo inference
-(not training) while the control plane API runs alongside it.
+An A40 or RTX 4090 runs the full stack comfortably. CPU-only pods also work
+for the control plane demo (GPU accelerates raster processing).
 
 ---
 
@@ -54,7 +54,7 @@ bash deploy/runpod/setup_pod.sh
 The script:
 - Checks the GPU
 - Installs PostGIS, Redis, Python deps via apt and pip
-- Clones FirstLight and detr_geo
+- Clones FirstLight
 - Generates random database/Redis/auth credentials and saves them to `.env`
 - Runs all database migrations
 - Starts the FastAPI server (uvicorn) and Taskiq worker in the background
@@ -120,8 +120,6 @@ docker compose -f deploy/runpod/docker-compose.runpod.yml up -d
 # Follow logs
 docker compose -f deploy/runpod/docker-compose.runpod.yml logs -f api
 
-# Enable GPU support for detr_geo (optional)
-docker compose -f deploy/runpod/docker-compose.runpod.yml --profile gpu up -d
 ```
 
 Services exposed:
@@ -196,24 +194,6 @@ PYTHONPATH=/workspace/firstlight \
 nohup uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 2 \
     > /workspace/logs/api.log 2>&1 &
 ```
-
----
-
-## detr_geo
-
-The setup script clones detr_geo to `/workspace/detr-geo`. To run inference:
-
-```bash
-cd /workspace/detr-geo
-
-# Verify GPU is available
-python3 -c "import torch; print(torch.cuda.is_available())"
-
-# Run inference on a satellite image
-python3 scripts/infer.py --image /path/to/image.tif --model /path/to/checkpoint.pth
-```
-
-See `/workspace/detr-geo/README.md` for full detr_geo documentation.
 
 ---
 
