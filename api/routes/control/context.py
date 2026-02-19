@@ -9,7 +9,10 @@ All endpoints are under /control/v1/context and require CONTEXT_READ permission.
 
 import logging
 from datetime import datetime
-from typing import Annotated, Optional
+from typing import TYPE_CHECKING, Annotated, Optional
+
+if TYPE_CHECKING:
+    from core.context.repository import ContextRepository
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -39,30 +42,35 @@ context_router = APIRouter(prefix="/context", tags=["LLM Control - Context Lakeh
 # =============================================================================
 
 
+_shared_repo: Optional["ContextRepository"] = None
+
+
 def _get_context_repo():
     """
-    Get a ContextRepository instance.
+    Get a shared ContextRepository singleton.
 
-    Uses the same DB connection parameters as the PostGIS state backend,
-    sourced from api/config.py DatabaseSettings.
+    Reuses a single connection pool across requests instead of creating
+    and destroying a pool per request.
     """
-    from core.context.repository import ContextRepository
-    from api.config import get_settings
+    global _shared_repo
+    if _shared_repo is None:
+        from core.context.repository import ContextRepository
+        from api.config import get_settings
 
-    settings = get_settings()
-    db = settings.database
-    repo = ContextRepository(
-        host=db.host,
-        port=db.port,
-        database=db.name,
-        user=db.user,
-        password=db.password,
-    )
-    return repo
+        settings = get_settings()
+        db = settings.database
+        _shared_repo = ContextRepository(
+            host=db.host,
+            port=db.port,
+            database=db.name,
+            user=db.user,
+            password=db.password,
+        )
+    return _shared_repo
 
 
 async def _get_connected_repo():
-    """Get a connected ContextRepository instance."""
+    """Get the shared ContextRepository, connecting if needed."""
     repo = _get_context_repo()
     await repo.connect()
     return repo
@@ -106,6 +114,11 @@ def _parse_bbox(bbox: Optional[str]):
     if south > north:
         raise ValidationError(
             message="bbox south must be less than or equal to north"
+        )
+    if west > east:
+        raise ValidationError(
+            message="bbox west must be less than or equal to east "
+            "(antimeridian-crossing bboxes are not supported)"
         )
     return (west, south, east, north)
 
@@ -159,39 +172,36 @@ async def list_datasets(
     offset = (page - 1) * page_size
 
     repo = await _get_connected_repo()
-    try:
-        records, total = await repo.query_datasets(
-            bbox=bbox_values,
-            date_start=date_start,
-            date_end=date_end,
-            source=source,
-            limit=page_size,
-            offset=offset,
-        )
+    records, total = await repo.query_datasets(
+        bbox=bbox_values,
+        date_start=date_start,
+        date_end=date_end,
+        source=source,
+        limit=page_size,
+        offset=offset,
+    )
 
-        items = [
-            DatasetItem(
-                source=r.source,
-                source_id=r.source_id,
-                geometry=r.geometry,
-                properties=r.properties,
-                acquisition_date=r.acquisition_date,
-                cloud_cover=r.cloud_cover,
-                resolution_m=r.resolution_m,
-                bands=r.bands,
-                file_path=r.file_path,
-            )
-            for r in records
-        ]
-
-        return PaginatedDatasetsResponse(
-            items=items,
-            total=total,
-            page=page,
-            page_size=page_size,
+    items = [
+        DatasetItem(
+            source=r.source,
+            source_id=r.source_id,
+            geometry=r.geometry,
+            properties=r.properties,
+            acquisition_date=r.acquisition_date,
+            cloud_cover=r.cloud_cover,
+            resolution_m=r.resolution_m,
+            bands=r.bands,
+            file_path=r.file_path,
         )
-    finally:
-        await repo.close()
+        for r in records
+    ]
+
+    return PaginatedDatasetsResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 # =============================================================================
@@ -226,31 +236,28 @@ async def list_buildings(
     offset = (page - 1) * page_size
 
     repo = await _get_connected_repo()
-    try:
-        records, total = await repo.query_buildings(
-            bbox=bbox_values,
-            limit=page_size,
-            offset=offset,
-        )
+    records, total = await repo.query_buildings(
+        bbox=bbox_values,
+        limit=page_size,
+        offset=offset,
+    )
 
-        items = [
-            BuildingItem(
-                source=r.source,
-                source_id=r.source_id,
-                geometry=r.geometry,
-                properties=r.properties,
-            )
-            for r in records
-        ]
-
-        return PaginatedBuildingsResponse(
-            items=items,
-            total=total,
-            page=page,
-            page_size=page_size,
+    items = [
+        BuildingItem(
+            source=r.source,
+            source_id=r.source_id,
+            geometry=r.geometry,
+            properties=r.properties,
         )
-    finally:
-        await repo.close()
+        for r in records
+    ]
+
+    return PaginatedBuildingsResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 # =============================================================================
@@ -293,32 +300,29 @@ async def list_infrastructure(
     offset = (page - 1) * page_size
 
     repo = await _get_connected_repo()
-    try:
-        records, total = await repo.query_infrastructure(
-            bbox=bbox_values,
-            type_filter=type,
-            limit=page_size,
-            offset=offset,
-        )
+    records, total = await repo.query_infrastructure(
+        bbox=bbox_values,
+        type_filter=type,
+        limit=page_size,
+        offset=offset,
+    )
 
-        items = [
-            InfrastructureItem(
-                source=r.source,
-                source_id=r.source_id,
-                geometry=r.geometry,
-                properties=r.properties,
-            )
-            for r in records
-        ]
-
-        return PaginatedInfrastructureResponse(
-            items=items,
-            total=total,
-            page=page,
-            page_size=page_size,
+    items = [
+        InfrastructureItem(
+            source=r.source,
+            source_id=r.source_id,
+            geometry=r.geometry,
+            properties=r.properties,
         )
-    finally:
-        await repo.close()
+        for r in records
+    ]
+
+    return PaginatedInfrastructureResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 # =============================================================================
@@ -361,34 +365,31 @@ async def list_weather(
     offset = (page - 1) * page_size
 
     repo = await _get_connected_repo()
-    try:
-        records, total = await repo.query_weather(
-            bbox=bbox_values,
-            time_start=time_start,
-            time_end=time_end,
-            limit=page_size,
-            offset=offset,
-        )
+    records, total = await repo.query_weather(
+        bbox=bbox_values,
+        time_start=time_start,
+        time_end=time_end,
+        limit=page_size,
+        offset=offset,
+    )
 
-        items = [
-            WeatherItem(
-                source=r.source,
-                source_id=r.source_id,
-                geometry=r.geometry,
-                properties=r.properties,
-                observation_time=r.observation_time,
-            )
-            for r in records
-        ]
-
-        return PaginatedWeatherResponse(
-            items=items,
-            total=total,
-            page=page,
-            page_size=page_size,
+    items = [
+        WeatherItem(
+            source=r.source,
+            source_id=r.source_id,
+            geometry=r.geometry,
+            properties=r.properties,
+            observation_time=r.observation_time,
         )
-    finally:
-        await repo.close()
+        for r in records
+    ]
+
+    return PaginatedWeatherResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 # =============================================================================
@@ -411,22 +412,19 @@ async def get_summary(
 ) -> LakehouseSummaryResponse:
     """Get lakehouse-wide statistics."""
     repo = await _get_connected_repo()
-    try:
-        stats = await repo.get_lakehouse_stats()
+    stats = await repo.get_lakehouse_stats()
 
-        # Convert raw dict to response model
-        tables = {}
-        for label, info in stats.get("tables", {}).items():
-            tables[label] = TableStats(
-                row_count=info["row_count"],
-                sources=info.get("sources", []),
-            )
-
-        return LakehouseSummaryResponse(
-            tables=tables,
-            total_rows=stats.get("total_rows", 0),
-            spatial_extent=stats.get("spatial_extent"),
-            usage_stats=stats.get("usage_stats", {}),
+    # Convert raw dict to response model
+    tables = {}
+    for label, info in stats.get("tables", {}).items():
+        tables[label] = TableStats(
+            row_count=info["row_count"],
+            sources=info.get("sources", []),
         )
-    finally:
-        await repo.close()
+
+    return LakehouseSummaryResponse(
+        tables=tables,
+        total_rows=stats.get("total_rows", 0),
+        spatial_extent=stats.get("spatial_extent"),
+        usage_stats=stats.get("usage_stats", {}),
+    )
