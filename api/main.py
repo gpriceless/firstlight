@@ -30,6 +30,7 @@ from api.middleware import setup_middleware
 from api.models.errors import ErrorCode, ErrorResponse, register_exception_handlers
 from api.routes import api_router
 from api.routes.control import control_router
+from api.routes.internal import internal_router
 
 # Configure logging
 logging.basicConfig(
@@ -70,6 +71,13 @@ TAGS_METADATA = [
         "description": (
             "LLM Control Plane endpoints for job management, state transitions, "
             "escalations, and tool discovery. Tenant-scoped."
+        ),
+    },
+    {
+        "name": "Partner Integration",
+        "description": (
+            "Partner API endpoints for SSE event streaming, webhook subscriptions, "
+            "pipeline health metrics, and queue summaries. Requires internal:read permission."
         ),
     },
 ]
@@ -260,6 +268,9 @@ def create_application() -> FastAPI:
 
     # Include LLM Control Plane routes (separate /control/v1 prefix)
     app.include_router(control_router)
+
+    # Include Partner Integration routes (/internal/v1 prefix)
+    app.include_router(internal_router)
 
     # Add root redirect to docs
     @app.get("/", include_in_schema=False)
