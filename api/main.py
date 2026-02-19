@@ -29,6 +29,7 @@ from api.config import Settings, get_settings
 from api.middleware import setup_middleware
 from api.models.errors import ErrorCode, ErrorResponse, register_exception_handlers
 from api.routes import api_router
+from api.routes.control import control_router
 
 # Configure logging
 logging.basicConfig(
@@ -63,6 +64,13 @@ TAGS_METADATA = [
     {
         "name": "Health",
         "description": "Health checks, readiness, and liveness probes for monitoring.",
+    },
+    {
+        "name": "LLM Control",
+        "description": (
+            "LLM Control Plane endpoints for job management, state transitions, "
+            "escalations, and tool discovery. Tenant-scoped."
+        ),
     },
 ]
 
@@ -227,6 +235,9 @@ def create_application() -> FastAPI:
 
     # Include API routes
     app.include_router(api_router)
+
+    # Include LLM Control Plane routes (separate /control/v1 prefix)
+    app.include_router(control_router)
 
     # Add root redirect to docs
     @app.get("/", include_in_schema=False)
