@@ -501,6 +501,9 @@ class OrchestratorAgent(BaseAgent):
 
             self._logger.info(f"Event {event_id} completed successfully")
 
+            # Publish result as STAC Item (Phase 4)
+            await self._publish_stac_item(event_id)
+
         except Exception as e:
             state.current_stage = ExecutionStage.FAILED
             state.completed_at = datetime.now(timezone.utc)
@@ -1132,6 +1135,36 @@ class OrchestratorAgent(BaseAgent):
         """Handle escalated task."""
         self._logger.warning(f"Escalated task: {task.task_id}")
         # Could notify operators, create incident, etc.
+
+    async def _publish_stac_item(self, event_id: str) -> None:
+        """
+        Publish completed job results as a STAC Item.
+
+        Called after a job transitions to COMPLETE. Failures are logged
+        but do not block job completion.
+        """
+        try:
+            from core.stac.publisher import publish_result_as_stac_item
+
+            item = await publish_result_as_stac_item(event_id)
+            if item:
+                self._logger.info(
+                    "STAC item published for event %s", event_id
+                )
+            else:
+                self._logger.debug(
+                    "STAC item not published for event %s "
+                    "(job may not be in PostGIS or pgSTAC not available)",
+                    event_id,
+                )
+        except ImportError:
+            self._logger.debug(
+                "STAC publisher not available, skipping item publication"
+            )
+        except Exception as e:
+            self._logger.warning(
+                "Failed to publish STAC item for event %s: %s", event_id, e
+            )
 
     # Utility methods
 
