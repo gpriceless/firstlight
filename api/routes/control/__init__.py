@@ -10,11 +10,6 @@ from TenantMiddleware.
 
 from fastapi import APIRouter, Depends, Request
 
-from api.routes.control.jobs import router as jobs_router
-from api.routes.control.escalations import router as escalations_router
-from api.routes.control.tools import router as tools_router
-from api.routes.control.context import context_router
-
 
 def get_current_customer(request: Request) -> str:
     """
@@ -36,6 +31,13 @@ def get_current_customer(request: Request) -> str:
         )
     return customer_id
 
+
+# Import sub-routers AFTER defining get_current_customer
+# to avoid circular import (jobs.py and context.py both import it from here)
+from api.routes.control.jobs import router as jobs_router
+from api.routes.control.escalations import router as escalations_router
+from api.routes.control.tools import router as tools_router
+from api.routes.control.context import context_router
 
 # Create the control router with /control/v1 prefix
 # Include rate limiting dependency for all control plane endpoints
