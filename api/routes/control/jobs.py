@@ -27,6 +27,7 @@ from api.models.control import (
     TransitionRequest,
     TransitionResponse,
 )
+from api.models.context import JobContextSummaryResponse
 from api.models.errors import (
     ConflictError,
     NotFoundError,
@@ -154,6 +155,11 @@ async def list_jobs(
         if south > north:
             raise ValidationError(
                 message="bbox south must be less than or equal to north"
+            )
+        if west > east:
+            raise ValidationError(
+                message="bbox west must be less than or equal to east "
+                "(antimeridian-crossing bboxes are not supported)"
             )
         bbox_values = (west, south, east, north)
 
@@ -550,6 +556,7 @@ async def append_reasoning(
 
 @router.get(
     "/{job_id}/context",
+    response_model=JobContextSummaryResponse,
     summary="Get context usage summary for a job",
     description=(
         "Returns the context data usage summary for a specific job: "
@@ -560,7 +567,7 @@ async def append_reasoning(
 async def get_job_context(
     job_id: Annotated[str, Path(description="Job identifier (UUID)")],
     customer_id: Annotated[str, Depends(get_current_customer)],
-) -> Dict[str, Any]:
+) -> JobContextSummaryResponse:
     """
     Get context usage summary for a specific job.
 
@@ -594,20 +601,20 @@ async def get_job_context(
     await repo.connect()
     try:
         summary = await repo.get_job_context_summary(UUIDType(job_id))
-        return {
-            "job_id": job_id,
-            "datasets_ingested": summary.datasets_ingested,
-            "datasets_reused": summary.datasets_reused,
-            "buildings_ingested": summary.buildings_ingested,
-            "buildings_reused": summary.buildings_reused,
-            "infrastructure_ingested": summary.infrastructure_ingested,
-            "infrastructure_reused": summary.infrastructure_reused,
-            "weather_ingested": summary.weather_ingested,
-            "weather_reused": summary.weather_reused,
-            "total_ingested": summary.total_ingested,
-            "total_reused": summary.total_reused,
-            "total": summary.total,
-        }
+        return JobContextSummaryResponse(
+            job_id=job_id,
+            datasets_ingested=summary.datasets_ingested,
+            datasets_reused=summary.datasets_reused,
+            buildings_ingested=summary.buildings_ingested,
+            buildings_reused=summary.buildings_reused,
+            infrastructure_ingested=summary.infrastructure_ingested,
+            infrastructure_reused=summary.infrastructure_reused,
+            weather_ingested=summary.weather_ingested,
+            weather_reused=summary.weather_reused,
+            total_ingested=summary.total_ingested,
+            total_reused=summary.total_reused,
+            total=summary.total,
+        )
     finally:
         await repo.close()
 

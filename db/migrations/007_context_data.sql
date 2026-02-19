@@ -43,6 +43,10 @@ CREATE TABLE IF NOT EXISTS datasets (
 CREATE INDEX IF NOT EXISTS idx_datasets_geometry_gist
     ON datasets USING GIST (geometry);
 
+-- B-tree index for source filtering (composite UNIQUE covers prefix but explicit is clearer)
+CREATE INDEX IF NOT EXISTS idx_datasets_source
+    ON datasets (source);
+
 -- B-tree index for temporal queries
 CREATE INDEX IF NOT EXISTS idx_datasets_acquisition_date
     ON datasets (acquisition_date);
@@ -71,6 +75,10 @@ CREATE TABLE IF NOT EXISTS context_buildings (
 CREATE INDEX IF NOT EXISTS idx_context_buildings_geometry_gist
     ON context_buildings USING GIST (geometry);
 
+-- B-tree index for source filtering
+CREATE INDEX IF NOT EXISTS idx_context_buildings_source
+    ON context_buildings (source);
+
 
 -- ============================================================================
 -- Table: context_infrastructure
@@ -95,6 +103,10 @@ CREATE TABLE IF NOT EXISTS context_infrastructure (
 CREATE INDEX IF NOT EXISTS idx_context_infrastructure_geometry_gist
     ON context_infrastructure USING GIST (geometry);
 
+-- B-tree index for source filtering
+CREATE INDEX IF NOT EXISTS idx_context_infrastructure_source
+    ON context_infrastructure (source);
+
 
 -- ============================================================================
 -- Table: context_weather
@@ -118,6 +130,10 @@ CREATE TABLE IF NOT EXISTS context_weather (
 -- Spatial index for geospatial queries
 CREATE INDEX IF NOT EXISTS idx_context_weather_geometry_gist
     ON context_weather USING GIST (geometry);
+
+-- B-tree index for source filtering
+CREATE INDEX IF NOT EXISTS idx_context_weather_source
+    ON context_weather (source);
 
 -- B-tree index for temporal queries
 CREATE INDEX IF NOT EXISTS idx_context_weather_observation_time
