@@ -108,6 +108,11 @@ class StorageSettings(BaseSettings):
     secret_key: Optional[str] = Field(default=None, description="Secret key")
 
 
+# The insecure default secret key for development. In production, this MUST be
+# overridden via the AUTH_SECRET_KEY environment variable.
+_AUTH_INSECURE_DEFAULT_KEY = "dev-secret-key-change-in-production"
+
+
 class AuthSettings(BaseSettings):
     """Authentication and authorization settings."""
 
@@ -119,7 +124,7 @@ class AuthSettings(BaseSettings):
 
     enabled: bool = Field(default=True, description="Enable authentication")
     secret_key: str = Field(
-        default="dev-secret-key-change-in-production",
+        default=_AUTH_INSECURE_DEFAULT_KEY,
         description="JWT secret key",
     )
     algorithm: str = Field(default="HS256", description="JWT algorithm")
@@ -130,6 +135,18 @@ class AuthSettings(BaseSettings):
     allowed_api_keys: List[str] = Field(
         default_factory=list, description="List of allowed API keys"
     )
+
+    @field_validator("secret_key", mode="after")
+    @classmethod
+    def validate_secret_key_in_production(cls, v: str) -> str:
+        """Reject the insecure default secret key in production environments."""
+        environment = os.getenv("FIRSTLIGHT_ENVIRONMENT", "development").lower()
+        if environment == "production" and v == _AUTH_INSECURE_DEFAULT_KEY:
+            raise ValueError(
+                "AUTH_SECRET_KEY must be changed from the default value in production. "
+                "Set the AUTH_SECRET_KEY environment variable to a secure random string."
+            )
+        return v
 
     @field_validator("allowed_api_keys", mode="before")
     @classmethod
