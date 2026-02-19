@@ -120,36 +120,36 @@ Goal: MAIA can query accumulated context data. A demo script demonstrates the la
 
 ### Track A: Query Endpoints
 
-- [ ] 3.1 Create `api/routes/control/context.py` with a `context_router` scoped under `/context`; register the router in `api/routes/control/__init__.py` via `control_router.include_router(context_router)`; add `Permission.CONTEXT_READ` to the `Permission` enum in `api/auth.py` and add it to `ROLE_PERMISSIONS` for `readonly` and above (`readonly`, `user`, `operator`, `admin`), following the `state:read` pattern; require `CONTEXT_READ` for all context endpoints (depends on Phase 2 complete)
+- [x] 3.1 Create `api/routes/control/context.py` with a `context_router` scoped under `/context`; register the router in `api/routes/control/__init__.py` via `control_router.include_router(context_router)`; add `Permission.CONTEXT_READ` to the `Permission` enum in `api/auth.py` and add it to `ROLE_PERMISSIONS` for `readonly` and above (`readonly`, `user`, `operator`, `admin`), following the `state:read` pattern; require `CONTEXT_READ` for all context endpoints (depends on Phase 2 complete)
   <!-- files: api/routes/control/context.py (new), api/routes/control/__init__.py (modify -- add import and include_router for context_router), api/auth.py (modify -- add CONTEXT_READ = "context:read" to Permission enum at line 113, add Permission.CONTEXT_READ to readonly/user/operator role sets in ROLE_PERMISSIONS) -->
   <!-- pattern: follow api/routes/control/jobs.py (line 47: router = APIRouter(prefix="/jobs", tags=["LLM Control - Jobs"])) for router structure. Follow api/routes/control/__init__.py (lines 50-52) for router registration. Follow api/auth.py Permission enum (lines 75-113) and ROLE_PERMISSIONS (lines 117-158) for permission pattern. -->
   <!-- gotcha: The context router prefix should be "/context" (not "/control/v1/context") because the parent control_router already has prefix="/control/v1" (see api/routes/control/__init__.py line 43-47). So endpoint paths resolve to /control/v1/context/datasets etc. Also: the backend needs a ContextRepository instance -- follow the _get_backend() / _get_connected_backend() pattern from api/routes/control/jobs.py (lines 55-81) but instantiate ContextRepository instead. The ContextRepository and PostGISStateBackend should share the same DB connection parameters from api/config.py DatabaseSettings. -->
 
-- [ ] 3.2 Implement `GET /control/v1/context/datasets` -- query accumulated datasets; support query params: `bbox` (west,south,east,north), `date_start`, `date_end`, `source`, `page` (1-based, default 1), `page_size` (default 50, max 200); return paginated response with `items` (list of dataset records with geometry as GeoJSON), `total`, `page`, `page_size`; delegate to `ContextRepository.query_datasets()` (depends on 3.1)
+- [x] 3.2 Implement `GET /control/v1/context/datasets` -- query accumulated datasets; support query params: `bbox` (west,south,east,north), `date_start`, `date_end`, `source`, `page` (1-based, default 1), `page_size` (default 50, max 200); return paginated response with `items` (list of dataset records with geometry as GeoJSON), `total`, `page`, `page_size`; delegate to `ContextRepository.query_datasets()` (depends on 3.1)
   <!-- files: api/routes/control/context.py (modify), api/models/context.py (new -- Pydantic response models for context endpoints) -->
   <!-- pattern: follow api/routes/control/jobs.py list_jobs() (lines 89-208) for bbox parsing, pagination, and response construction. Follow api/models/control.py PaginatedJobsResponse (line 37) for paginated response model. -->
   <!-- gotcha: Reuse the bbox parsing logic from jobs.py list_jobs() (lines 133-158). Consider extracting it to a shared utility since both context and jobs endpoints parse bbox the same way. -->
 
-- [ ] 3.3 Implement `GET /control/v1/context/buildings` -- query building footprints by bbox; same pagination pattern as 3.2; return building records with geometry as GeoJSON (depends on 3.1)
+- [x] 3.3 Implement `GET /control/v1/context/buildings` -- query building footprints by bbox; same pagination pattern as 3.2; return building records with geometry as GeoJSON (depends on 3.1)
   <!-- files: api/routes/control/context.py (modify), api/models/context.py (modify) -->
 
-- [ ] 3.4 Implement `GET /control/v1/context/infrastructure` -- query infrastructure by bbox with optional `type` filter (passed as `properties->>'type'` query); same pagination pattern (depends on 3.1)
+- [x] 3.4 Implement `GET /control/v1/context/infrastructure` -- query infrastructure by bbox with optional `type` filter (passed as `properties->>'type'` query); same pagination pattern (depends on 3.1)
   <!-- files: api/routes/control/context.py (modify) -->
 
-- [ ] 3.5 Implement `GET /control/v1/context/weather` -- query weather observations by bbox and time range (`time_start`, `time_end`); same pagination pattern (depends on 3.1)
+- [x] 3.5 Implement `GET /control/v1/context/weather` -- query weather observations by bbox and time range (`time_start`, `time_end`); same pagination pattern (depends on 3.1)
   <!-- files: api/routes/control/context.py (modify) -->
 
-- [ ] 3.6 Implement `GET /control/v1/context/summary` -- return lakehouse statistics: total row count per context table, total spatial extent (bounding box of all data), list of distinct sources per table, total `job_context_usage` entries grouped by usage_type; delegate to `ContextRepository.get_lakehouse_stats()` (depends on 3.1)
+- [x] 3.6 Implement `GET /control/v1/context/summary` -- return lakehouse statistics: total row count per context table, total spatial extent (bounding box of all data), list of distinct sources per table, total `job_context_usage` entries grouped by usage_type; delegate to `ContextRepository.get_lakehouse_stats()` (depends on 3.1)
   <!-- files: api/routes/control/context.py (modify) -->
 
-- [ ] 3.7 Implement `GET /control/v1/jobs/{job_id}/context` -- return context usage summary for a specific job: per-table counts of ingested vs reused items, total counts; delegate to `ContextRepository.get_job_context_summary()` (depends on 3.1)
+- [x] 3.7 Implement `GET /control/v1/jobs/{job_id}/context` -- return context usage summary for a specific job: per-table counts of ingested vs reused items, total counts; delegate to `ContextRepository.get_job_context_summary()` (depends on 3.1)
   <!-- files: api/routes/control/jobs.py (modify -- add GET /jobs/{job_id}/context route after existing reasoning endpoint, around line 543) -->
   <!-- pattern: follow the get_job() endpoint pattern (api/routes/control/jobs.py lines 278-320) for tenant scoping and backend lifecycle. -->
   <!-- gotcha: This endpoint adds a route to the existing jobs router, not the context router. The URL pattern is /control/v1/jobs/{job_id}/context (under the jobs prefix). The coder must verify the job belongs to the authenticated customer before returning context data (same tenant scoping as get_job at line 299). -->
 
 ### Track B: Demo + Verification
 
-- [ ] 3.8 Create a demo script `scripts/demo_lakehouse.py` that demonstrates the lakehouse effect:
+- [x] 3.8 Create a demo script `scripts/demo_lakehouse.py` that demonstrates the lakehouse effect:
   1. Submit Job A for a bounding box (e.g., Houston flood zone) via `/control/v1/jobs`
   2. Simulate pipeline execution by inserting synthetic context data (100 buildings, 5 infrastructure facilities, 10 weather observations, 3 satellite scenes) via the ContextRepository
   3. Query `/control/v1/context/summary` to show accumulated data
@@ -166,12 +166,12 @@ Goal: MAIA can query accumulated context data. A demo script demonstrates the la
 
 ### Section 3C: Tests (sequential, after both tracks complete)
 
-- [ ] 3.9 Write `tests/api/test_context_query.py` covering: GET /context/datasets returns paginated results, bbox filter returns only intersecting datasets, date range filter works, GET /context/buildings returns GeoJSON geometry in response, GET /context/summary returns correct row counts, GET /jobs/{id}/context returns usage summary with ingested/reused counts, empty database returns 200 with empty items array (depends on Track A)
+- [x] 3.9 Write `tests/api/test_context_query.py` covering: GET /context/datasets returns paginated results, bbox filter returns only intersecting datasets, date range filter works, GET /context/buildings returns GeoJSON geometry in response, GET /context/summary returns correct row counts, GET /jobs/{id}/context returns usage summary with ingested/reused counts, empty database returns 200 with empty items array (depends on Track A)
   <!-- files: tests/api/test_context_query.py (new) -->
   <!-- pattern: follow tests/api/test_control_jobs.py for API test structure (FastAPI TestClient, auth fixtures, PostGIS test database). -->
   <!-- gotcha: Tests need seeded data in the context tables. Create a fixture that inserts known context rows and junction entries before running queries. The permission check test should verify that a user without CONTEXT_READ gets 403. -->
 
-- [ ] 3.10 Write `tests/context/test_lakehouse_effect.py` covering: two jobs with overlapping AOIs result in shared context rows with correct usage_type values, non-overlapping jobs do not share context, junction table correctly tracks provenance (depends on Phase 2 complete, Track A)
+- [x] 3.10 Write `tests/context/test_lakehouse_effect.py` covering: two jobs with overlapping AOIs result in shared context rows with correct usage_type values, non-overlapping jobs do not share context, junction table correctly tracks provenance (depends on Phase 2 complete, Track A)
   <!-- files: tests/context/test_lakehouse_effect.py (new) -->
   <!-- pattern: follow tests/state/test_postgis_backend.py for PostGIS integration test patterns. -->
 
