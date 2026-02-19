@@ -117,7 +117,7 @@ class AuthSettings(BaseSettings):
         extra="ignore",
     )
 
-    enabled: bool = Field(default=False, description="Enable authentication")
+    enabled: bool = Field(default=True, description="Enable authentication")
     secret_key: str = Field(
         default="dev-secret-key-change-in-production",
         description="JWT secret key",
