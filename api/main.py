@@ -16,6 +16,7 @@ This FastAPI application provides RESTful endpoints for:
 See /api/docs for interactive Swagger documentation.
 """
 
+import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -81,6 +82,43 @@ TAGS_METADATA = [
         ),
     },
 ]
+
+
+async def _refresh_materialized_views_loop(settings) -> None:
+    """
+    Background task that refreshes materialized views every 30 seconds.
+
+    Refreshes pipeline_health_metrics and queue_summary views using
+    REFRESH MATERIALIZED VIEW CONCURRENTLY for non-blocking updates.
+    """
+    refresh_interval = 30  # seconds
+
+    # Wait a bit for the database to be ready
+    await asyncio.sleep(5)
+
+    while True:
+        try:
+            import asyncpg
+
+            db = settings.database
+            dsn = f"postgresql://{db.user}:{db.password}@{db.host}:{db.port}/{db.name}"
+            conn = await asyncpg.connect(dsn)
+            try:
+                await conn.execute(
+                    "REFRESH MATERIALIZED VIEW CONCURRENTLY pipeline_health_metrics"
+                )
+                await conn.execute(
+                    "REFRESH MATERIALIZED VIEW CONCURRENTLY queue_summary"
+                )
+                logger.debug("Materialized views refreshed")
+            finally:
+                await conn.close()
+        except ImportError:
+            logger.debug("asyncpg not available, skipping view refresh")
+        except Exception as e:
+            logger.warning(f"Materialized view refresh failed: {e}")
+
+        await asyncio.sleep(refresh_interval)
 
 
 @asynccontextmanager
@@ -154,12 +192,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.warning(f"Taskiq startup warning: {e}")
 
+    # Start materialized view refresh background task
+    _refresh_task = None
+    try:
+        _refresh_task = asyncio.create_task(
+            _refresh_materialized_views_loop(settings)
+        )
+        logger.info("Materialized view refresh task started (30s interval)")
+    except Exception as e:
+        logger.warning(f"Materialized view refresh startup warning: {e}")
+
     logger.info("Application startup complete")
 
     yield  # Application runs here
 
     # Shutdown
     logger.info("Shutting down application...")
+
+    # Cancel materialized view refresh task
+    if _refresh_task is not None:
+        _refresh_task.cancel()
+        try:
+            await _refresh_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("Materialized view refresh task stopped")
 
     # Shutdown Taskiq broker
     if _taskiq_broker is not None:
