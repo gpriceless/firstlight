@@ -37,7 +37,14 @@ def get_current_customer(request: Request) -> str:
 
 
 # Create the control router with /control/v1 prefix
-control_router = APIRouter(prefix="/control/v1", tags=["LLM Control"])
+# Include rate limiting dependency for all control plane endpoints
+from api.rate_limit import check_control_plane_rate_limit
+
+control_router = APIRouter(
+    prefix="/control/v1",
+    tags=["LLM Control"],
+    dependencies=[Depends(check_control_plane_rate_limit)],
+)
 
 # Include sub-routers
 control_router.include_router(jobs_router)

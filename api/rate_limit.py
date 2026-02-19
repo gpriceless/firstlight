@@ -770,3 +770,213 @@ def configure_rate_limits(endpoint_limits: List[EndpointRateLimit]) -> None:
     """
     limiter = get_rate_limiter()
     limiter.endpoint_limits = endpoint_limits
+
+
+# =============================================================================
+# Control Plane Rate Limiting (Task 2.10)
+# =============================================================================
+
+
+class ControlPlaneRateLimitConfig(BaseModel):
+    """
+    Rate limiting configuration specific to the /control/v1 router.
+
+    Uses Redis sliding window counters keyed by API key (per-agent)
+    and customer_id (per-customer).
+    """
+
+    per_agent_rpm: int = Field(
+        default=120,
+        description="Maximum requests per minute per agent (API key)",
+    )
+    per_customer_rpm: int = Field(
+        default=600,
+        description="Maximum requests per minute per customer (tenant)",
+    )
+    burst: int = Field(
+        default=20,
+        description="Burst allowance above the per-minute limit",
+    )
+
+
+def get_control_plane_rate_limit_config() -> ControlPlaneRateLimitConfig:
+    """Get control plane rate limiting config from environment."""
+    return ControlPlaneRateLimitConfig(
+        per_agent_rpm=int(os.getenv("FIRSTLIGHT_RATE_LIMIT_PER_AGENT", "120")),
+        per_customer_rpm=int(os.getenv("FIRSTLIGHT_RATE_LIMIT_PER_CUSTOMER", "600")),
+        burst=int(os.getenv("FIRSTLIGHT_RATE_LIMIT_BURST", "20")),
+    )
+
+
+class ControlPlaneRateLimiter:
+    """
+    Rate limiter specifically for the /control/v1 router.
+
+    Implements dual-key sliding window:
+    - Per-agent (API key): FIRSTLIGHT_RATE_LIMIT_PER_AGENT req/min
+    - Per-customer (tenant): FIRSTLIGHT_RATE_LIMIT_PER_CUSTOMER req/min
+
+    Uses the existing rate limit backend infrastructure.
+    """
+
+    def __init__(
+        self,
+        config: Optional[ControlPlaneRateLimitConfig] = None,
+    ):
+        self.config = config or get_control_plane_rate_limit_config()
+        self._backend: Optional[RateLimitBackend] = None
+        self._initialized = False
+
+    async def initialize(self) -> None:
+        """Initialize the backend."""
+        if self._initialized:
+            return
+
+        # Try Redis first
+        redis_url = os.getenv("REDIS_URL")
+        if redis_url:
+            redis_backend = RedisRateLimitBackend(redis_url)
+            if await redis_backend.connect():
+                self._backend = redis_backend
+                self._initialized = True
+                return
+
+        # Fall back to memory
+        memory_backend = MemoryRateLimitBackend()
+        await memory_backend.start()
+        self._backend = memory_backend
+        self._initialized = True
+
+    async def close(self) -> None:
+        """Close the backend."""
+        if self._backend:
+            await self._backend.close()
+
+    async def check(self, request: Request) -> RateLimitResult:
+        """
+        Check both per-agent and per-customer rate limits.
+
+        Returns the most restrictive result.
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        # Extract identifiers
+        api_key = request.headers.get("X-API-Key") or request.query_params.get("api_key")
+        customer_id = getattr(request.state, "customer_id", None)
+
+        agent_key = f"ctrl:agent:{hashlib.sha256(api_key.encode()).hexdigest()[:16]}" if api_key else "ctrl:agent:unknown"
+        customer_key = f"ctrl:customer:{customer_id}" if customer_id else "ctrl:customer:unknown"
+
+        window_seconds = 60  # 1 minute window
+
+        # Check per-agent limit
+        agent_count, agent_ttl = await self._backend.increment(
+            agent_key, window_seconds
+        )
+        agent_limit = self.config.per_agent_rpm + self.config.burst
+        agent_result = RateLimitResult(
+            allowed=agent_count <= agent_limit,
+            limit=self.config.per_agent_rpm,
+            remaining=max(0, agent_limit - agent_count),
+            reset_seconds=agent_ttl,
+        )
+
+        # Check per-customer limit
+        customer_count, customer_ttl = await self._backend.increment(
+            customer_key, window_seconds
+        )
+        customer_limit = self.config.per_customer_rpm + self.config.burst
+        customer_result = RateLimitResult(
+            allowed=customer_count <= customer_limit,
+            limit=self.config.per_customer_rpm,
+            remaining=max(0, customer_limit - customer_count),
+            reset_seconds=customer_ttl,
+        )
+
+        # Return the most restrictive result
+        if not agent_result.allowed:
+            return agent_result
+        if not customer_result.allowed:
+            return customer_result
+
+        # Both allowed — return the one with fewer remaining
+        if agent_result.remaining < customer_result.remaining:
+            return agent_result
+        return customer_result
+
+
+# Global control plane rate limiter
+_control_plane_limiter: Optional[ControlPlaneRateLimiter] = None
+
+
+def get_control_plane_limiter() -> ControlPlaneRateLimiter:
+    """Get the global control plane rate limiter."""
+    global _control_plane_limiter
+    if _control_plane_limiter is None:
+        _control_plane_limiter = ControlPlaneRateLimiter()
+    return _control_plane_limiter
+
+
+async def check_control_plane_rate_limit(request: Request) -> None:
+    """
+    FastAPI dependency for control plane rate limiting.
+
+    Checks per-agent and per-customer limits. Returns 429 with
+    Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining,
+    X-RateLimit-Reset headers when exceeded.
+
+    Usage:
+        @router.get("/endpoint")
+        async def endpoint(
+            _rate_limit: None = Depends(check_control_plane_rate_limit)
+        ):
+            ...
+    """
+    limiter = get_control_plane_limiter()
+    if not limiter._initialized:
+        await limiter.initialize()
+
+    result = await limiter.check(request)
+
+    # Store result for header injection in middleware/response
+    request.state.rate_limit_result = result
+
+    if not result.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "error": "rate_limit_exceeded",
+                "message": "Control plane rate limit exceeded",
+                "retry_after": result.reset_seconds,
+            },
+            headers={
+                "Retry-After": str(result.reset_seconds),
+                "X-RateLimit-Limit": str(result.limit),
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": str(result.reset_timestamp),
+            },
+        )
+
+
+class ControlPlaneRateLimitMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware that adds X-RateLimit-* headers to all /control/v1 responses.
+
+    This runs after the rate limit dependency check and adds headers
+    to successful responses as well.
+    """
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        """Process request and add rate limit headers."""
+        response = await call_next(request)
+
+        # Only add headers for /control/v1 routes
+        if request.url.path.startswith("/control/v1"):
+            result = getattr(request.state, "rate_limit_result", None)
+            if result is not None:
+                response.headers["X-RateLimit-Limit"] = str(result.limit)
+                response.headers["X-RateLimit-Remaining"] = str(result.remaining)
+                response.headers["X-RateLimit-Reset"] = str(result.reset_timestamp)
+
+        return response
