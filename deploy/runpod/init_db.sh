@@ -152,6 +152,9 @@ run_sql "Migration 005: partition job events" \
 run_sql "Migration 006: pgSTAC init" \
     "${MIGRATIONS_DIR}/006_pgstac_init.sql"
 
+run_sql "Migration 007: context data lakehouse" \
+    "${MIGRATIONS_DIR}/007_context_data.sql"
+
 header "Database Initialization Complete"
 
 echo ""
