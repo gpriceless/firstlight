@@ -277,6 +277,93 @@ async def create_job(
 
 
 # =============================================================================
+# POST /control/v1/jobs/{job_id}/start — Enqueue pipeline execution
+# =============================================================================
+
+
+@router.post(
+    "/{job_id}/start",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Start pipeline execution for a job",
+    description=(
+        "Enqueues the job for full pipeline execution "
+        "(QUEUED → DISCOVERING → INGESTING → NORMALIZING → ANALYZING → REPORTING → COMPLETE). "
+        "The job must be in QUEUED/PENDING state. Returns 202 Accepted immediately; "
+        "progress is streamed via SSE at /internal/v1/events."
+    ),
+    responses={
+        404: {"description": "Job not found or access denied"},
+        409: {"description": "Job is not in QUEUED/PENDING state"},
+    },
+)
+async def start_job(
+    job_id: Annotated[str, Path(description="Job identifier (UUID)")],
+    customer_id: Annotated[str, Depends(get_current_customer)],
+) -> Dict[str, Any]:
+    """
+    Start pipeline execution for a job.
+
+    Validates the job is in QUEUED/PENDING, then enqueues the pipeline
+    execution task. The task drives the job through all phases, recording
+    events at each transition (visible via SSE).
+    """
+    backend = await _get_connected_backend()
+    try:
+        job = await backend.get_state(job_id)
+
+        if job is None or job.customer_id != customer_id:
+            raise NotFoundError(message=f"Job '{job_id}' not found")
+
+        if job.phase != "QUEUED" or job.status != "PENDING":
+            raise ConflictError(
+                message=(
+                    f"Job cannot be started: current state is "
+                    f"({job.phase}, {job.status}), expected (QUEUED, PENDING)"
+                )
+            )
+
+        # Record the start event
+        await backend.record_event(
+            job_id=job_id,
+            customer_id=customer_id,
+            event_type="job.start_requested",
+            phase=job.phase,
+            status=job.status,
+            actor=customer_id,
+            reasoning="Pipeline execution requested",
+        )
+    finally:
+        await backend.close()
+
+    # Enqueue the pipeline task (async — returns immediately)
+    try:
+        from workers.tasks.pipeline_execution import run_job_pipeline_task
+
+        await run_job_pipeline_task.kiq(
+            job_id=job_id,
+            customer_id=customer_id,
+        )
+        logger.info("Pipeline task enqueued for job %s", job_id)
+    except Exception as e:
+        # If Taskiq enqueue fails, run inline as fallback
+        logger.warning(
+            "Taskiq enqueue failed for job %s (%s), running inline",
+            job_id, e,
+        )
+        from workers.tasks.pipeline_execution import run_job_pipeline
+
+        import asyncio
+        asyncio.create_task(run_job_pipeline(job_id=job_id, customer_id=customer_id))
+
+    return {
+        "job_id": job_id,
+        "status": "accepted",
+        "message": "Pipeline execution enqueued",
+        "events_url": f"/internal/v1/events?job_id={job_id}",
+    }
+
+
+# =============================================================================
 # Task 2.4: GET /control/v1/jobs/{job_id} — Full job detail
 # =============================================================================
 
