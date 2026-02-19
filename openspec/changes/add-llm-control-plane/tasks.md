@@ -293,55 +293,55 @@ Goal: FirstLight is accessible via OGC API Processes and STAC. Results are publi
 
 ### Track A: OGC Integration (sequential within track)
 
-- [ ] 4.1 Install `pygeoapi` and `stac-fastapi-pgstac`, `pypgstac`; add to `pyproject.toml` optional group `[control-plane]`; pin versions; verify imports in CI
+- [x] 4.1 Install `pygeoapi` and `stac-fastapi-pgstac`, `pypgstac`; add to `pyproject.toml` optional group `[control-plane]`; pin versions; verify imports in CI
   <!-- files: pyproject.toml (modify — add to [control-plane] group) -->
 
-- [ ] 4.2 Create `core/ogc/processors/` package; for each algorithm in `AlgorithmRegistry`, generate a `pygeoapi.process.base.BaseProcessor` subclass at startup: `id` = `AlgorithmMetadata.id`, `title` = `AlgorithmMetadata.name`, `description` = `AlgorithmMetadata.description`, `inputs` derived from `AlgorithmMetadata.parameter_schema`, `outputs` derived from `AlgorithmMetadata.outputs`; add vendor extension fields `x-firstlight-category`, `x-firstlight-resource-requirements`, `x-firstlight-reasoning`, `x-firstlight-confidence`, `x-firstlight-escalation` to the process description (depends on 2.9, 4.1)
+- [x] 4.2 Create `core/ogc/processors/` package; for each algorithm in `AlgorithmRegistry`, generate a `pygeoapi.process.base.BaseProcessor` subclass at startup: `id` = `AlgorithmMetadata.id`, `title` = `AlgorithmMetadata.name`, `description` = `AlgorithmMetadata.description`, `inputs` derived from `AlgorithmMetadata.parameter_schema`, `outputs` derived from `AlgorithmMetadata.outputs`; add vendor extension fields `x-firstlight-category`, `x-firstlight-resource-requirements`, `x-firstlight-reasoning`, `x-firstlight-confidence`, `x-firstlight-escalation` to the process description (depends on 2.9, 4.1)
   <!-- files: core/ogc/__init__.py (new), core/ogc/processors/__init__.py (new), core/ogc/processors/factory.py (new — dynamic BaseProcessor subclass factory) -->
   <!-- pattern: follow core/analysis/library/registry.py AlgorithmMetadata for field access -->
   <!-- gotcha: pygeoapi loads processors from a YAML config file or programmatic registration. The factory approach dynamically creates subclasses — verify pygeoapi supports this pattern (it may require a config file listing each processor). If config-file-based, generate a pygeoapi-local.yml at startup. -->
 
-- [ ] 4.3 Mount pygeoapi as an ASGI sub-application at `/oapi` in `api/main.py` using `app.mount("/oapi", pygeoapi_starlette_app)`; configure pygeoapi to load processors from `core/ogc/processors/`; verify `GET /oapi/processes` returns the FirstLight algorithm list (depends on 4.2)
+- [x] 4.3 Mount pygeoapi as an ASGI sub-application at `/oapi` in `api/main.py` using `app.mount("/oapi", pygeoapi_starlette_app)`; configure pygeoapi to load processors from `core/ogc/processors/`; verify `GET /oapi/processes` returns the FirstLight algorithm list (depends on 4.2)
   <!-- files: api/main.py (modify — add app.mount for pygeoapi), core/ogc/config.py (new — generate pygeoapi config) -->
   <!-- gotcha: pygeoapi uses a Starlette-compatible ASGI app. The mount should not conflict with /api/v1/ or /control/v1/ routes. Test path isolation. -->
 
-- [ ] 4.4 Configure OGC auth boundary: add OGC discovery paths (`GET /oapi/`, `GET /oapi/conformance`, `GET /oapi/processes`, `GET /oapi/processes/{id}`) to the `TenantMiddleware` auth exemption allowlist; ensure OGC execution endpoints (`POST /oapi/processes/{id}/execution`, `GET /oapi/jobs/*`) require authentication; disable pygeoapi's internal auth; document the auth boundary in `docs/design/api-surface-map.md` (depends on 4.3, Phase 0 complete)
+- [x] 4.4 Configure OGC auth boundary: add OGC discovery paths (`GET /oapi/`, `GET /oapi/conformance`, `GET /oapi/processes`, `GET /oapi/processes/{id}`) to the `TenantMiddleware` auth exemption allowlist; ensure OGC execution endpoints (`POST /oapi/processes/{id}/execution`, `GET /oapi/jobs/*`) require authentication; disable pygeoapi's internal auth; document the auth boundary in `docs/design/api-surface-map.md` (depends on 4.3, Phase 0 complete)
   <!-- files: api/middleware.py (modify — update TenantMiddleware exemption allowlist), docs/design/api-surface-map.md (new) -->
 
 ### Track B: STAC Publishing (parallel with Track A)
 
-- [ ] 4.5 Install pgSTAC schema into the existing PostgreSQL instance using `pypgstac migrate`; add the migration step to the Docker entrypoint init sequence; verify pgSTAC tables (`pgstac.items`, `pgstac.collections`) are created without conflicting with FirstLight app tables (depends on 1.3)
+- [x] 4.5 Install pgSTAC schema into the existing PostgreSQL instance using `pypgstac migrate`; add the migration step to the Docker entrypoint init sequence; verify pgSTAC tables (`pgstac.items`, `pgstac.collections`) are created without conflicting with FirstLight app tables (depends on 1.3)
   <!-- files: db/migrations/006_pgstac_init.sql (new — or use pypgstac CLI in Docker entrypoint), docker/api/Dockerfile (modify — add pypgstac migrate step) -->
   <!-- gotcha: pgSTAC uses its own schema namespace which should not conflict with the public schema used by FirstLight app tables. Verify namespace isolation. pypgstac needs the DATABASE_URL to be set. -->
 
-- [ ] 4.6 Mount `stac-fastapi-pgstac` at `/stac` in `api/main.py`; create one STAC Collection per event type (flood, wildfire, storm) with `id`, `description`, `extent`, `links`; run `pypgstac load` to register collections (depends on 4.5)
+- [x] 4.6 Mount `stac-fastapi-pgstac` at `/stac` in `api/main.py`; create one STAC Collection per event type (flood, wildfire, storm) with `id`, `description`, `extent`, `links`; run `pypgstac load` to register collections (depends on 4.5)
   <!-- files: api/main.py (modify — add app.mount for stac-fastapi), core/stac/__init__.py (new), core/stac/collections.py (new — collection definitions) -->
 
-- [ ] 4.7 Write `publish_result_as_stac_item(job_id: str)` function in `core/stac/publisher.py`: read final products from `jobs` and `job_events`; build a STAC Item with `processing:lineage`, `processing:software`, `processing:datetime` extension fields; AOI becomes the Item `geometry` (from `ST_AsGeoJSON(aoi)`); add `derived_from` links for source imagery STAC Items if URIs were recorded during ingestion; register COG raster assets with `type=image/tiff; application=geotiff; profile=cloud-optimized` (reuse existing `COGConfig` output from `agents/reporting/products.py`); insert via `pypgstac.load` using upsert mode; call this function from the orchestrator after `COMPLETE` phase transition (depends on 4.6, Phase 2 complete)
+- [x] 4.7 Write `publish_result_as_stac_item(job_id: str)` function in `core/stac/publisher.py`: read final products from `jobs` and `job_events`; build a STAC Item with `processing:lineage`, `processing:software`, `processing:datetime` extension fields; AOI becomes the Item `geometry` (from `ST_AsGeoJSON(aoi)`); add `derived_from` links for source imagery STAC Items if URIs were recorded during ingestion; register COG raster assets with `type=image/tiff; application=geotiff; profile=cloud-optimized` (reuse existing `COGConfig` output from `agents/reporting/products.py`); insert via `pypgstac.load` using upsert mode; call this function from the orchestrator after `COMPLETE` phase transition (depends on 4.6, Phase 2 complete)
   <!-- files: core/stac/publisher.py (new), agents/orchestrator/main.py (modify — add call to publish_result_as_stac_item after COMPLETE transition) -->
   <!-- pattern: follow agents/reporting/products.py for COGConfig conventions and output paths -->
   <!-- gotcha: The COGConfig in agents/reporting/products.py already produces COGs with 512x512 tiles, DEFLATE compression, and overview factors [2,4,8,16,32]. The STAC publisher should reference existing output files, NOT re-generate COGs. The stac-publishing spec confirms this. -->
 
 ### Track C: Taskiq Wiring + Integration (depends on 3.0 and Track A)
 
-- [ ] 4.8 Register OGC process execution as Taskiq tasks alongside the existing `deliver_webhook` task; implement the `Prefer: respond-async` OGC job execution flow (return 201 with Location header, delegate to Taskiq); confirm task routing and priority isolation between webhook delivery and algorithm execution using Taskiq labels or separate queues (depends on 3.0, 4.3)
+- [x] 4.8 Register OGC process execution as Taskiq tasks alongside the existing `deliver_webhook` task; implement the `Prefer: respond-async` OGC job execution flow (return 201 with Location header, delegate to Taskiq); confirm task routing and priority isolation between webhook delivery and algorithm execution using Taskiq labels or separate queues (depends on 3.0, 4.3)
   <!-- files: workers/tasks/ogc_execution.py (new), core/ogc/processors/factory.py (modify — wire execute method to Taskiq) -->
 
 <!-- wave-gate: Phase 4 tests -->
 
 ### Section 4D: Tests (sequential, after all tracks complete)
 
-- [ ] 4.9 Write `tests/ogc/test_processors.py` covering: each registered algorithm appears in `GET /oapi/processes`, process description includes `x-firstlight-*` vendor fields, submitting an OGC execute request with `Prefer: respond-async` returns 201 with Location header, sync execute for long-running algorithm returns 400 (depends on 4.3, 4.8)
+- [x] 4.9 Write `tests/ogc/test_processors.py` covering: each registered algorithm appears in `GET /oapi/processes`, process description includes `x-firstlight-*` vendor fields, submitting an OGC execute request with `Prefer: respond-async` returns 201 with Location header, sync execute for long-running algorithm returns 400 (depends on 4.3, 4.8)
   <!-- files: tests/ogc/__init__.py (new), tests/ogc/test_processors.py (new) -->
 
-- [ ] 4.10 Write `tests/stac/test_publisher.py` covering: completed job produces a valid STAC Item, Item geometry matches job AOI (GeoJSON round-trip preserved to 5 decimal places), processing extension fields are present (processing:lineage, processing:software, processing:datetime), `GET /stac/collections/{event_type}/items/{job_id}` returns the item, re-publishing same result upserts (no duplicate), derived_from links present when source URIs exist (depends on 4.7)
+- [x] 4.10 Write `tests/stac/test_publisher.py` covering: completed job produces a valid STAC Item, Item geometry matches job AOI (GeoJSON round-trip preserved to 5 decimal places), processing extension fields are present (processing:lineage, processing:software, processing:datetime), `GET /stac/collections/{event_type}/items/{job_id}` returns the item, re-publishing same result upserts (no duplicate), derived_from links present when source URIs exist (depends on 4.7)
   <!-- files: tests/stac/__init__.py (new), tests/stac/test_publisher.py (new) -->
 
-- [ ] 4.11 Write `tests/ogc/test_state_based_tool_filtering.py` covering: (a) job in `ANALYZING` phase returns only analysis-category algorithm tool schemas, excluding discovery and reporting algorithms; (b) job transitioning from `DISCOVERING` to `ANALYZING` causes the tool list to update accordingly; (c) job in a phase with no mapped algorithms returns an empty tool list rather than all algorithms as fallback (depends on 4.2, 4.3, Phase 2 complete)
+- [x] 4.11 Write `tests/ogc/test_state_based_tool_filtering.py` covering: (a) job in `ANALYZING` phase returns only analysis-category algorithm tool schemas, excluding discovery and reporting algorithms; (b) job transitioning from `DISCOVERING` to `ANALYZING` causes the tool list to update accordingly; (c) job in a phase with no mapped algorithms returns an empty tool list rather than all algorithms as fallback (depends on 4.2, 4.3, Phase 2 complete)
   <!-- files: tests/ogc/test_state_based_tool_filtering.py (new) -->
   <!-- gotcha: This test requires a mapping from JobPhase to AlgorithmCategory. This mapping is not yet defined in any task — the coder should define it in core/ogc/processors/factory.py or agents/orchestrator/state_model.py. At minimum: DISCOVERING -> no algorithms, ANALYZING -> baseline + advanced, REPORTING -> none (or reporting-specific if they exist). -->
 
-- [ ] 4.12 End-to-end smoke test in `tests/e2e/test_control_plane_e2e.py`: (1) POST a job via `/control/v1/jobs`, (2) verify SSE emits `job.created`, (3) transition through phases to COMPLETE via `/control/v1/jobs/{id}/transition`, (4) verify STAC item appears at `/stac/collections/...`, (5) verify OGC process list includes the algorithm used; requires PostGIS, Redis, and full service stack (depends on all prior phases complete)
+- [x] 4.12 End-to-end smoke test in `tests/e2e/test_control_plane_e2e.py`: (1) POST a job via `/control/v1/jobs`, (2) verify SSE emits `job.created`, (3) transition through phases to COMPLETE via `/control/v1/jobs/{id}/transition`, (4) verify STAC item appears at `/stac/collections/...`, (5) verify OGC process list includes the algorithm used; requires PostGIS, Redis, and full service stack (depends on all prior phases complete)
   <!-- files: tests/e2e/test_control_plane_e2e.py (new) -->
   <!-- pattern: follow tests/e2e/test_tile_validation.py for e2e test structure -->
   <!-- gotcha: Mark with @pytest.mark.e2e and @pytest.mark.integration. This needs the full Docker stack running. Consider using docker-compose for test fixtures. -->
