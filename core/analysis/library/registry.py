@@ -444,6 +444,52 @@ class AlgorithmRegistry:
 
         logger.info(f"Exported {len(self.algorithms)} algorithms to {output_path}")
 
+    def list_tool_schemas(self, exclude_deprecated: bool = True) -> List[Dict[str, Any]]:
+        """
+        List OpenAI-compatible function-calling schemas for all algorithms.
+
+        Args:
+            exclude_deprecated: If True, exclude deprecated algorithms.
+
+        Returns:
+            List of tool schema dicts with name, description, parameters.
+        """
+        import re
+
+        schemas = []
+        for algo in self.algorithms.values():
+            if exclude_deprecated and algo.deprecated:
+                continue
+
+            # Normalize algorithm ID to valid function name
+            func_name = re.sub(r"[^a-zA-Z0-9_]", "_", algo.id)
+
+            # Build description
+            desc_parts = []
+            if algo.description:
+                desc_parts.append(algo.description)
+            if algo.event_types:
+                desc_parts.append(f"Supports event types: {', '.join(algo.event_types)}")
+            if algo.category:
+                desc_parts.append(f"Category: {algo.category.value}")
+            description = ". ".join(desc_parts) if desc_parts else algo.name
+
+            # Build parameters
+            parameters = algo.parameter_schema if algo.parameter_schema else {
+                "type": "object",
+                "properties": {},
+            }
+            if "type" not in parameters:
+                parameters["type"] = "object"
+
+            schemas.append({
+                "name": func_name,
+                "description": description,
+                "parameters": parameters,
+            })
+
+        return schemas
+
     def get_statistics(self) -> Dict[str, Any]:
         """Get registry statistics"""
         return {
