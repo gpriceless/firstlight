@@ -6,6 +6,7 @@ All models follow the project's existing Pydantic conventions from
 api/models/responses.py and api/models/requests.py.
 """
 
+import json
 import re
 from datetime import datetime
 from enum import Enum
@@ -282,7 +283,7 @@ class ReasoningResponse(BaseModel):
 
 
 # =============================================================================
-# Escalation Models (Track B, Task 2.8)
+# Escalation Models (Task 2.8)
 # =============================================================================
 
 
@@ -317,7 +318,6 @@ class EscalationRequest(BaseModel):
     def validate_context_size(cls, v: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """Validate context JSON size does not exceed 16KB."""
         if v is not None:
-            import json
             serialized = json.dumps(v)
             if len(serialized.encode("utf-8")) > 16384:
                 raise ValueError("Context JSON exceeds maximum size of 16KB")
@@ -363,3 +363,26 @@ class PaginatedEscalationsResponse(BaseModel):
 
     items: List[EscalationResponse] = Field(..., description="List of escalations")
     total: int = Field(..., description="Total matching escalations")
+
+
+# =============================================================================
+# Tool Schema Models (Task 2.9)
+# =============================================================================
+
+
+class ToolSchema(BaseModel):
+    """OpenAI-compatible function-calling tool schema."""
+
+    name: str = Field(..., description="Tool/function name")
+    description: str = Field(..., description="Tool description")
+    parameters: Dict[str, Any] = Field(
+        ..., description="JSON Schema for the function parameters"
+    )
+
+
+class ToolsResponse(BaseModel):
+    """Response containing available tool schemas."""
+
+    tools: List[ToolSchema] = Field(
+        ..., description="Available tool schemas in OpenAI function-calling format"
+    )
