@@ -1,0 +1,238 @@
+# =============================================================================
+# Docker Compose - RunPod GPU Pod
+# =============================================================================
+# Alternative deployment for RunPod pods where Docker is available.
+# Use this ONLY if the pod has Docker and docker-compose installed.
+# For most RunPod pods, use setup_pod.sh (bare-metal) instead.
+#
+# Usage:
+#   cp deploy/runpod/env.template .env && nano .env
+#   docker compose -f deploy/runpod/docker-compose.runpod.yml up -d
+#   docker compose -f deploy/runpod/docker-compose.runpod.yml logs -f api
+#   docker compose -f deploy/runpod/docker-compose.runpod.yml down
+#
+# GPU passthrough requires: nvidia-container-toolkit on the host
+# =============================================================================
+
+version: '3.9'
+
+services:
+  # ===========================================================================
+  # PostgreSQL with PostGIS
+  # ===========================================================================
+  postgres:
+    image: postgis/postgis:15-3.4-alpine
+    container_name: firstlight-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-firstlight}
+      POSTGRES_USER: ${DATABASE_USER:-firstlight}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Mount init SQL so PostgreSQL runs it on first start
+      - ../../db/init.sql:/docker-entrypoint-initdb.d/00_init.sql:ro
+    networks:
+      - firstlight-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-firstlight} -d ${DATABASE_NAME:-firstlight}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ===========================================================================
+  # Database Migrations (runs once, then exits)
+  # ===========================================================================
+  migrate:
+    image: postgres:15-alpine
+    container_name: firstlight-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: ${DATABASE_NAME:-firstlight}
+      DATABASE_USER: ${DATABASE_USER:-firstlight}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
+    volumes:
+      - ../../db:/db:ro
+      - ./init_db.sh:/init_db.sh:ro
+    command: bash /init_db.sh
+    networks:
+      - firstlight-net
+    restart: "no"
+
+  # ===========================================================================
+  # Redis - Task Queue and Caching
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: firstlight-redis
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - redis-data:/data
+    networks:
+      - firstlight-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ===========================================================================
+  # FirstLight API
+  # ===========================================================================
+  api:
+    build:
+      context: ../..
+      dockerfile: docker/api/Dockerfile
+    image: firstlight-api:runpod
+    container_name: firstlight-api
+    ports:
+      - "8000:8000"
+    environment:
+      FIRSTLIGHT_ENVIRONMENT: ${FIRSTLIGHT_ENVIRONMENT:-production}
+      FIRSTLIGHT_DEBUG: ${FIRSTLIGHT_DEBUG:-false}
+      FIRSTLIGHT_STATE_BACKEND: ${FIRSTLIGHT_STATE_BACKEND:-postgis}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: ${DATABASE_NAME:-firstlight}
+      DATABASE_USER: ${DATABASE_USER:-firstlight}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?AUTH_SECRET_KEY is required}
+      AUTH_ALLOWED_API_KEYS: ${AUTH_ALLOWED_API_KEYS:-}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-*}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+      STORAGE_LOCAL_PATH: /app/data/products
+      PYTHONPATH: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - api-data:/app/data
+      - ../..:/app:ro  # Mount repo read-only for live code (remove :ro to edit)
+    networks:
+      - firstlight-net
+    restart: unless-stopped
+    command: >
+      uvicorn api.main:app
+      --host 0.0.0.0
+      --port 8000
+      --workers 2
+      --log-level info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ===========================================================================
+  # Taskiq Worker
+  # ===========================================================================
+  worker:
+    build:
+      context: ../..
+      dockerfile: docker/api/Dockerfile
+    image: firstlight-api:runpod
+    container_name: firstlight-worker
+    environment:
+      FIRSTLIGHT_ENVIRONMENT: ${FIRSTLIGHT_ENVIRONMENT:-production}
+      FIRSTLIGHT_STATE_BACKEND: ${FIRSTLIGHT_STATE_BACKEND:-postgis}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: ${DATABASE_NAME:-firstlight}
+      DATABASE_USER: ${DATABASE_USER:-firstlight}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?AUTH_SECRET_KEY is required}
+      PYTHONPATH: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - worker-data:/app/data
+      - ../..:/app:ro
+    networks:
+      - firstlight-net
+    restart: unless-stopped
+    command: taskiq worker workers.taskiq_app:broker --workers 2
+
+  # ===========================================================================
+  # detr_geo - Satellite Image Object Detection (GPU)
+  # ===========================================================================
+  detr-geo:
+    image: pytorch/pytorch:2.1.2-cuda12.1-cudnn8-runtime
+    container_name: detr-geo
+    # Uncomment the port if you add an inference API to detr_geo
+    # ports:
+    #   - "8001:8001"
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      CUDA_VISIBLE_DEVICES: "0"
+    volumes:
+      # Mount detr_geo repo (sibling directory by default)
+      - ${DETR_GEO_REPO_PATH:-/workspace/detr-geo}:/workspace/detr-geo
+      - ${DETR_GEO_DATA_PATH:-/workspace/training_output}:/workspace/training_output
+    networks:
+      - firstlight-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # Keep alive so you can exec into the container for inference
+    command: bash -c "pip install -e /workspace/detr-geo[all] -q && tail -f /dev/null"
+    profiles:
+      # Only start with: docker compose --profile gpu up
+      - gpu
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  firstlight-net:
+    driver: bridge
+    name: firstlight-runpod-net
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres-data:
+    name: firstlight-runpod-postgres
+  redis-data:
+    name: firstlight-runpod-redis
+  api-data:
+    name: firstlight-runpod-api-data
+  worker-data:
+    name: firstlight-runpod-worker-data
