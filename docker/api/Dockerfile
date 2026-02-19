@@ -21,6 +21,8 @@ COPY --chown=firstlight:firstlight core/ /app/core/
 COPY --chown=firstlight:firstlight openspec/ /app/openspec/
 COPY --chown=firstlight:firstlight agents/ /app/agents/
 COPY --chown=firstlight:firstlight api/ /app/api/
+COPY --chown=firstlight:firstlight workers/ /app/workers/
+COPY --chown=firstlight:firstlight db/ /app/db/
 
 # Copy configuration files
 COPY --chown=firstlight:firstlight examples/ /app/examples/
@@ -47,5 +49,9 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:${API_PORT}/health || exit 1
 
-# Start the API server with uvicorn
+# Add pgSTAC migration entrypoint script
+COPY --chown=firstlight:firstlight docker/api/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh || true
+
+# Start the API server with uvicorn (entrypoint runs pgSTAC migration first)
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
