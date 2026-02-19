@@ -16,9 +16,23 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
+# Lazy imports for optional context lakehouse integration
+_HAS_CONTEXT = False
+try:
+    from core.context.repository import ContextRepository
+    from core.context.models import DatasetRecord
+    from core.context.stubs import (
+        generate_buildings,
+        generate_infrastructure,
+        generate_weather,
+    )
+    _HAS_CONTEXT = True
+except ImportError:
+    logger.info("Context lakehouse modules not available — context ingestion disabled")
 
 PIPELINE_TASK_LABELS = {
     "queue": "pipeline-execution",
@@ -42,6 +56,202 @@ async def _get_backend():
     )
     await backend.connect()
     return backend
+
+
+async def _get_context_repo() -> Optional["ContextRepository"]:
+    """Create a connected ContextRepository, or None if unavailable."""
+    if not _HAS_CONTEXT:
+        return None
+
+    try:
+        from api.config import get_settings
+
+        settings = get_settings()
+        db = settings.database
+        repo = ContextRepository(
+            host=db.host,
+            port=db.port,
+            database=db.name,
+            user=db.user,
+            password=db.password,
+        )
+        await repo.connect()
+        return repo
+    except Exception as e:
+        logger.warning("Could not create ContextRepository: %s", e)
+        return None
+
+
+def _extract_bbox(aoi: Dict[str, Any]) -> Optional[Tuple[float, float, float, float]]:
+    """
+    Extract (west, south, east, north) bounding box from a GeoJSON geometry.
+
+    Handles Polygon, MultiPolygon, Feature, and FeatureCollection types.
+    Returns None if the AOI is empty or unparseable.
+    """
+    try:
+        geom = aoi
+        # Unwrap Feature / FeatureCollection
+        if geom.get("type") == "FeatureCollection":
+            features = geom.get("features", [])
+            if not features:
+                return None
+            geom = features[0].get("geometry", {})
+        elif geom.get("type") == "Feature":
+            geom = geom.get("geometry", {})
+
+        coords = geom.get("coordinates", [])
+        if not coords:
+            return None
+
+        # Flatten all coordinate pairs
+        all_points: List[List[float]] = []
+        gtype = geom.get("type", "")
+
+        if gtype == "Polygon":
+            for ring in coords:
+                all_points.extend(ring)
+        elif gtype == "MultiPolygon":
+            for polygon in coords:
+                for ring in polygon:
+                    all_points.extend(ring)
+        elif gtype == "Point":
+            all_points.append(coords)
+        else:
+            # Best-effort: flatten everything
+            def _flatten(obj):
+                if isinstance(obj, list) and len(obj) >= 2 and isinstance(obj[0], (int, float)):
+                    all_points.append(obj)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        _flatten(item)
+            _flatten(coords)
+
+        if not all_points:
+            return None
+
+        lons = [p[0] for p in all_points]
+        lats = [p[1] for p in all_points]
+        return (min(lons), min(lats), max(lons), max(lats))
+
+    except Exception as e:
+        logger.warning("Failed to extract bbox from AOI: %s", e)
+        return None
+
+
+async def _store_dataset_records(
+    context_repo: "ContextRepository",
+    job_uuid: "uuid.UUID",
+    discovery_results: Dict[str, Any],
+    bbox: Tuple[float, float, float, float],
+) -> None:
+    """
+    Store discovered dataset records into the context lakehouse.
+
+    Creates DatasetRecord entries from the discovery results (scenes list).
+    Fire-and-forget: errors are logged but never block pipeline execution.
+    """
+    if not _HAS_CONTEXT or context_repo is None:
+        return
+
+    try:
+        scenes = discovery_results.get("scenes", [])
+        if not scenes:
+            return
+
+        west, south, east, north = bbox
+        # Build a polygon geometry covering the AOI for each scene
+        scene_geometry = {
+            "type": "Polygon",
+            "coordinates": [[
+                [west, south],
+                [east, south],
+                [east, north],
+                [west, north],
+                [west, south],
+            ]],
+        }
+
+        records = []
+        for scene in scenes:
+            records.append(
+                DatasetRecord(
+                    source=scene.get("source", "unknown"),
+                    source_id=scene.get("id", f"scene_{uuid.uuid4().hex[:12]}"),
+                    geometry=scene_geometry,
+                    properties=scene,
+                    acquisition_date=datetime.now(timezone.utc),
+                    cloud_cover=scene.get("cloud_cover"),
+                    resolution_m=scene.get("resolution_m"),
+                    bands=scene.get("bands"),
+                    file_path=scene.get("file_path"),
+                )
+            )
+
+        results = await context_repo.store_batch(job_uuid, "datasets", records)
+        ingested = sum(1 for r in results if r.usage_type == "ingested")
+        reused = sum(1 for r in results if r.usage_type == "reused")
+        logger.info(
+            "Stored %d dataset records (ingested=%d, reused=%d) for job %s",
+            len(results), ingested, reused, job_uuid,
+        )
+    except Exception as e:
+        logger.warning("Context storage (datasets) failed: %s", e)
+
+
+async def _store_synthetic_context(
+    context_repo: "ContextRepository",
+    job_uuid: "uuid.UUID",
+    bbox: Tuple[float, float, float, float],
+) -> None:
+    """
+    Generate and store synthetic context data (buildings, infrastructure,
+    weather) into the lakehouse. Fire-and-forget: errors are logged but
+    never block pipeline execution.
+
+    Follows the same pattern as PipelineAgent._store_synthetic_context().
+    """
+    if not _HAS_CONTEXT or context_repo is None:
+        return
+
+    # Buildings
+    try:
+        buildings = generate_buildings(bbox, count=30)
+        results = await context_repo.store_batch(
+            job_uuid, "context_buildings", buildings
+        )
+        logger.info(
+            "Stored %d synthetic buildings into context lakehouse for job %s",
+            len(results), job_uuid,
+        )
+    except Exception as e:
+        logger.warning("Context storage (buildings) failed: %s", e)
+
+    # Infrastructure
+    try:
+        infra = generate_infrastructure(bbox, count=8)
+        results = await context_repo.store_batch(
+            job_uuid, "context_infrastructure", infra
+        )
+        logger.info(
+            "Stored %d synthetic infrastructure facilities for job %s",
+            len(results), job_uuid,
+        )
+    except Exception as e:
+        logger.warning("Context storage (infrastructure) failed: %s", e)
+
+    # Weather
+    try:
+        weather = generate_weather(bbox, count=10)
+        results = await context_repo.store_batch(
+            job_uuid, "context_weather", weather
+        )
+        logger.info(
+            "Stored %d synthetic weather observations for job %s",
+            len(results), job_uuid,
+        )
+    except Exception as e:
+        logger.warning("Context storage (weather) failed: %s", e)
 
 
 async def _transition(
@@ -154,6 +364,7 @@ async def run_job_pipeline(
     }
 
     backend = await _get_backend()
+    context_repo = await _get_context_repo()
     try:
         # Load job state
         job = await backend.get_state(job_id)
@@ -165,6 +376,10 @@ async def run_job_pipeline(
         event_type = job.event_type
         parameters = job.parameters or {}
         aoi = job.aoi
+
+        # Extract bbox from AOI for context lakehouse queries
+        bbox = _extract_bbox(aoi) if aoi else None
+        job_uuid = uuid.UUID(job_id) if isinstance(job_id, str) else job_id
 
         # =====================================================================
         # Phase 1: QUEUED — Validation
@@ -258,6 +473,12 @@ async def run_job_pipeline(
             payload={"discovery_summary": discovery_results},
         )
 
+        # Store discovered datasets in context lakehouse
+        if context_repo and bbox:
+            await _store_dataset_records(
+                context_repo, job_uuid, discovery_results, bbox
+            )
+
         await _transition(
             backend, job_id, customer_id,
             "DISCOVERING", "DISCOVERING",
@@ -279,6 +500,10 @@ async def run_job_pipeline(
 
         # Simulate ingestion (real implementation would download COGs)
         await asyncio.sleep(0.5)
+
+        # Store synthetic context data (buildings, infrastructure, weather)
+        if context_repo and bbox:
+            await _store_synthetic_context(context_repo, job_uuid, bbox)
 
         await _transition(
             backend, job_id, customer_id,
@@ -456,6 +681,11 @@ async def run_job_pipeline(
 
     finally:
         await backend.close()
+        if context_repo is not None:
+            try:
+                await context_repo.close()
+            except Exception:
+                pass
 
     return result
 
