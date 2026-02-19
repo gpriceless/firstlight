@@ -194,12 +194,12 @@ class AlgorithmRegistryWrapper:
 
     @property
     def registry(self) -> Any:
-        """Get or create the algorithm registry instance."""
+        """Get or create the algorithm registry, loading default definitions."""
         if self._registry is None:
             try:
-                from core.analysis.library.registry import get_global_registry
+                from core.analysis.library.registry import load_default_algorithms
 
-                self._registry = get_global_registry()
+                self._registry = load_default_algorithms()
             except ImportError:
                 logger.warning("Algorithm registry not available")
                 self._registry = None

@@ -1,0 +1,529 @@
+# FirstLight Algorithm Registry Definitions
+#
+# Loaded by core.analysis.library.registry.load_default_algorithms()
+# Format matches AlgorithmRegistry.load_from_yaml() expectations.
+
+algorithms:
+
+  # ===========================================================================
+  # Flood Detection Algorithms
+  # ===========================================================================
+
+  flood.baseline.threshold_sar:
+    name: "SAR Backscatter Threshold Flood Detection"
+    category: "baseline"
+    version: "1.2.0"
+    event_types:
+      - "flood.*"
+      - "flood"
+    description: >-
+      Simple thresholding of SAR backscatter coefficient to detect standing water.
+      Reliable, interpretable, and well-validated baseline approach. Works day
+      and night, through cloud cover.
+    required_data_types:
+      - "sar"
+    optional_data_types:
+      - "dem"
+    required_polarizations:
+      - "VV"
+    resources:
+      memory_mb: 4096
+      gpu_required: false
+      max_runtime_minutes: 30
+    deterministic: true
+    module_path: "core.analysis.library.baseline.flood.threshold_sar"
+    class_name: "ThresholdSARAlgorithm"
+    default_parameters:
+      threshold_db: -15.0
+      min_area_ha: 0.5
+      polarization: "VV"
+      use_change_detection: false
+      change_threshold_db: 3.0
+    parameter_schema:
+      type: "object"
+      properties:
+        threshold_db:
+          type: "number"
+          description: "Backscatter threshold for water classification (dB)"
+          minimum: -20.0
+          maximum: -10.0
+          default: -15.0
+        min_area_ha:
+          type: "number"
+          description: "Minimum flood polygon area in hectares"
+          minimum: 0
+          default: 0.5
+        polarization:
+          type: "string"
+          description: "Preferred SAR polarization"
+          enum: ["VV", "VH"]
+          default: "VV"
+    outputs:
+      - "flood_extent_mask"
+      - "confidence_raster"
+    validation:
+      accuracy_median: 0.85
+      precision: 0.82
+      recall: 0.88
+      f1_score: 0.85
+      validated_regions: ["gulf_coast", "southeast_asia", "europe"]
+      validation_dataset_count: 42
+
+  flood.baseline.ndwi_optical:
+    name: "NDWI Optical Flood Detection"
+    category: "baseline"
+    version: "1.1.0"
+    event_types:
+      - "flood.*"
+      - "flood"
+    description: >-
+      Uses Normalized Difference Water Index (NDWI) from optical imagery to
+      detect standing water and flood extent. Best for cloud-free conditions
+      with multispectral imagery.
+    required_data_types:
+      - "optical"
+    optional_data_types:
+      - "dem"
+    required_bands:
+      - "green"
+      - "nir"
+    resources:
+      memory_mb: 4096
+      gpu_required: false
+      max_runtime_minutes: 20
+    deterministic: true
+    module_path: "core.analysis.library.baseline.flood.ndwi_optical"
+    class_name: "NDWIOpticalAlgorithm"
+    default_parameters:
+      ndwi_threshold: 0.0
+      min_area_ha: 0.5
+      cloud_mask_enabled: true
+      shadow_mask_enabled: true
+    parameter_schema:
+      type: "object"
+      properties:
+        ndwi_threshold:
+          type: "number"
+          description: "NDWI threshold for water classification"
+          minimum: -1.0
+          maximum: 1.0
+          default: 0.0
+        min_area_ha:
+          type: "number"
+          description: "Minimum flood polygon area in hectares"
+          minimum: 0
+          default: 0.5
+        cloud_mask_enabled:
+          type: "boolean"
+          description: "Enable cloud masking if available"
+          default: true
+    outputs:
+      - "flood_extent_mask"
+      - "ndwi_raster"
+      - "confidence_raster"
+    validation:
+      accuracy_median: 0.82
+      precision: 0.80
+      recall: 0.84
+      f1_score: 0.82
+      validated_regions: ["gulf_coast", "south_asia"]
+      validation_dataset_count: 35
+
+  flood.baseline.change_detection:
+    name: "Pre/Post Change Detection Flood Algorithm"
+    category: "baseline"
+    version: "1.0.0"
+    event_types:
+      - "flood.*"
+      - "flood"
+    description: >-
+      Detects flood extent by comparing pre-event and post-event imagery to
+      identify significant changes indicative of flooding. Sensor-agnostic:
+      works with SAR backscatter (VV/VH) and optical indices (NDVI/NDWI).
+    required_data_types:
+      - "sar"
+    optional_data_types:
+      - "optical"
+    resources:
+      memory_mb: 8192
+      gpu_required: false
+      max_runtime_minutes: 45
+    deterministic: true
+    module_path: "core.analysis.library.baseline.flood.change_detection"
+    class_name: "ChangeDetectionAlgorithm"
+    default_parameters:
+      change_threshold: 0.15
+      method: "normalized_difference"
+      min_area_ha: 0.5
+      use_multiple_bands: true
+    parameter_schema:
+      type: "object"
+      properties:
+        change_threshold:
+          type: "number"
+          description: "Change magnitude threshold"
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.15
+        method:
+          type: "string"
+          description: "Change detection method"
+          enum: ["ratio", "difference", "normalized_difference"]
+          default: "normalized_difference"
+        min_area_ha:
+          type: "number"
+          description: "Minimum flood polygon area in hectares"
+          minimum: 0
+          default: 0.5
+    outputs:
+      - "flood_extent_mask"
+      - "change_magnitude_raster"
+    validation:
+      accuracy_median: 0.87
+      precision: 0.85
+      recall: 0.89
+      f1_score: 0.87
+      validated_regions: ["gulf_coast", "europe", "south_asia"]
+      validation_dataset_count: 28
+
+  flood.baseline.hand_model:
+    name: "HAND Flood Susceptibility Model"
+    category: "baseline"
+    version: "1.0.0"
+    event_types:
+      - "flood.*"
+      - "flood"
+    description: >-
+      Height Above Nearest Drainage (HAND) topographic analysis to identify areas
+      susceptible to flooding. Uses DEM data to model flood susceptibility based
+      on proximity to and elevation above drainage channels.
+    required_data_types:
+      - "dem"
+    optional_data_types:
+      - "optical"
+      - "sar"
+    resources:
+      memory_mb: 8192
+      gpu_required: false
+      max_runtime_minutes: 60
+    deterministic: true
+    module_path: "core.analysis.library.baseline.flood.hand_model"
+    class_name: "HANDModelAlgorithm"
+    default_parameters:
+      hand_threshold_m: 10.0
+      channel_threshold_area_km2: 1.0
+      use_slope_factor: true
+      slope_weight: 0.3
+    parameter_schema:
+      type: "object"
+      properties:
+        hand_threshold_m:
+          type: "number"
+          description: "Maximum HAND value for flood susceptibility (meters)"
+          minimum: 0
+          maximum: 50.0
+          default: 10.0
+        channel_threshold_area_km2:
+          type: "number"
+          description: "Minimum drainage area for channel definition (km2)"
+          minimum: 0.1
+          default: 1.0
+        use_slope_factor:
+          type: "boolean"
+          description: "Include slope in susceptibility calculation"
+          default: true
+    outputs:
+      - "susceptibility_raster"
+      - "hand_raster"
+    validation:
+      accuracy_median: 0.78
+      precision: 0.75
+      recall: 0.81
+      f1_score: 0.78
+      validated_regions: ["gulf_coast", "midwest_us"]
+      validation_dataset_count: 20
+
+  # ===========================================================================
+  # Wildfire Detection Algorithms
+  # ===========================================================================
+
+  wildfire.baseline.nbr_differenced:
+    name: "Differenced Normalized Burn Ratio"
+    category: "baseline"
+    version: "1.0.0"
+    event_types:
+      - "wildfire.*"
+      - "wildfire"
+    description: >-
+      Gold standard for burn severity mapping using optical imagery. Compares
+      NBR before and after fire event to quantify burn severity using USGS/Key
+      & Benson severity thresholds.
+    required_data_types:
+      - "optical"
+    required_bands:
+      - "nir"
+      - "swir2"
+    resources:
+      memory_mb: 4096
+      gpu_required: false
+      max_runtime_minutes: 30
+    deterministic: true
+    module_path: "core.analysis.library.baseline.wildfire.nbr_differenced"
+    class_name: "DifferencedNBRAlgorithm"
+    default_parameters:
+      severity_thresholds:
+        high: 0.66
+        moderate_high: 0.44
+        moderate_low: 0.27
+        low: 0.10
+        unburned: -0.10
+      min_burn_area_ha: 1.0
+    parameter_schema:
+      type: "object"
+      properties:
+        min_burn_area_ha:
+          type: "number"
+          description: "Minimum burned area in hectares"
+          minimum: 0
+          default: 1.0
+    outputs:
+      - "dnbr_raster"
+      - "severity_classification"
+      - "burn_boundary"
+    validation:
+      accuracy_median: 0.90
+      precision: 0.88
+      recall: 0.92
+      f1_score: 0.90
+      validated_regions: ["california", "australia", "mediterranean"]
+      validation_dataset_count: 55
+
+  wildfire.baseline.thermal_anomaly:
+    name: "Thermal Anomaly Active Fire Detection"
+    category: "baseline"
+    version: "1.0.0"
+    event_types:
+      - "wildfire.*"
+      - "wildfire"
+    description: >-
+      Active fire detection using thermal infrared bands. Identifies
+      high-temperature anomalies indicative of active burning. Works day and
+      night, through smoke.
+    required_data_types:
+      - "optical"
+    required_bands:
+      - "swir1"
+      - "tir1"
+    resources:
+      memory_mb: 4096
+      gpu_required: false
+      max_runtime_minutes: 20
+    deterministic: true
+    module_path: "core.analysis.library.baseline.wildfire.thermal_anomaly"
+    class_name: "ThermalAnomalyAlgorithm"
+    default_parameters:
+      temperature_threshold_k: 320.0
+    parameter_schema:
+      type: "object"
+      properties:
+        temperature_threshold_k:
+          type: "number"
+          description: "Minimum brightness temperature for fire detection (Kelvin)"
+          minimum: 300.0
+          maximum: 400.0
+          default: 320.0
+    outputs:
+      - "fire_mask"
+      - "fire_radiative_power"
+    validation:
+      accuracy_median: 0.86
+      precision: 0.83
+      recall: 0.89
+      f1_score: 0.86
+      validated_regions: ["california", "amazon", "siberia"]
+      validation_dataset_count: 38
+
+  wildfire.baseline.ba_classifier:
+    name: "Burned Area Random Forest Classifier"
+    category: "baseline"
+    version: "1.0.0"
+    event_types:
+      - "wildfire.*"
+      - "wildfire"
+    description: >-
+      Supervised classification for burned area mapping using multiple spectral
+      indices and texture features. Uses Random Forest classifier for robust
+      detection across diverse landscapes.
+    required_data_types:
+      - "optical"
+    optional_data_types:
+      - "dem"
+    required_bands:
+      - "red"
+      - "nir"
+      - "swir1"
+      - "swir2"
+    resources:
+      memory_mb: 8192
+      gpu_required: false
+      max_runtime_minutes: 45
+    deterministic: false
+    seed_required: true
+    module_path: "core.analysis.library.baseline.wildfire.ba_classifier"
+    class_name: "BurnedAreaClassifierAlgorithm"
+    default_parameters:
+      classifier_type: "random_forest"
+      n_estimators: 100
+      max_depth: 10
+      random_seed: 42
+      min_burn_area_ha: 1.0
+    parameter_schema:
+      type: "object"
+      properties:
+        n_estimators:
+          type: "integer"
+          description: "Number of trees in the Random Forest"
+          minimum: 10
+          maximum: 500
+          default: 100
+        min_burn_area_ha:
+          type: "number"
+          description: "Minimum burned area in hectares"
+          minimum: 0
+          default: 1.0
+        random_seed:
+          type: "integer"
+          description: "Random seed for reproducibility"
+          default: 42
+    outputs:
+      - "burn_classification"
+      - "probability_raster"
+    validation:
+      accuracy_median: 0.88
+      precision: 0.86
+      recall: 0.90
+      f1_score: 0.88
+      validated_regions: ["california", "australia", "canada"]
+      validation_dataset_count: 32
+
+  # ===========================================================================
+  # Storm Damage Algorithms
+  # ===========================================================================
+
+  storm.baseline.wind_damage:
+    name: "Wind Damage Vegetation Detection"
+    category: "baseline"
+    version: "1.0.0"
+    event_types:
+      - "storm.*"
+      - "storm"
+      - "hurricane.*"
+      - "hurricane"
+      - "cyclone.*"
+      - "cyclone"
+      - "tornado.*"
+      - "tornado"
+    description: >-
+      Detects vegetation damage from high winds using change detection in
+      vegetation indices (NDVI, EVI). Identifies areas of vegetation loss
+      caused by hurricanes, cyclones, and tornadoes.
+    required_data_types:
+      - "optical"
+    optional_data_types:
+      - "sar"
+    required_bands:
+      - "red"
+      - "nir"
+    resources:
+      memory_mb: 4096
+      gpu_required: false
+      max_runtime_minutes: 30
+    deterministic: true
+    module_path: "core.analysis.library.baseline.storm.wind_damage"
+    class_name: "WindDamageDetection"
+    default_parameters:
+      ndvi_change_severe: -0.4
+      ndvi_change_moderate: -0.2
+      ndvi_change_minor: -0.1
+    parameter_schema:
+      type: "object"
+      properties:
+        ndvi_change_severe:
+          type: "number"
+          description: "NDVI change threshold for severe damage"
+          maximum: 0
+          default: -0.4
+        ndvi_change_moderate:
+          type: "number"
+          description: "NDVI change threshold for moderate damage"
+          maximum: 0
+          default: -0.2
+    outputs:
+      - "damage_classification"
+      - "ndvi_change_raster"
+    validation:
+      accuracy_median: 0.80
+      precision: 0.78
+      recall: 0.82
+      f1_score: 0.80
+      validated_regions: ["gulf_coast", "caribbean", "philippines"]
+      validation_dataset_count: 18
+
+  storm.baseline.structural_damage:
+    name: "Structural Damage Assessment"
+    category: "baseline"
+    version: "1.0.0"
+    event_types:
+      - "storm.*"
+      - "storm"
+      - "hurricane.*"
+      - "hurricane"
+      - "earthquake.*"
+      - "earthquake"
+      - "tornado.*"
+      - "tornado"
+    description: >-
+      Building and infrastructure damage assessment using high-resolution optical
+      or SAR imagery. Detects changes in built-up areas using texture variance,
+      brightness changes, and SAR coherence loss.
+    required_data_types:
+      - "optical"
+    optional_data_types:
+      - "sar"
+      - "dem"
+    resources:
+      memory_mb: 8192
+      gpu_required: false
+      max_runtime_minutes: 60
+    deterministic: true
+    module_path: "core.analysis.library.baseline.storm.structural_damage"
+    class_name: "StructuralDamageAssessment"
+    default_parameters:
+      texture_variance_change_threshold: 0.3
+      brightness_change_threshold: 0.15
+      sar_coherence_loss_threshold: 0.4
+    parameter_schema:
+      type: "object"
+      properties:
+        texture_variance_change_threshold:
+          type: "number"
+          description: "Variance change threshold indicating structural damage"
+          minimum: 0
+          maximum: 1.0
+          default: 0.3
+        brightness_change_threshold:
+          type: "number"
+          description: "Brightness change threshold"
+          minimum: 0
+          maximum: 1.0
+          default: 0.15
+    outputs:
+      - "damage_grade_map"
+      - "damage_probability"
+    validation:
+      accuracy_median: 0.76
+      precision: 0.74
+      recall: 0.78
+      f1_score: 0.76
+      validated_regions: ["haiti", "nepal", "turkey"]
+      validation_dataset_count: 15
