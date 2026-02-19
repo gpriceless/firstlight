@@ -1,0 +1,1 @@
+"""STAC publishing test suite."""
