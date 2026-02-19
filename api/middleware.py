@@ -1,14 +1,15 @@
 """
 FastAPI Middleware Components.
 
-Provides request logging, timing, error handling, and correlation ID
-middleware for consistent request processing across the API.
+Provides request logging, timing, error handling, correlation ID,
+and tenant isolation middleware for consistent request processing across the API.
 """
 
 import logging
+import re
 import time
 import uuid
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
@@ -19,6 +20,103 @@ from api.config import Settings
 from api.models.errors import APIError, ErrorCode, ErrorResponse
 
 logger = logging.getLogger(__name__)
+
+
+# Default paths exempt from tenant authentication.
+# Health probes and OGC discovery paths are publicly accessible.
+DEFAULT_AUTH_EXEMPT_PATHS: List[str] = [
+    "/health",
+    "/health/live",
+    "/health/ready",
+    "/api/v1/health",
+    "/api/v1/health/live",
+    "/api/v1/health/ready",
+    "/ready",
+    # OGC discovery paths (Phase 4 will add these)
+    "/oapi/",
+    "/oapi/conformance",
+    "/oapi/processes",
+]
+
+# Patterns for paths with path parameters that are exempt
+DEFAULT_AUTH_EXEMPT_PATTERNS: List[str] = [
+    r"^/oapi/processes/[^/]+$",  # GET /oapi/processes/{id}
+]
+
+
+class TenantMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware that extracts customer_id from the resolved API key on every
+    request and attaches it to request.state.customer_id.
+
+    Raises HTTP 401 if the key resolves to no tenant (i.e., no customer_id).
+    Health probes and OGC discovery paths are exempt from authentication.
+    """
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        exempt_paths: Optional[List[str]] = None,
+        exempt_patterns: Optional[List[str]] = None,
+    ) -> None:
+        super().__init__(app)
+        self.exempt_paths = exempt_paths or DEFAULT_AUTH_EXEMPT_PATHS
+        self.exempt_patterns = [
+            re.compile(p) for p in (exempt_patterns or DEFAULT_AUTH_EXEMPT_PATTERNS)
+        ]
+
+    def _is_exempt(self, path: str, method: str) -> bool:
+        """Check if the request path is exempt from tenant authentication."""
+        # Exact match on exempt paths
+        if path in self.exempt_paths:
+            return True
+
+        # Pattern match for paths with parameters
+        for pattern in self.exempt_patterns:
+            if pattern.match(path):
+                return True
+
+        # Root and docs paths are always exempt
+        if path in ("/", "/api/docs", "/api/redoc", "/api/openapi.json"):
+            return True
+
+        return False
+
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        """Extract customer_id from authenticated context and attach to request state."""
+        # Skip exempt paths (health probes, OGC discovery, etc.)
+        if self._is_exempt(request.url.path, request.method):
+            request.state.customer_id = None
+            return await call_next(request)
+
+        # Check if auth context has been set (by the auth dependency)
+        # The TenantMiddleware runs after auth resolution.
+        # If user_context is available on request state, extract customer_id.
+        user_context = getattr(request.state, "user_context", None)
+        if user_context is not None:
+            customer_id = getattr(user_context, "customer_id", None)
+            if not customer_id:
+                return JSONResponse(
+                    status_code=401,
+                    content={
+                        "code": "AUTHENTICATION_REQUIRED",
+                        "message": "API key does not resolve to a tenant",
+                    },
+                )
+            request.state.customer_id = customer_id
+            return await call_next(request)
+
+        # If no user_context yet, check for customer_id set by auth dependency
+        # Auth dependencies in FastAPI run per-route, so middleware may run before auth.
+        # In this case, we let the request proceed -- the route-level auth dependency
+        # will handle authentication. We set a sentinel so downstream code can check.
+        if not hasattr(request.state, "customer_id"):
+            request.state.customer_id = None
+
+        response = await call_next(request)
+        return response
 
 
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
@@ -343,6 +441,9 @@ def setup_middleware(app: FastAPI, settings: Settings) -> None:
         log_request_body=settings.debug,
         log_response_body=False,
     )
+
+    # Tenant isolation (extracts customer_id from auth context)
+    app.add_middleware(TenantMiddleware)
 
     # Correlation ID (executes first, sets up tracing context)
     app.add_middleware(CorrelationIdMiddleware)
