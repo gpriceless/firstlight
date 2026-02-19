@@ -109,6 +109,9 @@ class Permission(str, Enum):
     # Escalation operations (LLM Control Plane)
     ESCALATION_MANAGE = "escalation:manage"
 
+    # Internal / Partner API operations
+    INTERNAL_READ = "internal:read"
+
 
 # Default permission sets for roles
 ROLE_PERMISSIONS: Dict[str, Set[Permission]] = {
@@ -129,6 +132,7 @@ ROLE_PERMISSIONS: Dict[str, Set[Permission]] = {
         Permission.STATE_READ,
         Permission.STATE_WRITE,
         Permission.ESCALATION_MANAGE,
+        Permission.INTERNAL_READ,
     },
     "user": {
         Permission.EVENT_CREATE,
