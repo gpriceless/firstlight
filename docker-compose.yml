@@ -122,7 +122,7 @@ services:
   # PostgreSQL - Persistent Storage
   # ===========================================================================
   postgres:
-    image: postgres:15-alpine
+    image: postgis/postgis:15-3.4-alpine
     container_name: firstlight-postgres
     ports:
       - "5432:5432"
@@ -133,6 +133,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - firstlight-network
     restart: unless-stopped
