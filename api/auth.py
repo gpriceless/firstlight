@@ -102,6 +102,13 @@ class Permission(str, Enum):
     WEBHOOK_READ = "webhook:read"
     WEBHOOK_DELETE = "webhook:delete"
 
+    # State operations (LLM Control Plane)
+    STATE_READ = "state:read"
+    STATE_WRITE = "state:write"
+
+    # Escalation operations (LLM Control Plane)
+    ESCALATION_MANAGE = "escalation:manage"
+
 
 # Default permission sets for roles
 ROLE_PERMISSIONS: Dict[str, Set[Permission]] = {
@@ -119,6 +126,9 @@ ROLE_PERMISSIONS: Dict[str, Set[Permission]] = {
         Permission.WEBHOOK_READ,
         Permission.WEBHOOK_DELETE,
         Permission.ADMIN_METRICS,
+        Permission.STATE_READ,
+        Permission.STATE_WRITE,
+        Permission.ESCALATION_MANAGE,
     },
     "user": {
         Permission.EVENT_CREATE,
@@ -128,6 +138,7 @@ ROLE_PERMISSIONS: Dict[str, Set[Permission]] = {
         Permission.PRODUCT_DOWNLOAD,
         Permission.CATALOG_READ,
         Permission.CATALOG_SEARCH,
+        Permission.STATE_READ,
     },
     "readonly": {
         Permission.EVENT_READ,
@@ -135,6 +146,7 @@ ROLE_PERMISSIONS: Dict[str, Set[Permission]] = {
         Permission.PRODUCT_READ,
         Permission.CATALOG_READ,
         Permission.CATALOG_SEARCH,
+        Permission.STATE_READ,
     },
     "anonymous": {
         Permission.CATALOG_READ,
