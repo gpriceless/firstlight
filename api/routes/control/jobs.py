@@ -310,11 +310,11 @@ async def get_job(
             orchestrator_id=job.orchestrator_id,
             created_at=job.created_at,
             updated_at=job.updated_at,
-            **{"_links": JobDetailLinks(
+            links=JobDetailLinks(
                 self=f"/control/v1/jobs/{job.job_id}",
                 events=f"/control/v1/jobs/{job.job_id}/events",
                 checkpoints=f"/control/v1/jobs/{job.job_id}/checkpoints",
-            )},
+            ),
         )
     finally:
         await backend.close()

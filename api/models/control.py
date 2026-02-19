@@ -202,10 +202,10 @@ class JobDetailResponse(BaseModel):
     )
     created_at: datetime = Field(..., description="Job creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
-    _links: Optional[JobDetailLinks] = Field(
+    links: Optional[JobDetailLinks] = Field(
         default=None,
         description="HATEOAS links",
-        alias="_links",
+        serialization_alias="_links",
     )
 
     model_config = {"populate_by_name": True}
