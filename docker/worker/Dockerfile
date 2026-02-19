@@ -20,6 +20,8 @@ USER root
 COPY --chown=firstlight:firstlight core/ /app/core/
 COPY --chown=firstlight:firstlight openspec/ /app/openspec/
 COPY --chown=firstlight:firstlight agents/ /app/agents/
+COPY --chown=firstlight:firstlight workers/ /app/workers/
+COPY --chown=firstlight:firstlight api/ /app/api/
 
 # Copy configuration files
 COPY --chown=firstlight:firstlight examples/ /app/examples/
@@ -41,6 +43,6 @@ ENV REDIS_URL=redis://localhost:6379/0
 # No HTTP healthcheck for worker - uses Redis ping
 HEALTHCHECK NONE
 
-# Start the worker process
-# In production, this would be a proper task queue worker (e.g., Celery, RQ)
-CMD ["python", "-c", "from agents import *; print('Worker ready - waiting for tasks')"]
+# Start the Taskiq worker process
+# Processes tasks from Redis (webhook delivery, maintenance, OGC execution)
+CMD ["taskiq", "worker", "workers.taskiq_app:broker", "--workers", "4"]

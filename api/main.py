@@ -132,12 +132,34 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         settings.storage.local_path.mkdir(parents=True, exist_ok=True)
         logger.info(f"Local storage path: {settings.storage.local_path}")
 
+    # Initialize Taskiq broker (if control-plane extras are installed)
+    _taskiq_broker = None
+    try:
+        from workers.taskiq_app import broker as taskiq_broker
+
+        if not taskiq_broker.is_worker_process:
+            await taskiq_broker.startup()
+            _taskiq_broker = taskiq_broker
+            logger.info("Taskiq broker started (API-side task kickoff enabled)")
+    except ImportError:
+        logger.info("Taskiq not available — background tasks disabled")
+    except Exception as e:
+        logger.warning(f"Taskiq startup warning: {e}")
+
     logger.info("Application startup complete")
 
     yield  # Application runs here
 
     # Shutdown
     logger.info("Shutting down application...")
+
+    # Shutdown Taskiq broker
+    if _taskiq_broker is not None:
+        try:
+            await _taskiq_broker.shutdown()
+            logger.info("Taskiq broker shut down")
+        except Exception as e:
+            logger.warning(f"Taskiq shutdown warning: {e}")
 
     # Close database connections
     # (Would close actual connections here)
