@@ -91,27 +91,29 @@ class TenantMiddleware(BaseHTTPMiddleware):
             request.state.customer_id = None
             return await call_next(request)
 
-        # Check if auth context has been set (by the auth dependency)
-        # The TenantMiddleware runs after auth resolution.
-        # If user_context is available on request state, extract customer_id.
+        # Resolve API key directly from the request header.
+        # Middleware runs before route dependencies, so we must extract
+        # and validate the API key here rather than relying on deps.
+        from api.config import get_settings
+
+        settings = get_settings()
+        api_key = request.headers.get(settings.auth.api_key_header)
+
+        if api_key and api_key in settings.auth.allowed_api_keys:
+            # Valid API key — derive customer_id from the key itself
+            # (demo keys use the key as the tenant identifier)
+            request.state.customer_id = f"tenant_{api_key[:16]}"
+            return await call_next(request)
+
+        # Check for user_context set by another auth mechanism (JWT, etc.)
         user_context = getattr(request.state, "user_context", None)
         if user_context is not None:
             customer_id = getattr(user_context, "customer_id", None)
-            if not customer_id:
-                return JSONResponse(
-                    status_code=401,
-                    content={
-                        "code": "AUTHENTICATION_REQUIRED",
-                        "message": "API key does not resolve to a tenant",
-                    },
-                )
-            request.state.customer_id = customer_id
-            return await call_next(request)
+            if customer_id:
+                request.state.customer_id = customer_id
+                return await call_next(request)
 
-        # If no user_context yet, check for customer_id set by auth dependency
-        # Auth dependencies in FastAPI run per-route, so middleware may run before auth.
-        # In this case, we let the request proceed -- the route-level auth dependency
-        # will handle authentication. We set a sentinel so downstream code can check.
+        # No auth — set sentinel and let route-level deps handle it
         if not hasattr(request.state, "customer_id"):
             request.state.customer_id = None
 
@@ -421,6 +423,9 @@ def setup_middleware(app: FastAPI, settings: Settings) -> None:
         debug=settings.debug,
         include_stack_trace=settings.debug,
     )
+
+    # Tenant resolution (extracts customer_id from API key for control plane)
+    app.add_middleware(TenantMiddleware)
 
     # Request size limiting
     app.add_middleware(
