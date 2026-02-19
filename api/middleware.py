@@ -32,7 +32,7 @@ DEFAULT_AUTH_EXEMPT_PATHS: List[str] = [
     "/api/v1/health/live",
     "/api/v1/health/ready",
     "/ready",
-    # OGC discovery paths (Phase 4 will add these)
+    # OGC discovery paths (public, no auth required)
     "/oapi/",
     "/oapi/conformance",
     "/oapi/processes",
