@@ -109,6 +109,9 @@ class Permission(str, Enum):
     # Escalation operations (LLM Control Plane)
     ESCALATION_MANAGE = "escalation:manage"
 
+    # Context Data Lakehouse operations
+    CONTEXT_READ = "context:read"
+
     # Internal / Partner API operations
     INTERNAL_READ = "internal:read"
 
@@ -133,6 +136,7 @@ ROLE_PERMISSIONS: Dict[str, Set[Permission]] = {
         Permission.STATE_WRITE,
         Permission.ESCALATION_MANAGE,
         Permission.INTERNAL_READ,
+        Permission.CONTEXT_READ,
     },
     "user": {
         Permission.EVENT_CREATE,
@@ -143,6 +147,7 @@ ROLE_PERMISSIONS: Dict[str, Set[Permission]] = {
         Permission.CATALOG_READ,
         Permission.CATALOG_SEARCH,
         Permission.STATE_READ,
+        Permission.CONTEXT_READ,
     },
     "readonly": {
         Permission.EVENT_READ,
@@ -151,6 +156,7 @@ ROLE_PERMISSIONS: Dict[str, Set[Permission]] = {
         Permission.CATALOG_READ,
         Permission.CATALOG_SEARCH,
         Permission.STATE_READ,
+        Permission.CONTEXT_READ,
     },
     "anonymous": {
         Permission.CATALOG_READ,

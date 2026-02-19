@@ -544,6 +544,75 @@ async def append_reasoning(
 
 
 # =============================================================================
+# Task 3.7: GET /control/v1/jobs/{job_id}/context — Per-job context usage
+# =============================================================================
+
+
+@router.get(
+    "/{job_id}/context",
+    summary="Get context usage summary for a job",
+    description=(
+        "Returns the context data usage summary for a specific job: "
+        "per-table counts of ingested vs reused items."
+    ),
+    responses={404: {"description": "Job not found or access denied"}},
+)
+async def get_job_context(
+    job_id: Annotated[str, Path(description="Job identifier (UUID)")],
+    customer_id: Annotated[str, Depends(get_current_customer)],
+) -> Dict[str, Any]:
+    """
+    Get context usage summary for a specific job.
+
+    Returns per-table counts of ingested vs reused context items.
+    Verifies the job belongs to the authenticated customer before returning data.
+    """
+    from uuid import UUID as UUIDType
+
+    backend = await _get_connected_backend()
+    try:
+        # Verify tenant access
+        job = await backend.get_state(job_id)
+        if job is None or job.customer_id != customer_id:
+            raise NotFoundError(message=f"Job '{job_id}' not found")
+    finally:
+        await backend.close()
+
+    # Get context summary from ContextRepository
+    from core.context.repository import ContextRepository
+    from api.config import get_settings
+
+    settings = get_settings()
+    db = settings.database
+    repo = ContextRepository(
+        host=db.host,
+        port=db.port,
+        database=db.name,
+        user=db.user,
+        password=db.password,
+    )
+    await repo.connect()
+    try:
+        summary = await repo.get_job_context_summary(UUIDType(job_id))
+        return {
+            "job_id": job_id,
+            "datasets_ingested": summary.datasets_ingested,
+            "datasets_reused": summary.datasets_reused,
+            "buildings_ingested": summary.buildings_ingested,
+            "buildings_reused": summary.buildings_reused,
+            "infrastructure_ingested": summary.infrastructure_ingested,
+            "infrastructure_reused": summary.infrastructure_reused,
+            "weather_ingested": summary.weather_ingested,
+            "weather_reused": summary.weather_reused,
+            "total_ingested": summary.total_ingested,
+            "total_reused": summary.total_reused,
+            "total": summary.total,
+        }
+    finally:
+        await repo.close()
+
+
+# =============================================================================
 # Utility Functions
 # =============================================================================
 

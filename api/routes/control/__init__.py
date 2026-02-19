@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, Request
 from api.routes.control.jobs import router as jobs_router
 from api.routes.control.escalations import router as escalations_router
 from api.routes.control.tools import router as tools_router
+from api.routes.control.context import context_router
 
 
 def get_current_customer(request: Request) -> str:
@@ -50,6 +51,7 @@ control_router = APIRouter(
 control_router.include_router(jobs_router)
 control_router.include_router(escalations_router)
 control_router.include_router(tools_router)
+control_router.include_router(context_router)
 
 __all__ = [
     "control_router",
