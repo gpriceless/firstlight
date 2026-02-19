@@ -36,6 +36,15 @@ from core.data.broker import BrokerQuery, BrokerResponse, DataBroker
 from core.data.discovery.base import DiscoveryResult, DiscoveryError
 from core.data.providers.registry import Provider, ProviderRegistry
 
+# Lazy imports for optional context storage (Phase 2 lakehouse integration)
+try:
+    from core.context.models import DatasetRecord
+    from core.context.repository import ContextRepository
+
+    _HAS_CONTEXT = True
+except ImportError:
+    _HAS_CONTEXT = False
+
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +206,8 @@ class DiscoveryAgent(BaseAgent):
         cache_ttl_seconds: int = 300,
         enable_fallback_sources: bool = True,
         acquisition_enabled: bool = True,
+        context_repo: Optional[Any] = None,
+        job_id: Optional[Any] = None,
     ):
         """
         Initialize DiscoveryAgent.
@@ -212,6 +223,8 @@ class DiscoveryAgent(BaseAgent):
             cache_ttl_seconds: Cache TTL
             enable_fallback_sources: Enable fallback sources
             acquisition_enabled: Enable data acquisition
+            context_repo: Optional ContextRepository for lakehouse storage
+            job_id: Optional job UUID for context tracking
         """
         super().__init__(
             agent_id=agent_id or "discovery",
@@ -230,6 +243,10 @@ class DiscoveryAgent(BaseAgent):
         # Core components
         self._data_broker = data_broker
         self._provider_registry = provider_registry
+
+        # Context Data Lakehouse integration (optional)
+        self._context_repo = context_repo
+        self._job_id = job_id
 
         # Agent-specific components (initialized on start)
         self._catalog_manager: Optional[CatalogQueryManager] = None
@@ -602,6 +619,103 @@ class DiscoveryAgent(BaseAgent):
             errors=errors
         )
 
+    # Context Data Lakehouse integration
+
+    async def _store_discovery_context(
+        self,
+        catalog_results: List[CatalogQueryResult],
+        spatial: Dict[str, Any],
+    ) -> None:
+        """
+        Store discovered datasets into the Context Data Lakehouse.
+
+        This is fire-and-forget: context storage errors are logged but never
+        block or fail the discovery flow.
+
+        Args:
+            catalog_results: Results from catalog queries.
+            spatial: The request's spatial geometry (GeoJSON dict or bbox).
+        """
+        if not _HAS_CONTEXT:
+            return
+
+        # Derive a MultiPolygon geometry from the request spatial area.
+        # DiscoveryResult does NOT carry per-scene geometry, so we use the
+        # request bbox as an approximation.
+        geometry = self._derive_geometry_from_spatial(spatial)
+        if geometry is None:
+            logger.debug(
+                "Context storage skipped: could not derive geometry from "
+                "request spatial"
+            )
+            return
+
+        stored = 0
+        for catalog_result in catalog_results:
+            for discovery_result in catalog_result.results:
+                try:
+                    record = DatasetRecord(
+                        source=discovery_result.provider,
+                        source_id=discovery_result.dataset_id,
+                        geometry=geometry,
+                        properties=discovery_result.metadata or {},
+                        acquisition_date=discovery_result.acquisition_time,
+                        cloud_cover=discovery_result.cloud_cover_percent,
+                        resolution_m=discovery_result.resolution_m,
+                        file_path=discovery_result.source_uri or None,
+                    )
+                    await self._context_repo.store_dataset(
+                        self._job_id, record
+                    )
+                    stored += 1
+                except Exception as e:
+                    logger.warning(
+                        "Context storage failed for dataset %s: %s",
+                        discovery_result.dataset_id,
+                        e,
+                    )
+
+        if stored:
+            logger.info(
+                "Stored %d discovered datasets into context lakehouse", stored
+            )
+
+    @staticmethod
+    def _derive_geometry_from_spatial(spatial: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Derive a GeoJSON MultiPolygon from the request spatial parameter.
+
+        If *spatial* is already a Polygon/MultiPolygon, return it as a
+        MultiPolygon. If it contains a ``bbox`` key, convert to a Polygon
+        envelope. Returns ``None`` if geometry cannot be derived.
+        """
+        geom_type = spatial.get("type")
+
+        if geom_type == "MultiPolygon":
+            return spatial
+        if geom_type == "Polygon":
+            return {
+                "type": "MultiPolygon",
+                "coordinates": [spatial["coordinates"]],
+            }
+
+        # Try bbox
+        bbox = spatial.get("bbox")
+        if bbox and len(bbox) >= 4:
+            west, south, east, north = bbox[:4]
+            return {
+                "type": "MultiPolygon",
+                "coordinates": [[[
+                    [west, south],
+                    [east, south],
+                    [east, north],
+                    [west, north],
+                    [west, south],
+                ]]],
+            }
+
+        return None
+
     # Message handlers
 
     async def _handle_discovery_request(self, message: AgentMessage) -> Dict[str, Any]:
@@ -705,6 +819,12 @@ class DiscoveryAgent(BaseAgent):
         timing["catalog_query_ms"] = (
             datetime.now(timezone.utc) - phase_start
         ).total_seconds() * 1000
+
+        # Context Data Lakehouse: store discovered datasets (fire-and-forget)
+        if catalog_results and self._context_repo and self._job_id:
+            await self._store_discovery_context(
+                catalog_results, request.spatial
+            )
 
         # Phase 2: Run broker discovery
         phase_start = datetime.now(timezone.utc)

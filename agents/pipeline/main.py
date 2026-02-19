@@ -63,6 +63,20 @@ from core.analysis.library.registry import (
     load_default_algorithms,
 )
 
+# Lazy imports for optional context storage (Phase 2 lakehouse integration)
+try:
+    from core.context.repository import ContextRepository
+    from core.context.stubs import (
+        generate_buildings,
+        generate_infrastructure,
+        generate_weather,
+    )
+
+    _HAS_CONTEXT = True
+except ImportError:
+    _HAS_CONTEXT = False
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -301,6 +315,8 @@ class PipelineAgent(BaseAgent):
         registry: Optional[AlgorithmRegistry] = None,
         checkpoint_config: Optional[CheckpointConfig] = None,
         execution_config: Optional[ExecutionConfig] = None,
+        context_repo: Optional[Any] = None,
+        job_id: Optional[Any] = None,
     ):
         """
         Initialize the Pipeline Agent.
@@ -310,6 +326,8 @@ class PipelineAgent(BaseAgent):
             registry: Algorithm registry (uses global if None)
             checkpoint_config: Configuration for checkpointing
             execution_config: Configuration for execution
+            context_repo: Optional ContextRepository for lakehouse storage
+            job_id: Optional job UUID for context tracking
         """
         super().__init__(agent_id)
 
@@ -332,6 +350,10 @@ class PipelineAgent(BaseAgent):
 
         # Execution configuration
         self.execution_config = execution_config or ExecutionConfig()
+
+        # Context Data Lakehouse integration (optional)
+        self._context_repo = context_repo
+        self._job_id = job_id
 
         # State tracking
         self._current_execution_id: Optional[str] = None
@@ -418,6 +440,12 @@ class PipelineAgent(BaseAgent):
             # Phase 3: Optimize execution plan
             optimization_result = self.optimizer.optimize(graph)
             execution_plan = optimization_result.execution_plan
+
+            # Context Data Lakehouse: store synthetic context data
+            # (fire-and-forget, errors logged but never block execution)
+            bbox = self._extract_bbox_from_inputs(inputs)
+            if bbox is not None:
+                await self._store_synthetic_context(bbox)
 
             # Phase 4: Execute pipeline
             self.status = AgentStatus.EXECUTING
@@ -807,6 +835,93 @@ class PipelineAgent(BaseAgent):
                 if s.status == StepStatus.FAILED
             ),
         }
+
+    # Context Data Lakehouse helpers
+
+    @staticmethod
+    def _extract_bbox_from_inputs(
+        inputs: Dict[str, Any],
+    ) -> Optional[Tuple[float, float, float, float]]:
+        """
+        Try to extract a (west, south, east, north) bbox from pipeline inputs.
+
+        Looks for common keys: 'bbox', 'aoi', 'spatial', or a GeoJSON
+        geometry with coordinates.
+        """
+        # Direct bbox
+        bbox = inputs.get("bbox")
+        if bbox and len(bbox) >= 4:
+            return tuple(bbox[:4])  # type: ignore[return-value]
+
+        # AOI or spatial geometry
+        for key in ("aoi", "spatial", "geometry"):
+            geom = inputs.get(key)
+            if isinstance(geom, dict):
+                if "bbox" in geom:
+                    b = geom["bbox"]
+                    if len(b) >= 4:
+                        return tuple(b[:4])  # type: ignore[return-value]
+                coords = geom.get("coordinates")
+                gtype = geom.get("type")
+                if gtype == "Polygon" and coords:
+                    lons = [p[0] for p in coords[0]]
+                    lats = [p[1] for p in coords[0]]
+                    return (min(lons), min(lats), max(lons), max(lats))
+
+        return None
+
+    async def _store_synthetic_context(
+        self,
+        bbox: Tuple[float, float, float, float],
+    ) -> None:
+        """
+        Generate and store synthetic context data (buildings, infrastructure,
+        weather) into the lakehouse. Fire-and-forget: errors are logged but
+        never block pipeline execution.
+        """
+        if not _HAS_CONTEXT or self._context_repo is None or self._job_id is None:
+            return
+
+        try:
+            # Buildings
+            buildings = generate_buildings(bbox, count=30)
+            await self._context_repo.store_batch(
+                self._job_id, "context_buildings", buildings
+            )
+            logger.info(
+                "Stored %d synthetic buildings into context lakehouse",
+                len(buildings),
+            )
+        except Exception as e:
+            logger.warning("Context storage (buildings) failed: %s", e)
+
+        try:
+            # Infrastructure
+            infra = generate_infrastructure(bbox, count=8)
+            await self._context_repo.store_batch(
+                self._job_id, "context_infrastructure", infra
+            )
+            logger.info(
+                "Stored %d synthetic infrastructure facilities into context "
+                "lakehouse",
+                len(infra),
+            )
+        except Exception as e:
+            logger.warning("Context storage (infrastructure) failed: %s", e)
+
+        try:
+            # Weather
+            weather = generate_weather(bbox, count=10)
+            await self._context_repo.store_batch(
+                self._job_id, "context_weather", weather
+            )
+            logger.info(
+                "Stored %d synthetic weather observations into context "
+                "lakehouse",
+                len(weather),
+            )
+        except Exception as e:
+            logger.warning("Context storage (weather) failed: %s", e)
 
     async def _execute_algorithm(
         self,
