@@ -329,6 +329,19 @@ def create_application() -> FastAPI:
     # Include Partner Integration routes (/internal/v1 prefix)
     app.include_router(internal_router)
 
+    # Mount stac-fastapi-pgstac at /stac (if installed)
+    try:
+        from core.stac.mount import create_stac_app
+
+        stac_app = create_stac_app(settings)
+        if stac_app is not None:
+            app.mount("/stac", stac_app)
+            logger.info("stac-fastapi-pgstac mounted at /stac")
+        else:
+            logger.info("stac-fastapi not available, /stac endpoint disabled")
+    except Exception as e:
+        logger.warning("Failed to mount stac-fastapi at /stac: %s", e)
+
     # Add root redirect to docs
     @app.get("/", include_in_schema=False)
     async def root() -> JSONResponse:
