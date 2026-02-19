@@ -21,9 +21,7 @@ from api.models.responses import (
     ProgressResponse,
     StatusResponse,
 )
-
-# Import the events store from events module
-from api.routes.events import _events_store
+from api.routes.events import deserialize_event_from_db
 
 logger = logging.getLogger(__name__)
 
@@ -138,10 +136,11 @@ async def get_event_status(
     - Current processing stage
     - Timing information
     """
-    if event_id not in _events_store:
+    row = await db_session.get_event(event_id)
+    if not row:
         raise EventNotFoundError(event_id)
 
-    event = _events_store[event_id]
+    event = deserialize_event_from_db(row)
     stage_index, stage_name = _get_current_stage(event.status)
     progress = _calculate_progress(event.status, stage_index)
 
@@ -149,7 +148,7 @@ async def get_event_status(
     if event.status == EventStatus.COMPLETED:
         message = "Processing completed successfully"
     elif event.status == EventStatus.FAILED:
-        message = event.error_message or "Processing failed"
+        message = getattr(event, "error_message", None) or "Processing failed"
     elif event.status == EventStatus.CANCELLED:
         message = "Processing was cancelled"
     elif event.status == EventStatus.PENDING:
@@ -163,7 +162,7 @@ async def get_event_status(
         progress_percent=round(progress, 1),
         current_stage=stage_name,
         message=message,
-        started_at=event.started_at,
+        started_at=getattr(event, "started_at", None),
         estimated_completion=None,  # Would be calculated from historical data
         updated_at=event.updated_at,
     )
@@ -195,12 +194,16 @@ async def get_event_progress(
     - Product generation counts
     - Any processing warnings
     """
-    if event_id not in _events_store:
+    row = await db_session.get_event(event_id)
+    if not row:
         raise EventNotFoundError(event_id)
 
-    event = _events_store[event_id]
+    event = deserialize_event_from_db(row)
     current_stage_index, _ = _get_current_stage(event.status)
     progress = _calculate_progress(event.status, current_stage_index)
+
+    started_at = getattr(event, "started_at", None)
+    completed_at = getattr(event, "completed_at", None)
 
     # Build stage progress information
     stages: list[PipelineStepProgress] = []
@@ -220,8 +223,8 @@ async def get_event_progress(
                 step_id=stage["id"],
                 step_name=stage["name"],
                 status=stage_status,
-                started_at=event.started_at if i <= current_stage_index else None,
-                completed_at=event.completed_at if stage_status == "completed" and event.status == EventStatus.COMPLETED else None,
+                started_at=started_at if i <= current_stage_index else None,
+                completed_at=completed_at if stage_status == "completed" and event.status == EventStatus.COMPLETED else None,
                 progress_percent=stage_progress,
                 message=None,
             )
@@ -248,7 +251,7 @@ async def get_event_progress(
         data_sources_acquired=data_sources_acquired,
         products_generated=products_generated,
         warnings=warnings,
-        started_at=event.started_at,
+        started_at=started_at,
         estimated_completion=None,
         updated_at=event.updated_at,
     )
@@ -300,6 +303,7 @@ _connection_manager = ConnectionManager()
 async def stream_event_updates(
     websocket: WebSocket,
     event_id: str,
+    db_session: DBSessionDep = None,
 ) -> None:
     """
     WebSocket endpoint for real-time event status updates.
@@ -322,8 +326,15 @@ async def stream_event_updates(
     }
     ```
     """
-    # Check if event exists
-    if event_id not in _events_store:
+    # Check if event exists via DB lookup
+    if db_session is not None:
+        row = await db_session.get_event(event_id)
+        if not row:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+        event = deserialize_event_from_db(row)
+    else:
+        # No DB session available -- accept connection but cannot verify event
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
@@ -331,7 +342,6 @@ async def stream_event_updates(
 
     try:
         # Send initial status
-        event = _events_store[event_id]
         stage_index, stage_name = _get_current_stage(event.status)
         progress = _calculate_progress(event.status, stage_index)
 
@@ -367,9 +377,10 @@ async def stream_event_updates(
                     pass
 
             except asyncio.TimeoutError:
-                # Send heartbeat
-                event = _events_store.get(event_id)
-                if event:
+                # Send heartbeat -- re-fetch event from DB
+                row = await db_session.get_event(event_id)
+                if row:
+                    event = deserialize_event_from_db(row)
                     stage_index, stage_name = _get_current_stage(event.status)
                     progress = _calculate_progress(event.status, stage_index)
 

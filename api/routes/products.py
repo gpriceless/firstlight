@@ -18,6 +18,7 @@ from api.models.errors import EventNotFoundError, NotFoundError, ProductNotFound
 from api.models.requests import BoundingBox, ProductDownloadParams, ProductQueryParams
 from api.models.responses import (
     EventStatus,
+    EventResponse,
     PaginatedResponse,
     PaginationMeta,
     ProductFormat,
@@ -27,9 +28,7 @@ from api.models.responses import (
     ProductStatus,
     QualityFlag,
 )
-
-# Import the events store from events module
-from api.routes.events import _events_store
+from api.routes.events import deserialize_event_from_db
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +39,9 @@ router = APIRouter(prefix="/events", tags=["Products"])
 _products_store: Dict[str, Dict[str, ProductResponse]] = {}
 
 
-def _generate_mock_products(event_id: str) -> List[ProductResponse]:
+def _generate_mock_products(event_id: str, event: EventResponse) -> List[ProductResponse]:
     """Generate mock products for completed events."""
-    event = _events_store.get(event_id)
-    if not event or event.status != EventStatus.COMPLETED:
+    if event.status != EventStatus.COMPLETED:
         return []
 
     now = datetime.now(timezone.utc)
@@ -201,14 +199,15 @@ async def list_event_products(
 
     Supports filtering by product type, format, and readiness status.
     """
-    if event_id not in _events_store:
+    row = await db_session.get_event(event_id)
+    if not row:
         raise EventNotFoundError(event_id)
 
-    event = _events_store[event_id]
+    event = deserialize_event_from_db(row)
 
     # Get or generate products
     if event_id not in _products_store:
-        products = _generate_mock_products(event_id)
+        products = _generate_mock_products(event_id, event)
         _products_store[event_id] = {p.product_type: p for p in products}
 
     products = list(_products_store.get(event_id, {}).values())
@@ -267,12 +266,15 @@ async def get_product(
     - Quality information (confidence, validation status)
     - Download URL (if ready)
     """
-    if event_id not in _events_store:
+    row = await db_session.get_event(event_id)
+    if not row:
         raise EventNotFoundError(event_id)
+
+    event = deserialize_event_from_db(row)
 
     # Get or generate products
     if event_id not in _products_store:
-        products = _generate_mock_products(event_id)
+        products = _generate_mock_products(event_id, event)
         _products_store[event_id] = {p.product_type: p for p in products}
 
     products = _products_store.get(event_id, {})
