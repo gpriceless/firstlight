@@ -59,7 +59,7 @@ class CreateJobRequest(BaseModel):
     )
     aoi: Dict[str, Any] = Field(
         ...,
-        description="Area of interest as GeoJSON geometry (any type, will be promoted to MultiPolygon)",
+        description="Area of interest as GeoJSON Polygon or MultiPolygon geometry",
     )
     parameters: Dict[str, Any] = Field(
         default_factory=dict,
@@ -80,13 +80,13 @@ class CreateJobRequest(BaseModel):
         if "coordinates" not in v:
             raise ValueError("GeoJSON must include a 'coordinates' field")
 
-        valid_types = {
-            "Point", "MultiPoint", "LineString", "MultiLineString",
-            "Polygon", "MultiPolygon", "GeometryCollection",
-        }
-        if v["type"] not in valid_types:
+        # AOI must be a polygon type — the PostGIS column is
+        # GEOMETRY(MULTIPOLYGON, 4326), so non-polygon types (Point,
+        # LineString, etc.) would fail at insert time.  Reject early
+        # with a clear 422 instead of a cryptic DB error.
+        if v["type"] not in ("Polygon", "MultiPolygon"):
             raise ValueError(
-                f"Invalid GeoJSON type: {v['type']}. Must be one of: {valid_types}"
+                f"AOI must be a Polygon or MultiPolygon, got '{v['type']}'"
             )
 
         # Validate coordinate bounds (WGS84: lon [-180, 180], lat [-90, 90])

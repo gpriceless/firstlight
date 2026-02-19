@@ -465,35 +465,33 @@ class TestDegenerateGeometries:
         # Should be in the millions of km2 range
         assert area > 1_000_000
 
-    def test_point_geometry_submitted_for_aoi(self):
+    def test_point_as_aoi_rejected(self):
         """
-        A Point geometry has no area. The Pydantic validator accepts it
-        (Point is a valid GeoJSON type), but ST_Multi(ST_GeomFromGeoJSON)
-        would promote it to a MULTIPOINT, which does not match the
-        GEOMETRY(MULTIPOLYGON, 4326) column type. PostGIS would reject it.
-
-        This test documents that the API layer does NOT reject Points.
+        A Point geometry has no area and cannot be stored in the
+        GEOMETRY(MULTIPOLYGON, 4326) column. The Pydantic validator
+        now rejects non-polygon types early with a clear 422 error.
         """
         point = {
             "type": "Point",
             "coordinates": [-122.4, 37.8],
         }
-        req = CreateJobRequest(event_type="flood", aoi=point)
-        assert req.aoi["type"] == "Point"
+        with pytest.raises(Exception) as exc_info:
+            CreateJobRequest(event_type="flood", aoi=point)
+        assert "Polygon" in str(exc_info.value) or "polygon" in str(exc_info.value).lower()
 
-    def test_linestring_geometry_submitted_for_aoi(self):
+    def test_linestring_as_aoi_rejected(self):
         """
-        A LineString geometry has no area. Similar to Point, Pydantic
-        accepts it but PostGIS MULTIPOLYGON column would reject it.
-
-        This is a gap in the validation layer.
+        A LineString geometry has no area and cannot be stored in the
+        GEOMETRY(MULTIPOLYGON, 4326) column. The Pydantic validator
+        now rejects non-polygon types early with a clear 422 error.
         """
         line = {
             "type": "LineString",
             "coordinates": [[-122.4, 37.8], [-122.3, 37.9], [-122.2, 37.8]],
         }
-        req = CreateJobRequest(event_type="flood", aoi=line)
-        assert req.aoi["type"] == "LineString"
+        with pytest.raises(Exception) as exc_info:
+            CreateJobRequest(event_type="flood", aoi=line)
+        assert "Polygon" in str(exc_info.value) or "polygon" in str(exc_info.value).lower()
 
     def test_polygon_with_hole(self):
         """
@@ -1087,18 +1085,16 @@ class TestGeoJSONStructureEdgeCases:
 
     def test_geometry_collection_rejected_at_api(self):
         """
-        GeometryCollection requires 'geometries' not 'coordinates'.
-        The Pydantic validator checks for 'coordinates' key, so a
-        GeometryCollection is rejected even though it's a valid GeoJSON type.
+        GeometryCollection is not a Polygon or MultiPolygon, so the
+        Pydantic validator rejects it with a clear error message.
         """
         gc = {
             "type": "GeometryCollection",
-            "coordinates": [],  # Wrong key, should be 'geometries'
+            "coordinates": [],
         }
-        # The validator allows this because it has both 'type' and 'coordinates'
-        # But the coordinates are empty which still passes
-        req = CreateJobRequest(event_type="flood", aoi=gc)
-        assert req.aoi["type"] == "GeometryCollection"
+        with pytest.raises(Exception) as exc_info:
+            CreateJobRequest(event_type="flood", aoi=gc)
+        assert "Polygon" in str(exc_info.value) or "polygon" in str(exc_info.value).lower()
 
     def test_extra_properties_in_geojson_preserved(self):
         """
