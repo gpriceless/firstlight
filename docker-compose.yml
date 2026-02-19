@@ -41,8 +41,8 @@ services:
       - API_PORT=8000
       - API_WORKERS=4
       - LOG_LEVEL=info
-      - DATABASE_URL=postgresql://firstlight:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/firstlight
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://firstlight:${POSTGRES_PASSWORD}@postgres:5432/firstlight
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - PYTHONPATH=/app
     depends_on:
       redis:
@@ -75,8 +75,8 @@ services:
     environment:
       - WORKER_CONCURRENCY=4
       - WORKER_QUEUE=default
-      - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=postgresql://firstlight:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/firstlight
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - DATABASE_URL=postgresql://firstlight:${POSTGRES_PASSWORD}@postgres:5432/firstlight
       - PYTHONPATH=/app
     depends_on:
       redis:
@@ -110,7 +110,7 @@ services:
     networks:
       - firstlight-network
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -129,7 +129,7 @@ services:
     environment:
       POSTGRES_DB: firstlight
       POSTGRES_USER: firstlight
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - pgdata:/var/lib/postgresql/data
