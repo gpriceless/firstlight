@@ -152,6 +152,7 @@ class UserContext:
     """Context information about the authenticated user."""
 
     user_id: str
+    customer_id: str = "legacy"
     api_key_id: Optional[str] = None
     role: str = "user"
     permissions: Set[Permission] = field(default_factory=set)
@@ -176,6 +177,7 @@ class UserContext:
         """Convert to dictionary for serialization."""
         return {
             "user_id": self.user_id,
+            "customer_id": self.customer_id,
             "api_key_id": self.api_key_id,
             "role": self.role,
             "permissions": [p.value for p in self.permissions],
@@ -198,6 +200,7 @@ class APIKey:
     key_id: str
     key_hash: str  # Hashed version of the actual key
     user_id: str
+    customer_id: str = "legacy"
     role: str = "user"
     permissions: Set[Permission] = field(default_factory=set)
     name: Optional[str] = None
@@ -244,6 +247,7 @@ class APIKeyStore:
         expires_in_days: Optional[int] = None,
         rate_limit: Optional[int] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        customer_id: str = "legacy",
     ) -> tuple[str, APIKey]:
         """
         Create a new API key.
@@ -270,6 +274,7 @@ class APIKeyStore:
             key_id=key_id,
             key_hash=key_hash,
             user_id=user_id,
+            customer_id=customer_id,
             role=role,
             permissions=permissions,
             name=name,
@@ -560,6 +565,7 @@ async def authenticate(
 
             return UserContext(
                 user_id=validated_key.user_id,
+                customer_id=validated_key.customer_id,
                 api_key_id=validated_key.key_id,
                 role=validated_key.role,
                 permissions=validated_key.permissions,
