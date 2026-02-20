@@ -41,7 +41,7 @@ All with complete provenance - every output traces back to source data and proce
 
 ```bash
 # Clone and install
-git clone https://github.com/gpriceless/firstlight.git
+git clone https://github.com/firstlight-geo/firstlight.git
 cd firstlight
 pip install -e .
 

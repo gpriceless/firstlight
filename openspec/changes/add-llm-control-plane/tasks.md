@@ -220,7 +220,7 @@ Goal: LLM agents can read job state, trigger transitions, adjust parameters, and
 ## Phase 3: Event Stream and Partner API
 <!-- execution: parallel -->
 
-Goal: Partners (MAIA Analytics) can stream structured events in real time, inspect metrics, and receive webhooks. All event payloads use the CloudEvents v1.0 envelope.
+Goal: Partners (partner analytics platform) can stream structured events in real time, inspect metrics, and receive webhooks. All event payloads use the CloudEvents v1.0 envelope.
 
 ### Track A: SSE Stream (sequential within track)
 

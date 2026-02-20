@@ -116,7 +116,7 @@ Goal: The pipeline stores context data into PostGIS as it flows through discover
 ## Phase 3: Query API + Demo
 <!-- execution: parallel -->
 
-Goal: MAIA can query accumulated context data. A demo script demonstrates the lakehouse effect.
+Goal: Partner platform can query accumulated context data. A demo script demonstrates the lakehouse effect.
 
 ### Track A: Query Endpoints
 

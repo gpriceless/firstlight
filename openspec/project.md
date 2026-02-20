@@ -43,7 +43,7 @@ FirstLight is a geospatial event intelligence platform that converts (area, time
 - **Algorithms** are sensor-specific detectors (SAR threshold, NDWI, dNBR, etc.)
 - **STAC** (SpatioTemporal Asset Catalog) is the standard for discovering and publishing EO data
 - **OGC API Processes** is the standard for exposing geospatial processing as HTTP services
-- **MAIA Analytics** is the target integration partner — conversational geospatial layer
+- **Partner analytics platform** is the target integration partner — conversational geospatial layer
 
 ## Important Constraints
 - All spatial storage in EPSG:4326; metric calculations use geography casts

@@ -95,6 +95,7 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_USER=firstlight
+      # WARNING: Development only. Never use in staging/production.
       - POSTGRES_PASSWORD=dev_password
       - POSTGRES_DB=first_light_dev
 

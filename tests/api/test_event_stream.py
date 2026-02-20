@@ -105,9 +105,9 @@ class TestCloudEventsEnvelope:
             event_type="STATE_TRANSITION",
             phase="QUEUED",
             status="PENDING",
-            actor="maia-agent-1",
+            actor="partner-agent-1",
         )
-        assert envelope["data"]["actor"] == "maia-agent-1"
+        assert envelope["data"]["actor"] == "partner-agent-1"
 
     def test_build_cloudevent_data_is_dict(self):
         """Data field should always be a dict."""

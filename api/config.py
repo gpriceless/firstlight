@@ -107,7 +107,7 @@ class StorageSettings(BaseSettings):
     local_path: Path = Field(
         default=Path("./data/products"), description="Local storage path"
     )
-    bucket: str = Field(default="firstlight-products", description="S3/GCS bucket")
+    bucket: str = Field(default="", description="S3/GCS bucket name (required for cloud storage)")
     region: str = Field(default="us-east-1", description="Cloud region")
     endpoint_url: Optional[str] = Field(
         default=None, description="Custom S3 endpoint URL"
@@ -176,7 +176,7 @@ class CORSSettings(BaseSettings):
 
     enabled: bool = Field(default=True, description="Enable CORS")
     allow_origins: List[str] = Field(
-        default_factory=lambda: ["*"], description="Allowed origins"
+        default_factory=list, description="Allowed origins"
     )
     allow_methods: List[str] = Field(
         default_factory=lambda: ["*"], description="Allowed HTTP methods"

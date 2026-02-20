@@ -23,7 +23,7 @@ from typing import Dict, Any, Optional
 import requests
 
 # Configuration
-API_BASE_URL = os.environ.get("FIRSTLIGHT_API_URL", "https://api.firstlight.io/v1")
+API_BASE_URL = os.environ.get("FIRSTLIGHT_API_URL", "https://api.firstlight.example.com/v1")
 API_KEY = os.environ.get("FIRSTLIGHT_API_KEY")
 
 # Check for API key

@@ -1,7 +1,7 @@
 """
 Partner Integration API Routes (Internal).
 
-Provides endpoints for partner systems (e.g., MAIA Analytics) to:
+Provides endpoints for partner systems (e.g., partner analytics platforms) to:
 - Stream structured events in real time via SSE
 - Register and manage webhook subscriptions
 - Inspect pipeline health metrics and queue summaries

@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
-FirstLight LLM Control Plane -- Live Demo for MAIA Analytics
-=============================================================
+FirstLight LLM Control Plane -- Live Demo for Partner Analytics Platform
+========================================================================
 
 This script walks through the entire FirstLight Control Plane lifecycle,
-showing how an LLM agent (like MAIA) would interact with the platform
-to submit, monitor, steer, and consume geospatial analysis jobs.
+showing how an LLM agent (like a partner analytics platform) would interact
+with the platform to submit, monitor, steer, and consume geospatial analysis
+jobs.
 
 Usage:
     python scripts/demo_control_plane.py
-    python scripts/demo_control_plane.py --base-url http://api.firstlight.dev:8000
+    python scripts/demo_control_plane.py --base-url http://localhost:8000
     python scripts/demo_control_plane.py --dry-run
     python scripts/demo_control_plane.py --speed fast
 
@@ -357,7 +358,7 @@ class ControlPlaneDemo:
         banner("FirstLight LLM Control Plane Demo")
         explain(
             "Welcome to the FirstLight Control Plane walkthrough. "
-            "This demo shows how an LLM agent -- such as MAIA -- "
+            "This demo shows how an LLM agent -- such as a partner analytics platform -- "
             "interacts with FirstLight's geospatial intelligence platform."
         )
         print()
@@ -368,7 +369,7 @@ class ControlPlaneDemo:
         info("  1. /control/v1/*   -- LLM Control API (agent-facing)")
         info("     Jobs, transitions, reasoning, parameters, escalations, tools")
         print()
-        info("  2. /internal/v1/*  -- Partner Integration API (MAIA backend)")
+        info("  2. /internal/v1/*  -- Partner Integration API (partner backend)")
         info("     SSE event stream, webhooks, metrics, queue summary")
         print()
         info("  3. /oapi/*         -- OGC API Processes (standards-compliant)")
@@ -441,7 +442,7 @@ class ControlPlaneDemo:
             success("[DRY RUN] Would check OGC processes")
 
         explain(
-            "TAKEAWAY: MAIA can discover all available algorithms at "
+            "TAKEAWAY: The partner platform can discover all available algorithms at "
             "runtime -- no hardcoded knowledge needed."
         )
 
@@ -456,8 +457,8 @@ class ControlPlaneDemo:
             "an area of interest (AOI) as GeoJSON, and optional parameters."
         )
         explain(
-            "Scenario: MAIA's NLP pipeline detected flood-related NOAA "
-            "alerts in the Houston, TX area. It creates a flood detection "
+            "Scenario: The partner analytics platform's NLP pipeline detected flood-related "
+            "NOAA alerts in the Houston, TX area. It creates a flood detection "
             "job covering the Ship Channel / Buffalo Bayou region."
         )
 
@@ -492,7 +493,7 @@ class ControlPlaneDemo:
             success("[DRY RUN] Would create job (using placeholder ID)")
 
         explain(
-            "TAKEAWAY: The job is queued with MAIA's reasoning preserved "
+            "TAKEAWAY: The job is queued with the partner platform's reasoning preserved "
             "as an audit trail. The AOI is stored as PostGIS geometry in "
             "EPSG:4326 -- enabling spatial queries across all jobs."
         )
@@ -504,7 +505,7 @@ class ControlPlaneDemo:
         """Step 3: Start SSE event listener."""
         section(3, "Start Real-Time Event Stream")
         explain(
-            "MAIA's backend would open a persistent SSE connection to "
+            "The partner platform's backend would open a persistent SSE connection to "
             "receive real-time events for all jobs. Each event is wrapped "
             "in a CloudEvents v1.0 envelope for interoperability."
         )
@@ -529,7 +530,7 @@ class ControlPlaneDemo:
 
         explain(
             "TAKEAWAY: Events stream in real time -- no polling needed. "
-            "MAIA sees every state change, reasoning entry, and escalation "
+            "The partner platform sees every state change, reasoning entry, and escalation "
             "the instant it happens."
         )
 
@@ -669,7 +670,7 @@ class ControlPlaneDemo:
 
         # First reasoning entry -- during ANALYZING
         explain(
-            "MAIA reviews intermediate SAR coherence results and adds "
+            "The partner platform reviews intermediate SAR coherence results and adds "
             "its interpretation:"
         )
 
@@ -745,7 +746,7 @@ class ControlPlaneDemo:
             "semantics (RFC 7386) -- only the changed keys are sent."
         )
         explain(
-            "MAIA decides to increase sensitivity and lower the change "
+            "The partner platform decides to increase sensitivity and lower the change "
             "threshold after seeing strong coherence signals:"
         )
 
@@ -789,7 +790,7 @@ class ControlPlaneDemo:
 
         # Create escalation
         explain(
-            "MAIA detects an anomalous pattern -- possible sensor artifact "
+            "The partner platform detects an anomalous pattern -- possible sensor artifact "
             "vs. real flood extent -- and escalates for human review:"
         )
 
@@ -927,7 +928,7 @@ class ControlPlaneDemo:
 
         # Inject final reasoning during ASSEMBLING
         explain(
-            "MAIA adds a final reasoning entry summarizing its conclusions:"
+            "The partner platform adds a final reasoning entry summarizing its conclusions:"
         )
 
         reasoning_final = {
@@ -1017,7 +1018,7 @@ class ControlPlaneDemo:
         """Step 9: Check pipeline health metrics."""
         section(9, "Pipeline Health & Queue Status")
         explain(
-            "MAIA's operations dashboard polls these endpoints to monitor "
+            "The partner platform's operations dashboard polls these endpoints to monitor "
             "platform health. Metrics are served from materialized views "
             "that refresh every 30 seconds -- responses are under 100ms."
         )
@@ -1056,7 +1057,7 @@ class ControlPlaneDemo:
 
         explain(
             "TAKEAWAY: Metrics are cheap to query (materialized views, "
-            "not live aggregation). MAIA's dashboard can poll every few "
+            "not live aggregation). The partner platform's dashboard can poll every few "
             "seconds without impacting API performance."
         )
 
@@ -1229,14 +1230,14 @@ class ControlPlaneDemo:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="FirstLight LLM Control Plane Demo for MAIA Analytics",
+        description="FirstLight LLM Control Plane Demo",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent("""\
             Examples:
               python scripts/demo_control_plane.py
               python scripts/demo_control_plane.py --dry-run
-              python scripts/demo_control_plane.py --base-url http://api.firstlight.dev:8000
-              python scripts/demo_control_plane.py --speed fast --api-key sk-demo-123
+              python scripts/demo_control_plane.py --base-url http://localhost:8000
+              python scripts/demo_control_plane.py --speed fast --api-key demo-key-here
         """),
     )
     parser.add_argument(

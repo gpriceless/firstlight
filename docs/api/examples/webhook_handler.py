@@ -16,7 +16,7 @@ Usage:
     uvicorn webhook_handler:app --host 0.0.0.0 --port 8080
 
     # Register webhook with FirstLight API
-    curl -X POST https://api.firstlight.io/v1/webhooks \
+    curl -X POST https://api.firstlight.example.com/v1/webhooks \
         -H "X-API-Key: your_key" \
         -H "Content-Type: application/json" \
         -d '{"url": "https://your-server.com/webhook", "events": ["*"], "secret": "your_secret"}'

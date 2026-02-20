@@ -743,7 +743,7 @@ def main():
             Examples:
               python scripts/demo_lakehouse.py
               python scripts/demo_lakehouse.py --dry-run
-              python scripts/demo_lakehouse.py --base-url http://api.firstlight.dev:8000
+              python scripts/demo_lakehouse.py --base-url http://localhost:8000
               python scripts/demo_lakehouse.py --speed fast
         """),
     )

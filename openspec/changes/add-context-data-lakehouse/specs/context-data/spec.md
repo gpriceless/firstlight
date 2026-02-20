@@ -29,7 +29,7 @@ The system SHALL maintain a `job_context_usage` junction table that links each j
 - **THEN** no new context row is inserted and a junction entry with `usage_type = 'reused'` links the job to the existing row
 
 #### Scenario: Job context summary
-- **WHEN** MAIA queries the context usage for a completed job
+- **WHEN** the partner platform queries the context usage for a completed job
 - **THEN** the response includes per-table counts of ingested versus reused context items
 
 ---
@@ -48,18 +48,18 @@ Context data SHALL accumulate silently over time as jobs execute. The system SHA
 ---
 
 ### Requirement: Context Query API
-The system SHALL expose query endpoints under `/control/v1/context/` that allow MAIA to search accumulated context data by geographic bounding box. The endpoints SHALL support pagination and return geometry as GeoJSON. Available endpoints SHALL include datasets (with date range and source filters), buildings (bbox only), infrastructure (with type filter), weather (with time range), a lakehouse summary (row counts, spatial extent, sources), and a per-job context usage summary. All context query endpoints SHALL require the `context:read` permission.
+The system SHALL expose query endpoints under `/control/v1/context/` that allow the partner platform to search accumulated context data by geographic bounding box. The endpoints SHALL support pagination and return geometry as GeoJSON. Available endpoints SHALL include datasets (with date range and source filters), buildings (bbox only), infrastructure (with type filter), weather (with time range), a lakehouse summary (row counts, spatial extent, sources), and a per-job context usage summary. All context query endpoints SHALL require the `context:read` permission.
 
 #### Scenario: Query buildings by bounding box
-- **WHEN** MAIA queries `/control/v1/context/buildings?bbox=-95.5,29.5,-95.0,30.0`
+- **WHEN** the partner platform queries `/control/v1/context/buildings?bbox=-95.5,29.5,-95.0,30.0`
 - **THEN** the response contains paginated building footprints whose geometry intersects the bounding box, with geometry serialized as GeoJSON
 
 #### Scenario: Query lakehouse summary
-- **WHEN** MAIA queries `/control/v1/context/summary`
+- **WHEN** the partner platform queries `/control/v1/context/summary`
 - **THEN** the response contains total row counts per context table, distinct source systems, and total spatial extent of all accumulated data
 
 #### Scenario: Empty lakehouse returns valid response
-- **WHEN** MAIA queries a context endpoint before any jobs have run
+- **WHEN** the partner platform queries a context endpoint before any jobs have run
 - **THEN** the response is HTTP 200 with an empty items array and zero counts
 
 ---

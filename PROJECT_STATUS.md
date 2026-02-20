@@ -107,7 +107,7 @@ FirstLight is a **production-ready geospatial event intelligence platform** with
 
 ```bash
 # Install
-git clone https://github.com/gpriceless/firstlight.git
+git clone https://github.com/firstlight-geo/firstlight.git
 cd firstlight
 pip install -e .
 

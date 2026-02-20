@@ -5,7 +5,7 @@ FirstLight's LLM Control Plane (migrations 000-006) externalizes job state, even
 This design adds PostGIS tables that capture context data as it flows through the pipeline, creating a persistent geospatial knowledge base. The design sits on top of the existing control plane schema and reuses its PostGIS patterns (asyncpg, GIST indexes, SRID 4326, geography casts).
 
 ### Stakeholders
-- **MAIA Analytics:** Needs to query accumulated context for situational awareness (e.g., "what buildings are near this flood zone?")
+- **Partner analytics platform:** Needs to query accumulated context for situational awareness (e.g., "what buildings are near this flood zone?")
 - **Pipeline:** Stores data during normal execution; benefits from reuse on overlapping jobs
 - **Demo audience:** Needs to see the "lakehouse effect" -- data accumulates, future jobs get faster
 
@@ -15,7 +15,7 @@ This design adds PostGIS tables that capture context data as it flows through th
 - Store all data the pipeline fetches during analysis in durable PostGIS tables
 - Deduplicate on insert using natural keys from source systems
 - Track which jobs used which context data, and whether it was fresh or reused
-- Expose query endpoints for MAIA to search accumulated context by geometry
+- Expose query endpoints for the partner platform to search accumulated context by geometry
 - Single migration file, consistent with existing migration sequence
 
 ### Non-Goals
@@ -139,7 +139,7 @@ Indexes: B-tree on `(context_table, context_id)` for reverse lookups ("which job
 
 ### D4: Silent Accumulation -- No SSE Events
 **Decision:** Context data inserts do not emit events to `job_events` or the SSE stream. The lakehouse grows silently and is queryable on demand via the context query API.
-**Why:** Context inserts are high-volume (hundreds of buildings per job). Streaming every insert would flood the event stream with noise that MAIA does not need. MAIA queries context when it needs situational awareness, not as a live feed.
+**Why:** Context inserts are high-volume (hundreds of buildings per job). Streaming every insert would flood the event stream with noise that the partner platform does not need. The partner platform queries context when it needs situational awareness, not as a live feed.
 **Alternatives:** Batch summary events ("job ingested 347 buildings") -- nice-to-have but not needed for demo.
 
 ### D5: No Freshness Logic

@@ -15,7 +15,7 @@
 set -e
 
 # Configuration
-API_BASE_URL="${FIRSTLIGHT_API_URL:-https://api.firstlight.io/v1}"
+API_BASE_URL="${FIRSTLIGHT_API_URL:-https://api.firstlight.example.com/v1}"
 API_KEY="${FIRSTLIGHT_API_KEY:-}"
 
 # Check for API key

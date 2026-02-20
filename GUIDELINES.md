@@ -23,7 +23,7 @@ This document covers every process available in the FirstLight platform: from lo
 
 ```bash
 # Clone the repository
-git clone https://github.com/gpriceless/firstlight.git
+git clone https://github.com/firstlight-geo/firstlight.git
 cd firstlight
 
 # Create virtual environment (recommended)
