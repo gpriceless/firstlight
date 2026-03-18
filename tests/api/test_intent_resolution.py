@@ -8,7 +8,7 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import MagicMock, patch
 
-from api.routes.events import create_event, _events_store
+from api.routes.events import create_event
 from api.models.requests import (
     EventSubmitRequest,
     EventIntent,
@@ -51,14 +51,6 @@ def base_request():
         ),
         priority=EventPriority.NORMAL,
     )
-
-
-@pytest.fixture(autouse=True)
-def clear_events_store():
-    """Clear the in-memory events store before each test."""
-    _events_store.clear()
-    yield
-    _events_store.clear()
 
 
 class TestNaturalLanguageIntentResolution:

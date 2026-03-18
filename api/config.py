@@ -99,13 +99,18 @@ class StorageSettings(BaseSettings):
     local_path: Path = Field(
         default=Path("./data/products"), description="Local storage path"
     )
-    bucket: str = Field(default="firstlight-products", description="S3/GCS bucket")
+    bucket: str = Field(default="", description="S3/GCS bucket name (required for cloud storage)")
     region: str = Field(default="us-east-1", description="Cloud region")
     endpoint_url: Optional[str] = Field(
         default=None, description="Custom S3 endpoint URL"
     )
     access_key: Optional[str] = Field(default=None, description="Access key")
     secret_key: Optional[str] = Field(default=None, description="Secret key")
+
+
+# The insecure default secret key for development. In production, this MUST be
+# overridden via the AUTH_SECRET_KEY environment variable.
+_AUTH_INSECURE_DEFAULT_KEY = "dev-secret-key-change-in-production"
 
 
 class AuthSettings(BaseSettings):
@@ -117,9 +122,9 @@ class AuthSettings(BaseSettings):
         extra="ignore",
     )
 
-    enabled: bool = Field(default=False, description="Enable authentication")
+    enabled: bool = Field(default=True, description="Enable authentication")
     secret_key: str = Field(
-        default="dev-secret-key-change-in-production",
+        default=_AUTH_INSECURE_DEFAULT_KEY,
         description="JWT secret key",
     )
     algorithm: str = Field(default="HS256", description="JWT algorithm")
@@ -130,6 +135,18 @@ class AuthSettings(BaseSettings):
     allowed_api_keys: List[str] = Field(
         default_factory=list, description="List of allowed API keys"
     )
+
+    @field_validator("secret_key", mode="after")
+    @classmethod
+    def validate_secret_key_in_production(cls, v: str) -> str:
+        """Reject the insecure default secret key in production environments."""
+        environment = os.getenv("FIRSTLIGHT_ENVIRONMENT", "development").lower()
+        if environment == "production" and v == _AUTH_INSECURE_DEFAULT_KEY:
+            raise ValueError(
+                "AUTH_SECRET_KEY must be changed from the default value in production. "
+                "Set the AUTH_SECRET_KEY environment variable to a secure random string."
+            )
+        return v
 
     @field_validator("allowed_api_keys", mode="before")
     @classmethod
@@ -151,7 +168,7 @@ class CORSSettings(BaseSettings):
 
     enabled: bool = Field(default=True, description="Enable CORS")
     allow_origins: List[str] = Field(
-        default_factory=lambda: ["*"], description="Allowed origins"
+        default_factory=list, description="Allowed origins"
     )
     allow_methods: List[str] = Field(
         default_factory=lambda: ["*"], description="Allowed HTTP methods"
