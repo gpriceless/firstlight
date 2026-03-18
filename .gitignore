@@ -139,3 +139,28 @@ data/
 # Generated documentation
 docs/_build/
 site/
+
+# Internal development artifacts (not for public repo)
+AUDIT_REPORT.md
+AUDIT_ADDENDUM.md
+IMPLEMENTATION_SPECS.md
+REQUIREMENTS_ANALYSIS.md
+QA_REPORT.md
+WORK_ASSIGNMENTS.md
+OPENSPEC_PRODUCTION.md
+TASK_R2*.md
+*_COMPLETION_SUMMARY.md
+*COMPLETION_SUMMARY.md
+GITHUB_PRESENTATION_ANALYSIS.md
+SECURITY_AUDIT.md
+AGENTS.md
+docs/qa/QA_REPORT_*.md
+docs/specs/REPORT_*.md
+docs/TRACK_B_ROADMAP.md
+docs/research/
+docs/design/
+
+# Local tooling
+google-cloud-sdk/
+checkpoints/
+outputs/
