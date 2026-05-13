@@ -303,3 +303,230 @@ class TestWildfireRealModeLoader:
                 npy_files=[],
                 event_date=__import__("datetime").datetime(2026, 4, 16),
             )
+
+
+def _write_s2_storm_scene(
+    base: Path,
+    item_id: str,
+    red_array,
+    nir_array,
+    blue_array=None,
+):
+    """Write a tiny S2 storm-style scene directory with red/nir (+ optional blue)."""
+    rasterio = pytest.importorskip("rasterio")
+    from rasterio.transform import from_origin
+
+    scene_dir = base / "sentinel2" / item_id
+    scene_dir.mkdir(parents=True, exist_ok=True)
+    transform = from_origin(500000, 2900000, 10.0, 10.0)
+
+    for name, arr in (("red", red_array), ("nir", nir_array)):
+        height, width = arr.shape
+        with rasterio.open(
+            scene_dir / f"{name}.tif",
+            "w",
+            driver="GTiff",
+            height=height,
+            width=width,
+            count=1,
+            dtype=arr.dtype,
+            crs="EPSG:32617",
+            transform=transform,
+        ) as dst:
+            dst.write(arr, 1)
+
+    if blue_array is not None:
+        height, width = blue_array.shape
+        with rasterio.open(
+            scene_dir / "blue.tif",
+            "w",
+            driver="GTiff",
+            height=height,
+            width=width,
+            count=1,
+            dtype=blue_array.dtype,
+            crs="EPSG:32617",
+            transform=transform,
+        ) as dst:
+            dst.write(blue_array, 1)
+
+
+class TestStormRealModeLoader:
+    """LGT-414: `_analyze_storm` must load pre/post red + NIR from ingested Sentinel-2."""
+
+    def test_analyze_storm_real_mode_loads_sentinel2_pair(self, tmp_path):
+        pytest.importorskip("rasterio")
+        import numpy as np
+
+        from cli.commands.run import _analyze_storm
+
+        # Pre-event: healthy vegetation (low red, high NIR).
+        # Post-event: stripped canopy (high red, lower NIR).
+        pre_red = np.full((64, 64), 800, dtype=np.uint16)
+        pre_nir = np.full((64, 64), 4500, dtype=np.uint16)
+        post_red = np.full((64, 64), 2200, dtype=np.uint16)
+        post_nir = np.full((64, 64), 2000, dtype=np.uint16)
+
+        _write_s2_storm_scene(tmp_path, "S2B_17RNJ_20260404_0_L2A", pre_red, pre_nir)
+        _write_s2_storm_scene(tmp_path, "S2A_17RNJ_20260421_0_L2A", post_red, post_nir)
+
+        captured: dict = {}
+
+        class _Algo:
+            def execute(self, **kwargs):
+                captured.update(kwargs)
+                shape = kwargs["red_pre"].shape
+
+                class _Result:
+                    damage_extent = np.zeros(shape, dtype=np.uint8)
+                    confidence_raster = np.ones(shape, dtype=np.float32)
+                    statistics = {"damaged_area_ha": 0.0}
+
+                return _Result()
+
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        result = _analyze_storm(
+            algorithm=_Algo(),
+            input_path=tmp_path,
+            output_path=out_dir,
+            raster_files=[],
+            npy_files=[],
+        )
+
+        assert result["success"] is True
+        # Four bands at matching shape, on the 10 m NIR grid.
+        for key in ("red_pre", "nir_pre", "red_post", "nir_post"):
+            assert captured[key].shape == (64, 64)
+        # Reflectance scaling applied (uint16 DN -> 0..1).
+        assert 0.05 < float(captured["red_pre"].mean()) < 0.12
+        assert 0.4 < float(captured["nir_pre"].mean()) < 0.5
+        # Pre vs post temporal ordering preserved.
+        assert captured["nir_pre"].mean() > captured["nir_post"].mean()
+        assert captured["red_pre"].mean() < captured["red_post"].mean()
+        # Pixel size reflects NIR (10 m for Sentinel-2).
+        assert captured["pixel_size_m"] == pytest.approx(10.0)
+        # Outputs and grid.json are written for the export stage (LGT-417).
+        assert (out_dir / "damage_extent.npy").exists()
+        assert (out_dir / "confidence.npy").exists()
+        assert (out_dir / "grid.json").exists()
+
+    def test_analyze_storm_real_mode_passes_blue_when_available(self, tmp_path):
+        pytest.importorskip("rasterio")
+        import numpy as np
+
+        from cli.commands.run import _analyze_storm
+
+        pre_red = np.full((32, 32), 800, dtype=np.uint16)
+        pre_nir = np.full((32, 32), 4500, dtype=np.uint16)
+        pre_blue = np.full((32, 32), 600, dtype=np.uint16)
+        post_red = np.full((32, 32), 2200, dtype=np.uint16)
+        post_nir = np.full((32, 32), 2000, dtype=np.uint16)
+        post_blue = np.full((32, 32), 1500, dtype=np.uint16)
+
+        _write_s2_storm_scene(tmp_path, "S2B_17RNJ_20260404_0_L2A", pre_red, pre_nir, pre_blue)
+        _write_s2_storm_scene(tmp_path, "S2A_17RNJ_20260421_0_L2A", post_red, post_nir, post_blue)
+
+        captured: dict = {}
+
+        class _Algo:
+            def execute(self, **kwargs):
+                captured.update(kwargs)
+                shape = kwargs["red_pre"].shape
+
+                class _Result:
+                    damage_extent = np.zeros(shape, dtype=np.uint8)
+                    confidence_raster = np.ones(shape, dtype=np.float32)
+                    statistics = {"damaged_area_ha": 0.0}
+
+                return _Result()
+
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        _analyze_storm(
+            algorithm=_Algo(),
+            input_path=tmp_path,
+            output_path=out_dir,
+            raster_files=[],
+            npy_files=[],
+        )
+
+        assert "blue_pre" in captured and captured["blue_pre"] is not None
+        assert "blue_post" in captured and captured["blue_post"] is not None
+        assert captured["blue_pre"].shape == captured["red_pre"].shape
+
+    def test_analyze_storm_real_mode_requires_pre_and_post(self, tmp_path):
+        pytest.importorskip("rasterio")
+        import numpy as np
+
+        from cli.commands.run import _analyze_storm
+
+        only_red = np.full((32, 32), 1000, dtype=np.uint16)
+        only_nir = np.full((32, 32), 3000, dtype=np.uint16)
+        _write_s2_storm_scene(tmp_path, "S2A_17RNJ_20260415_0_L2A", only_red, only_nir)
+
+        class _Algo:
+            def execute(self, *a, **k):
+                raise AssertionError("algorithm.execute called without a pre/post pair")
+
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        with pytest.raises(FileNotFoundError, match="both pre-event and post-event"):
+            _analyze_storm(
+                algorithm=_Algo(),
+                input_path=tmp_path,
+                output_path=out_dir,
+                raster_files=[],
+                npy_files=[],
+                event_date=__import__("datetime").datetime(2026, 4, 16),
+            )
+
+    def test_analyze_storm_real_mode_dispatches_structural_damage(self, tmp_path):
+        pytest.importorskip("rasterio")
+        import numpy as np
+
+        from cli.commands.run import _analyze_storm
+
+        pre_red = np.full((32, 32), 800, dtype=np.uint16)
+        pre_nir = np.full((32, 32), 4500, dtype=np.uint16)
+        post_red = np.full((32, 32), 2200, dtype=np.uint16)
+        post_nir = np.full((32, 32), 2000, dtype=np.uint16)
+
+        _write_s2_storm_scene(tmp_path, "S2B_17RNJ_20260404_0_L2A", pre_red, pre_nir)
+        _write_s2_storm_scene(tmp_path, "S2A_17RNJ_20260421_0_L2A", post_red, post_nir)
+
+        captured: dict = {}
+
+        class StructuralDamageAssessment:
+            def execute(self, **kwargs):
+                captured.update(kwargs)
+                shape = kwargs["optical_pre"].shape
+
+                class _Result:
+                    damage_map = np.zeros(shape, dtype=np.uint8)
+                    confidence_map = np.ones(shape, dtype=np.float32)
+                    statistics = {"damaged_area_ha": 0.0}
+
+                return _Result()
+
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        result = _analyze_storm(
+            algorithm=StructuralDamageAssessment(),
+            input_path=tmp_path,
+            output_path=out_dir,
+            raster_files=[],
+            npy_files=[],
+        )
+
+        assert result["success"] is True
+        # Structural variant receives a single optical pre/post pair.
+        assert set(captured.keys()) >= {"optical_pre", "optical_post", "pixel_size_m"}
+        assert "red_pre" not in captured
+        # Damage map persisted under the same on-disk name regardless of result attr.
+        assert (out_dir / "damage_extent.npy").exists()
+        assert (out_dir / "confidence.npy").exists()

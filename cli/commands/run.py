@@ -794,7 +794,15 @@ def _run_real_analysis(
             bbox=bbox,
         )
     else:
-        return _analyze_storm(algo_instance, input_path, output_path, raster_files, npy_files)
+        return _analyze_storm(
+            algo_instance,
+            input_path,
+            output_path,
+            raster_files,
+            npy_files,
+            event_date=event_date,
+            bbox=bbox,
+        )
 
 
 def _analyze_flood(
@@ -1110,6 +1118,172 @@ def _load_sentinel2_pre_post(
     )
 
 
+def _find_sentinel2_storm_pre_post_scenes(
+    input_path: Path,
+    event_date: Optional[datetime] = None,
+) -> Dict[str, Dict[str, Any]]:
+    """Discover Sentinel-2 scenes for storm analysis and group as pre/post.
+
+    Storm change detection needs at least a red + NIR pair per scene; blue is
+    used opportunistically for EVI. Scenes are expected under
+    ``<input_path>/sentinel2/<item_id>/`` with ``red.tif``, ``nir.tif`` and
+    (optionally) ``blue.tif``. Returns ``{"pre": {...}, "post": {...}}`` where
+    each side has ``item_id``, ``date``, ``red``, ``nir`` and a possibly-``None``
+    ``blue`` path. Raises ``FileNotFoundError`` if a pre/post pair cannot be
+    formed.
+    """
+    s2_root = input_path / "sentinel2"
+    candidates: List[Dict[str, Any]] = []
+    if s2_root.is_dir():
+        for item_dir in sorted(s2_root.iterdir()):
+            if not item_dir.is_dir():
+                continue
+            red = item_dir / "red.tif"
+            nir = item_dir / "nir.tif"
+            if not (red.exists() and nir.exists()):
+                continue
+            scene_date = _parse_sentinel2_item_date(item_dir.name)
+            if scene_date is None:
+                continue
+            blue = item_dir / "blue.tif"
+            candidates.append({
+                "item_id": item_dir.name,
+                "date": scene_date,
+                "red": red,
+                "nir": nir,
+                "blue": blue if blue.exists() else None,
+            })
+
+    if not candidates:
+        raise FileNotFoundError(
+            "Real storm analysis requires pre/post red + NIR rasters, "
+            f"but none were found in {input_path}. Refusing to fabricate "
+            "synthetic data in real mode."
+        )
+
+    candidates.sort(key=lambda s: s["date"])
+    if event_date is None:
+        midpoint_idx = len(candidates) // 2
+        split_date = candidates[midpoint_idx]["date"]
+        pre = [s for s in candidates if s["date"] < split_date]
+        post = [s for s in candidates if s["date"] >= split_date]
+        if not pre and len(candidates) >= 2:
+            pre = candidates[:1]
+            post = candidates[1:]
+    else:
+        pre = [s for s in candidates if s["date"] < event_date]
+        post = [s for s in candidates if s["date"] >= event_date]
+
+    if not pre or not post:
+        raise FileNotFoundError(
+            "Real storm analysis requires both pre-event and post-event "
+            f"Sentinel-2 scenes (red + NIR) under {input_path}/sentinel2/, "
+            f"but only {len(candidates)} scene(s) were found"
+            + (f" relative to event date {event_date.date()}" if event_date else "")
+            + ". Refusing to fabricate synthetic data in real mode."
+        )
+
+    return {"pre": pre[-1], "post": post[0]}
+
+
+def _load_sentinel2_storm_pre_post(
+    input_path: Path,
+    event_date: Optional[datetime] = None,
+    bbox: Optional[str] = None,
+) -> tuple:
+    """Load pre/post red + NIR (+ optional blue) arrays for storm analysis.
+
+    Returns ``(bands, pixel_size_m, grid)`` where ``bands`` is a dict with
+    keys ``red_pre, red_post, nir_pre, nir_post`` (all float32 reflectance)
+    plus ``blue_pre, blue_post`` (each either an array or ``None``). All
+    arrays share the NIR (10 m) grid; AOI clipping uses ``bbox`` in geographic
+    coordinates. ``grid`` is the same georeferencing sidecar used by the
+    wildfire path so the export stage can produce proper GeoTIFFs (LGT-417).
+    """
+    import rasterio
+    from rasterio.warp import transform_bounds
+    from rasterio.windows import from_bounds
+
+    scenes = _find_sentinel2_storm_pre_post_scenes(input_path, event_date=event_date)
+    pre = scenes["pre"]
+    post = scenes["post"]
+
+    with rasterio.open(pre["nir"]) as nir_src:
+        target_crs = nir_src.crs
+        target_pixel_size = float(abs(nir_src.transform.a))
+        if bbox:
+            parts = [float(x.strip()) for x in bbox.split(",")]
+            if len(parts) == 4:
+                try:
+                    raster_bounds = transform_bounds(
+                        "EPSG:4326", target_crs,
+                        parts[0], parts[1], parts[2], parts[3],
+                        densify_pts=21,
+                    )
+                    window = from_bounds(*raster_bounds, transform=nir_src.transform)
+                    window = window.intersection(
+                        rasterio.windows.Window(0, 0, nir_src.width, nir_src.height)
+                    )
+                    target_transform = nir_src.window_transform(window)
+                    target_height = int(window.height)
+                    target_width = int(window.width)
+                except Exception as e:
+                    logger.warning(
+                        f"Could not derive AOI window from bbox ({e}); using full tile."
+                    )
+                    target_transform = nir_src.transform
+                    target_height, target_width = nir_src.height, nir_src.width
+            else:
+                target_transform = nir_src.transform
+                target_height, target_width = nir_src.height, nir_src.width
+        else:
+            target_transform = nir_src.transform
+            target_height, target_width = nir_src.height, nir_src.width
+
+    target_shape = (target_height, target_width)
+
+    def _read(path: Path) -> np.ndarray:
+        return _read_sentinel2_band(
+            path, target_shape=target_shape, target_transform=target_transform,
+        )
+
+    def _to_reflectance(arr: np.ndarray) -> np.ndarray:
+        if arr.size and np.nanmax(arr) > 1.5:
+            return (arr / 10000.0).astype(np.float32)
+        return arr.astype(np.float32)
+
+    bands: Dict[str, Optional[np.ndarray]] = {
+        "red_pre": _to_reflectance(_read(pre["red"])),
+        "red_post": _to_reflectance(_read(post["red"])),
+        "nir_pre": _to_reflectance(_read(pre["nir"])),
+        "nir_post": _to_reflectance(_read(post["nir"])),
+        "blue_pre": _to_reflectance(_read(pre["blue"])) if pre["blue"] else None,
+        "blue_post": _to_reflectance(_read(post["blue"])) if post["blue"] else None,
+    }
+
+    logger.info(
+        "Storm real-mode loader: pre=%s (%s) post=%s (%s) shape=%s pixel=%sm blue=%s",
+        pre["item_id"], pre["date"].date(),
+        post["item_id"], post["date"].date(),
+        target_shape, target_pixel_size,
+        bool(bands["blue_pre"] is not None and bands["blue_post"] is not None),
+    )
+
+    grid = _grid_info_from_rasterio(
+        crs=target_crs,
+        transform=target_transform,
+        shape=target_shape,
+        pixel_size_m=target_pixel_size,
+        source="sentinel2",
+        extra={
+            "pre_item_id": pre["item_id"],
+            "post_item_id": post["item_id"],
+        },
+    )
+
+    return bands, target_pixel_size, grid
+
+
 def _grid_info_from_rasterio(
     crs,
     transform,
@@ -1232,30 +1406,86 @@ def _analyze_storm(
     output_path: Path,
     raster_files: List[Path],
     npy_files: List[Path],
+    event_date: Optional[datetime] = None,
+    bbox: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Run storm damage analysis."""
+    """Run storm damage analysis on real or synthetic data."""
     synthetic_dir = input_path / "synthetic"
+    grid: Optional[Dict[str, Any]] = None
+    algo_class = type(algorithm).__name__
 
     if (synthetic_dir / "pre_optical.npy").exists():
-        pre_data = np.load(synthetic_dir / "pre_optical.npy")
-        post_data = np.load(synthetic_dir / "post_optical.npy")
+        # Synthetic path: a single-band optical image stands in for everything.
+        pre_optical = np.load(synthetic_dir / "pre_optical.npy").astype(np.float32)
+        post_optical = np.load(synthetic_dir / "post_optical.npy").astype(np.float32)
+        pixel_size_m = 10.0
+
+        if algo_class == "StructuralDamageAssessment":
+            result = algorithm.execute(
+                optical_pre=pre_optical,
+                optical_post=post_optical,
+                pixel_size_m=pixel_size_m,
+            )
+        else:
+            # WindDamageDetection (default): synthetic optical doubles as both
+            # red and NIR so the NDVI-based detector still produces a result.
+            result = algorithm.execute(
+                red_pre=pre_optical,
+                nir_pre=pre_optical,
+                red_post=post_optical,
+                nir_post=post_optical,
+                pixel_size_m=pixel_size_m,
+            )
     else:
-        raise FileNotFoundError(
-            "Real storm analysis requires pre/post optical rasters, but none "
-            f"were found in {input_path}. Refusing to fabricate synthetic "
-            "data in real mode."
+        # Real mode: load Sentinel-2 red + NIR (+ optional blue) per scene.
+        bands, pixel_size_m, grid = _load_sentinel2_storm_pre_post(
+            input_path, event_date=event_date, bbox=bbox,
         )
 
-    # Execute algorithm
-    result = algorithm.execute(
-        pre_image=pre_data,
-        post_image=post_data,
-        pixel_size_m=10.0,
-    )
+        if algo_class == "StructuralDamageAssessment":
+            # Structural damage assesses a single optical band; red is the most
+            # informative for built-up areas under Sentinel-2 10 m bands.
+            result = algorithm.execute(
+                optical_pre=bands["red_pre"],
+                optical_post=bands["red_post"],
+                pixel_size_m=pixel_size_m,
+            )
+        else:
+            kwargs: Dict[str, Any] = {
+                "red_pre": bands["red_pre"],
+                "nir_pre": bands["nir_pre"],
+                "red_post": bands["red_post"],
+                "nir_post": bands["nir_post"],
+                "pixel_size_m": pixel_size_m,
+            }
+            if bands["blue_pre"] is not None and bands["blue_post"] is not None:
+                kwargs["blue_pre"] = bands["blue_pre"]
+                kwargs["blue_post"] = bands["blue_post"]
+            result = algorithm.execute(**kwargs)
 
-    # Save outputs
-    np.save(output_path / "damage_extent.npy", result.damage_mask)
-    np.save(output_path / "confidence.npy", result.confidence_raster)
+    # Extract the damage mask under whatever name the result uses.
+    damage = getattr(result, "damage_extent", None)
+    if damage is None:
+        damage = getattr(result, "damage_map", None)
+    if damage is None:
+        damage = getattr(result, "damage_mask", None)
+    if damage is None:
+        raise AttributeError(
+            f"Storm algorithm {algo_class} returned a result without a known "
+            "damage attribute (damage_extent/damage_map/damage_mask)."
+        )
+
+    confidence = getattr(result, "confidence_raster", None)
+    if confidence is None:
+        confidence = getattr(result, "confidence_map", None)
+
+    np.save(output_path / "damage_extent.npy", np.asarray(damage))
+    if confidence is not None:
+        np.save(output_path / "confidence.npy", np.asarray(confidence))
+
+    if grid is not None:
+        with open(output_path / "grid.json", "w") as f:
+            json.dump(grid, f, indent=2)
 
     return {
         "success": True,
