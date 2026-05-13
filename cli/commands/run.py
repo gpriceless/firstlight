@@ -344,8 +344,24 @@ def run(
                 bbox=bbox,
                 event_type=event_type,
             )
+            ingested_count = ingest_result.get("count", 0)
+            total = ingest_result.get("total", ingested_count)
+            if data_mode == DATA_MODE_REAL and ingested_count == 0:
+                err = ingest_result.get("error") or (
+                    f"0 of {total} items ingested successfully"
+                )
+                raise RuntimeError(
+                    f"Ingest produced 0 items in real mode — aborting before "
+                    f"analyze to avoid fabricated results. Detail: {err}"
+                )
             state.complete_stage("ingest", ingest_result)
-            click.echo(f"    Ingested {ingest_result.get('count', 0)} items")
+            click.echo(f"    Ingested {ingested_count} items")
+            failed_items = ingest_result.get("failed") or []
+            if failed_items:
+                click.echo(
+                    f"    Warning: {len(failed_items)} of {total} items failed: "
+                    f"{failed_items}"
+                )
         else:
             click.echo(f"\n[2/5] Ingest: skipped (already completed)")
 
@@ -545,7 +561,19 @@ def run_ingest(
                     f"Failed items: {failed[:5]}{'...' if len(failed) > 5 else ''}"
                 )
 
-            return {"count": ingested, "path": str(output_path), "mode": "real", "failed": failed}
+            if failed:
+                logger.warning(
+                    f"Partial ingest: {ingested} of {len(items)} items succeeded. "
+                    f"Failed: {failed}"
+                )
+
+            return {
+                "count": ingested,
+                "total": len(items),
+                "path": str(output_path),
+                "mode": "real",
+                "failed": failed,
+            }
 
         # Synthetic mode: Generate realistic synthetic data
         elif data_mode == DATA_MODE_SYNTHETIC:
@@ -559,6 +587,12 @@ def run_ingest(
         return {"count": count, "path": str(output_path)}
 
     except Exception as e:
+        # In real mode, a failure here means we have no data — propagate so the
+        # pipeline aborts before the analyze stage. In synthetic mode, the
+        # legacy behavior of returning an empty result is preserved.
+        if data_mode == DATA_MODE_REAL:
+            logger.error(f"Ingest failed: {e}")
+            raise
         logger.warning(f"Ingest failed: {e}")
         return {"count": 0, "path": str(output_path), "error": str(e)}
 
@@ -731,7 +765,11 @@ def _run_real_analysis(
     npy_files = list(input_path.rglob("*.npy"))
 
     if not raster_files and not npy_files:
-        raise FileNotFoundError(f"No input data found in {input_path}")
+        raise FileNotFoundError(
+            f"No real input rasters found in {input_path}. "
+            "Refusing to run analysis without real data — this would produce "
+            "fabricated results."
+        )
 
     # Execute based on event type
     if event_type.lower() == "flood":
@@ -771,8 +809,10 @@ def _analyze_flood(
             logger.warning(f"Could not load raster: {e}")
 
     if sar_data is None:
-        # Generate synthetic as fallback
-        sar_data = np.random.normal(-10, 2.5, (512, 512)).astype(np.float32)
+        raise FileNotFoundError(
+            "Real flood analysis requires SAR data, but none was found in "
+            f"{input_path}. Refusing to fabricate synthetic data in real mode."
+        )
 
     # Execute algorithm
     result = algorithm.execute(sar_data, pixel_size_m=10.0)
@@ -804,16 +844,11 @@ def _analyze_wildfire(
         post_nir = np.load(synthetic_dir / "post_nir.npy")
         post_swir = np.load(synthetic_dir / "post_swir.npy")
     else:
-        # Generate synthetic
-        size = 512
-        pre_nir = np.clip(np.random.normal(0.4, 0.08, (size, size)), 0.1, 0.6).astype(np.float32)
-        pre_swir = np.clip(np.random.normal(0.15, 0.04, (size, size)), 0.05, 0.3).astype(np.float32)
-        post_nir = pre_nir.copy()
-        post_swir = pre_swir.copy()
-        burn_mask = np.zeros((size, size), dtype=bool)
-        burn_mask[int(size*0.2):int(size*0.7), int(size*0.3):int(size*0.8)] = True
-        post_nir[burn_mask] = np.random.normal(0.1, 0.03, np.sum(burn_mask))
-        post_swir[burn_mask] = np.random.normal(0.35, 0.05, np.sum(burn_mask))
+        raise FileNotFoundError(
+            "Real wildfire analysis requires pre/post NIR and SWIR rasters, "
+            f"but none were found in {input_path}. Refusing to fabricate "
+            "synthetic data in real mode."
+        )
 
     # Execute algorithm
     result = algorithm.execute(
@@ -850,11 +885,11 @@ def _analyze_storm(
         pre_data = np.load(synthetic_dir / "pre_optical.npy")
         post_data = np.load(synthetic_dir / "post_optical.npy")
     else:
-        size = 512
-        pre_data = np.random.normal(0.3, 0.05, (size, size)).astype(np.float32)
-        post_data = pre_data.copy()
-        damage_mask = np.random.random((size, size)) > 0.7
-        post_data[damage_mask] = np.random.normal(0.15, 0.05, np.sum(damage_mask))
+        raise FileNotFoundError(
+            "Real storm analysis requires pre/post optical rasters, but none "
+            f"were found in {input_path}. Refusing to fabricate synthetic "
+            "data in real mode."
+        )
 
     # Execute algorithm
     result = algorithm.execute(
