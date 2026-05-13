@@ -808,6 +808,7 @@ def _analyze_flood(
     # Try to load SAR data
     sar_data = None
     synthetic_dir = input_path / "synthetic"
+    grid: Optional[Dict[str, Any]] = None
 
     if (synthetic_dir / "sar_vv.npy").exists():
         sar_data = np.load(synthetic_dir / "sar_vv.npy")
@@ -822,6 +823,15 @@ def _analyze_flood(
             import rasterio
             with rasterio.open(raster_files[0]) as src:
                 sar_data = src.read(1)
+                pixel_size_m = float(abs(src.transform.a)) or 10.0
+                grid = _grid_info_from_rasterio(
+                    crs=src.crs,
+                    transform=src.transform,
+                    shape=(src.height, src.width),
+                    pixel_size_m=pixel_size_m,
+                    source="raster",
+                    extra={"raster": raster_files[0].name},
+                )
         except Exception as e:
             logger.warning(f"Could not load raster: {e}")
 
@@ -837,6 +847,10 @@ def _analyze_flood(
     # Save outputs
     np.save(output_path / "flood_extent.npy", result.flood_extent)
     np.save(output_path / "confidence.npy", result.confidence_raster)
+
+    if grid is not None:
+        with open(output_path / "grid.json", "w") as f:
+            json.dump(grid, f, indent=2)
 
     return {
         "success": True,
@@ -996,9 +1010,12 @@ def _load_sentinel2_pre_post(
 ) -> tuple:
     """Load pre/post NIR and SWIR22 arrays from an ingested Sentinel-2 tree.
 
-    Returns ``(pre_nir, pre_swir, post_nir, post_swir, pixel_size_m)``. SWIR22
-    is resampled to the NIR grid (typically 10 m) so all four arrays share the
-    same shape. AOI clipping uses ``bbox`` (geographic min_lon,min_lat,...).
+    Returns ``(pre_nir, pre_swir, post_nir, post_swir, pixel_size_m, grid)``.
+    SWIR22 is resampled to the NIR grid (typically 10 m) so all four arrays
+    share the same shape. AOI clipping uses ``bbox`` (geographic
+    min_lon,min_lat,...). ``grid`` is a serializable dict capturing the output
+    CRS + affine transform so the export stage can produce properly
+    georeferenced products (LGT-417).
     """
     import rasterio
     from rasterio.warp import transform_bounds
@@ -1071,13 +1088,81 @@ def _load_sentinel2_pre_post(
         target_shape, target_pixel_size,
     )
 
+    grid = _grid_info_from_rasterio(
+        crs=target_crs,
+        transform=target_transform,
+        shape=target_shape,
+        pixel_size_m=target_pixel_size,
+        source="sentinel2",
+        extra={
+            "pre_item_id": pre["item_id"],
+            "post_item_id": post["item_id"],
+        },
+    )
+
     return (
         _to_reflectance(pre_nir),
         _to_reflectance(pre_swir),
         _to_reflectance(post_nir),
         _to_reflectance(post_swir),
         target_pixel_size,
+        grid,
     )
+
+
+def _grid_info_from_rasterio(
+    crs,
+    transform,
+    shape: tuple,
+    pixel_size_m: float,
+    source: str,
+    extra: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Serialize a rasterio CRS + Affine pair into a sidecar dict.
+
+    The export stage round-trips this via :func:`_load_grid_info` to reconstruct
+    real georeferencing for the .npy analyze outputs. Stores both ``crs`` (a
+    PROJ-style string when available) and ``crs_wkt`` (full WKT) so consumers
+    have a robust path even for non-EPSG CRSes.
+    """
+    crs_str: Optional[str]
+    crs_wkt: Optional[str]
+    try:
+        crs_str = crs.to_string() if crs is not None else None
+    except Exception:
+        crs_str = None
+    try:
+        crs_wkt = crs.to_wkt() if crs is not None else None
+    except Exception:
+        crs_wkt = None
+
+    grid: Dict[str, Any] = {
+        "crs": crs_str,
+        "crs_wkt": crs_wkt,
+        "transform": [
+            float(transform.a), float(transform.b), float(transform.c),
+            float(transform.d), float(transform.e), float(transform.f),
+        ],
+        "shape": [int(shape[0]), int(shape[1])],
+        "pixel_size_m": float(pixel_size_m),
+        "source": source,
+    }
+    if extra:
+        grid.update(extra)
+    return grid
+
+
+def _load_grid_info(input_path: Path) -> Optional[Dict[str, Any]]:
+    """Return the analyze stage's grid.json sidecar, if present."""
+    grid_path = input_path / "grid.json"
+    if not grid_path.exists():
+        return None
+    try:
+        with open(grid_path) as f:
+            return json.load(f)
+    except Exception as e:
+        logger.warning(f"Could not load grid.json sidecar: {e}")
+        return None
 
 
 def _analyze_wildfire(
@@ -1091,6 +1176,7 @@ def _analyze_wildfire(
 ) -> Dict[str, Any]:
     """Run wildfire/burn severity analysis."""
     synthetic_dir = input_path / "synthetic"
+    grid: Optional[Dict[str, Any]] = None
 
     # Load pre/post imagery
     if (synthetic_dir / "pre_nir.npy").exists():
@@ -1104,7 +1190,7 @@ def _analyze_wildfire(
         # _load_sentinel2_pre_post raises FileNotFoundError if pre+post are not
         # both available — that matches the existing "refuse to fabricate"
         # contract and is required by the LGT-416 regression test.
-        pre_nir, pre_swir, post_nir, post_swir, pixel_size_m = (
+        pre_nir, pre_swir, post_nir, post_swir, pixel_size_m, grid = (
             _load_sentinel2_pre_post(
                 input_path,
                 event_date=event_date,
@@ -1126,6 +1212,13 @@ def _analyze_wildfire(
     np.save(output_path / "burn_severity.npy", result.burn_severity)
     np.save(output_path / "burn_extent.npy", result.burn_extent)
     np.save(output_path / "confidence.npy", result.confidence_raster)
+
+    # Persist the analyze-stage grid so the export stage can produce properly
+    # georeferenced GeoTIFFs / GeoJSONs (LGT-417). Synthetic runs leave grid
+    # unset — the export stage falls back to its bbox-based placeholder.
+    if grid is not None:
+        with open(output_path / "grid.json", "w") as f:
+            json.dump(grid, f, indent=2)
 
     return {
         "success": True,
@@ -1342,14 +1435,18 @@ def run_export(
     if not result_arrays:
         logger.warning("No result arrays found for export")
 
+    # Prefer the analyze stage's grid.json sidecar (LGT-417) over the bbox
+    # placeholder so exported products land at real-world coordinates.
+    grid = _load_grid_info(input_path)
+
     for fmt in format_list:
         try:
             if fmt == "geotiff":
-                _export_geotiff(result_arrays, output_path, bbox_coords, data_mode)
+                _export_geotiff(result_arrays, output_path, bbox_coords, data_mode, grid=grid)
                 exported.append(fmt)
 
             elif fmt == "geojson":
-                _export_geojson(result_arrays, output_path, bbox_coords, data_mode)
+                _export_geojson(result_arrays, output_path, bbox_coords, data_mode, grid=grid)
                 exported.append(fmt)
 
             elif fmt == "png":
@@ -1371,11 +1468,12 @@ def _export_geotiff(
     output_path: Path,
     bbox: List[float],
     data_mode: str,
+    grid: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Export results as GeoTIFFs."""
     try:
         import rasterio
-        from rasterio.transform import from_bounds
+        from rasterio.transform import from_bounds, Affine
         from rasterio.crs import CRS
     except ImportError:
         logger.warning("rasterio not available, creating placeholder GeoTIFFs")
@@ -1383,14 +1481,51 @@ def _export_geotiff(
             (output_path / f"{name}.tif").write_bytes(b"")
         return
 
-    crs = CRS.from_epsg(4326)
+    # Prefer the analyze-stage grid (real CRS + transform of the source scene)
+    # over the bbox-based placeholder. Falls back to the placeholder for
+    # synthetic runs or when the sidecar is missing.
+    grid_crs = None
+    grid_transform = None
+    grid_shape: Optional[tuple] = None
+    if grid:
+        try:
+            crs_str = grid.get("crs") or grid.get("crs_wkt")
+            if crs_str:
+                grid_crs = CRS.from_string(crs_str)
+            t = grid.get("transform")
+            if t and len(t) == 6:
+                grid_transform = Affine(*[float(x) for x in t])
+            s = grid.get("shape")
+            if s and len(s) == 2:
+                grid_shape = (int(s[0]), int(s[1]))
+        except Exception as e:
+            logger.warning(f"Could not deserialize grid.json sidecar: {e}")
+            grid_crs = None
+            grid_transform = None
+
+    placeholder_crs = CRS.from_epsg(4326)
 
     for name, data in result_arrays.items():
         if data.ndim != 2:
             continue
 
         output_file = output_path / f"{name}.tif"
-        transform = from_bounds(bbox[0], bbox[1], bbox[2], bbox[3], data.shape[1], data.shape[0])
+
+        if grid_crs is not None and grid_transform is not None and (
+            grid_shape is None or grid_shape == data.shape
+        ):
+            crs = grid_crs
+            transform = grid_transform
+        else:
+            if grid_crs is not None and grid_shape and grid_shape != data.shape:
+                logger.warning(
+                    f"grid.json shape {grid_shape} does not match {name}.npy "
+                    f"shape {data.shape}; falling back to bbox placeholder."
+                )
+            crs = placeholder_crs
+            transform = from_bounds(
+                bbox[0], bbox[1], bbox[2], bbox[3], data.shape[1], data.shape[0]
+            )
 
         # Determine dtype
         if data.dtype == np.bool_:
@@ -1418,6 +1553,7 @@ def _export_geojson(
     output_path: Path,
     bbox: List[float],
     data_mode: str,
+    grid: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Export results as GeoJSON vectors."""
     from scipy import ndimage
@@ -1435,6 +1571,30 @@ def _export_geojson(
         with open(output_path / "result.geojson", "w") as f:
             json.dump(geojson, f)
         return
+
+    # Prefer the analyze-stage grid (LGT-417): when present, polygonize the
+    # mask with rasterio.features.shapes against the real affine transform and
+    # reproject each polygon to EPSG:4326. Falls back to the legacy bbox-based
+    # bounding-box projection otherwise.
+    if grid:
+        try:
+            features = _polygonize_with_grid(extent_array, grid)
+            geojson = {
+                "type": "FeatureCollection",
+                "name": "Analysis Results",
+                "crs": {"type": "name", "properties": {"name": "EPSG:4326"}},
+                "features": features,
+            }
+            with open(output_path / "result.geojson", "w") as f:
+                json.dump(geojson, f, indent=2)
+            logger.info(
+                f"Exported GeoJSON with {len(features)} features (grid sidecar)"
+            )
+            return
+        except Exception as e:
+            logger.warning(
+                f"grid-based GeoJSON export failed ({e}); falling back to bbox."
+            )
 
     # Label connected regions
     labeled, num_features = ndimage.label(extent_array > 0)
@@ -1485,6 +1645,60 @@ def _export_geojson(
         json.dump(geojson, f, indent=2)
 
     logger.info(f"Exported GeoJSON with {len(geojson['features'])} features")
+
+
+def _polygonize_with_grid(
+    extent_array: np.ndarray, grid: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """Polygonize a 0/1 mask using the analyze-stage grid + reproject to WGS84."""
+    import rasterio
+    from rasterio.crs import CRS
+    from rasterio.features import shapes
+    from rasterio.transform import Affine
+    from rasterio.warp import transform_geom
+
+    crs_str = grid.get("crs") or grid.get("crs_wkt")
+    src_crs = CRS.from_string(crs_str) if crs_str else None
+    t = grid["transform"]
+    affine = Affine(*[float(x) for x in t])
+    pixel_area_m2 = float(abs(affine.a) * abs(affine.e))
+
+    mask = (extent_array > 0).astype(np.uint8)
+    features: List[Dict[str, Any]] = []
+    feature_id = 0
+    for geom, val in shapes(mask, mask=(mask == 1), transform=affine):
+        if int(val) != 1:
+            continue
+        feature_id += 1
+        # Approximate area from the source mask using the polygon's coverage
+        # is non-trivial; instead use the simpler per-feature pixel count below.
+        if src_crs is not None and src_crs.to_string() != "EPSG:4326":
+            geom_out = transform_geom(src_crs, "EPSG:4326", geom)
+        else:
+            geom_out = geom
+        features.append({
+            "type": "Feature",
+            "properties": {
+                "id": feature_id,
+                "area_ha": None,
+            },
+            "geometry": geom_out,
+        })
+
+    # Backfill per-feature area_ha by counting source-CRS pixels per connected
+    # component. Skip if it would dominate runtime — small masks only.
+    if pixel_area_m2 > 0 and mask.size <= 2048 * 2048:
+        from scipy import ndimage as _nd
+
+        labeled, _ = _nd.label(mask)
+        if labeled.max() == len(features):
+            for i, feat in enumerate(features, start=1):
+                pixel_count = int(np.sum(labeled == i))
+                feat["properties"]["area_ha"] = round(
+                    pixel_count * pixel_area_m2 / 10000.0, 2
+                )
+
+    return features
 
 
 def _export_png(result_arrays: Dict[str, np.ndarray], output_path: Path) -> None:
