@@ -43,11 +43,15 @@ class STACItem:
         # Extract cloud cover
         cloud_cover = item.properties.get("eo:cloud_cover")
 
-        # Extract asset URLs
+        # Extract asset URLs, preferring a downloadable HTTPS href over a raw
+        # s3:// URI. The STAC `alternate-assets` extension exposes both, and
+        # Element84's Landsat C2L2 collection only sets s3:// as the primary
+        # href (LGT-412 — `requests`/`httpx` cannot speak s3://).
         assets = {}
         for key, asset in item.assets.items():
-            if asset.href:
-                assets[key] = asset.href
+            href = _pick_downloadable_href(asset)
+            if href:
+                assets[key] = href
 
         return cls(
             id=item.id,
@@ -376,6 +380,74 @@ def _get_asset_href(asset: Optional[Any]) -> str:
     if isinstance(asset, dict) and 'href' in asset:
         return asset['href']
     return ""
+
+
+_S3_BUCKET_TO_HTTPS = {
+    # USGS Landsat C2L2 — public HTTPS mirror of `s3://usgs-landsat/...`. Note
+    # the underlying S3 bucket is requester-pays, but the landsatlook HTTPS
+    # mirror serves the same objects for unauthenticated reads.
+    "usgs-landsat": "https://landsatlook.usgs.gov/data",
+}
+
+
+def _translate_s3_uri(uri: str) -> Optional[str]:
+    """Translate a known-public ``s3://bucket/key`` URI to an HTTPS URL.
+
+    Returns ``None`` if no mapping is known — callers should keep the original
+    href so it surfaces as a clear, actionable error downstream rather than a
+    silent miss.
+    """
+    if not uri or not uri.startswith("s3://"):
+        return None
+    rest = uri[len("s3://"):]
+    bucket, _, key = rest.partition("/")
+    base = _S3_BUCKET_TO_HTTPS.get(bucket)
+    if not base or not key:
+        return None
+    return f"{base}/{key}"
+
+
+def _pick_downloadable_href(asset: Any) -> str:
+    """Pick an HTTPS href for a STAC asset, falling back through alternates.
+
+    Lookup order:
+    1. The asset's primary ``href`` if it's already HTTP(S).
+    2. ``alternate.https.href`` from the STAC alternate-assets extension —
+       Element84's ``landsat-c2-l2`` collection sets this even when the
+       primary ``href`` is ``s3://usgs-landsat/...``.
+    3. A known ``s3://bucket → HTTPS`` mapping (see ``_S3_BUCKET_TO_HTTPS``).
+    4. The original href as a last resort (signals the bug clearly downstream
+       instead of swallowing the asset silently).
+    """
+    primary = _get_asset_href(asset)
+    if primary and primary.startswith(("http://", "https://")):
+        return primary
+
+    extra_fields: Dict[str, Any] = {}
+    if hasattr(asset, "extra_fields") and isinstance(asset.extra_fields, dict):
+        extra_fields = asset.extra_fields
+    elif isinstance(asset, dict):
+        extra_fields = asset
+
+    alternates = extra_fields.get("alternate") if isinstance(extra_fields, dict) else None
+    if isinstance(alternates, dict):
+        for key in ("https", "http"):
+            alt = alternates.get(key)
+            if isinstance(alt, dict):
+                alt_href = alt.get("href")
+                if isinstance(alt_href, str) and alt_href.startswith(("http://", "https://")):
+                    return alt_href
+        for alt in alternates.values():
+            if isinstance(alt, dict):
+                alt_href = alt.get("href")
+                if isinstance(alt_href, str) and alt_href.startswith(("http://", "https://")):
+                    return alt_href
+
+    translated = _translate_s3_uri(primary)
+    if translated:
+        return translated
+
+    return primary
 
 
 def _extract_band_urls(item: STACItem, source: str) -> Dict[str, str]:
