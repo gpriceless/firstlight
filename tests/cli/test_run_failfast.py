@@ -130,6 +130,215 @@ class TestRunCommandFailFast:
         assert isinstance(result.exit_code, int)
 
 
+class TestRunDiscoverMaxCloudDefault:
+    """LGT-420: `flight run` must pick an event-aware cloud default and pass --max-cloud through."""
+
+    def test_wildfire_default_uses_90_percent_cloud(self, tmp_path):
+        from click.testing import CliRunner
+
+        from cli.commands.run import run as run_cmd
+
+        captured: dict = {}
+
+        def fake_discover(**kwargs):
+            captured.update(kwargs)
+            _write_discovery(kwargs["output_path"], count=1)
+            return {"count": 1, "file": str(kwargs["output_path"] / "discovery.json")}
+
+        with patch("cli.commands.run.run_discover", side_effect=fake_discover), \
+             patch("cli.commands.run.run_ingest", return_value={"count": 0, "total": 1}), \
+             patch("cli.commands.run.run_analyze") as _mock_analyze:
+            CliRunner().invoke(
+                run_cmd,
+                [
+                    "--bbox", "-80.5,25.5,-80.0,26.0",
+                    "--event", "wildfire",
+                    "--output", str(tmp_path / "out"),
+                    "--synthetic",  # avoid real network in tests
+                ],
+                obj={},
+            )
+
+        assert captured.get("max_cloud") == pytest.approx(90.0)
+
+    def test_flood_default_uses_30_percent_cloud(self, tmp_path):
+        from click.testing import CliRunner
+
+        from cli.commands.run import run as run_cmd
+
+        captured: dict = {}
+
+        def fake_discover(**kwargs):
+            captured.update(kwargs)
+            _write_discovery(kwargs["output_path"], count=1)
+            return {"count": 1, "file": str(kwargs["output_path"] / "discovery.json")}
+
+        with patch("cli.commands.run.run_discover", side_effect=fake_discover), \
+             patch("cli.commands.run.run_ingest", return_value={"count": 0, "total": 1}), \
+             patch("cli.commands.run.run_analyze"):
+            CliRunner().invoke(
+                run_cmd,
+                [
+                    "--bbox", "-80.5,25.5,-80.0,26.0",
+                    "--event", "flood",
+                    "--output", str(tmp_path / "out"),
+                    "--synthetic",
+                ],
+                obj={},
+            )
+
+        assert captured.get("max_cloud") == pytest.approx(30.0)
+
+    def test_explicit_max_cloud_overrides_default(self, tmp_path):
+        from click.testing import CliRunner
+
+        from cli.commands.run import run as run_cmd
+
+        captured: dict = {}
+
+        def fake_discover(**kwargs):
+            captured.update(kwargs)
+            _write_discovery(kwargs["output_path"], count=1)
+            return {"count": 1, "file": str(kwargs["output_path"] / "discovery.json")}
+
+        with patch("cli.commands.run.run_discover", side_effect=fake_discover), \
+             patch("cli.commands.run.run_ingest", return_value={"count": 0, "total": 1}), \
+             patch("cli.commands.run.run_analyze"):
+            CliRunner().invoke(
+                run_cmd,
+                [
+                    "--bbox", "-80.5,25.5,-80.0,26.0",
+                    "--event", "wildfire",
+                    "--max-cloud", "55",
+                    "--output", str(tmp_path / "out"),
+                    "--synthetic",
+                ],
+                obj={},
+            )
+
+        assert captured.get("max_cloud") == pytest.approx(55.0)
+
+    def test_perform_discovery_receives_max_cloud(self, tmp_path):
+        """`run_discover` must forward max_cloud all the way to perform_discovery."""
+        from cli.commands.run import run_discover
+
+        captured: dict = {}
+
+        def fake_perform_discovery(**kwargs):
+            captured.update(kwargs)
+            return []
+
+        with patch("cli.commands.discover.perform_discovery", side_effect=fake_perform_discovery), \
+             patch("cli.commands.discover.load_geometry", return_value={"type": "Point", "coordinates": [-80.0, 25.0]}):
+            run_discover(
+                area_path=None,
+                bbox="-80.5,25.5,-80.0,26.0",
+                start_date=__import__("datetime").datetime(2026, 5, 1),
+                end_date=__import__("datetime").datetime(2026, 5, 14),
+                event_type="wildfire",
+                output_path=tmp_path,
+                max_cloud=87.5,
+            )
+
+        assert captured.get("max_cloud") == pytest.approx(87.5)
+
+
+class TestRunAreaToBboxDerivation:
+    """LGT-420: when only --area is supplied, run must derive a bbox for analyze."""
+
+    def test_area_geojson_derives_analyze_bbox(self, tmp_path):
+        import json as _json
+
+        from click.testing import CliRunner
+
+        from cli.commands.run import run as run_cmd
+
+        area_file = tmp_path / "area.geojson"
+        # ~46 km² Max Road Miramar footprint, simplified to a polygon.
+        polygon = {
+            "type": "Polygon",
+            "coordinates": [[
+                [-80.50, 25.95],
+                [-80.40, 25.95],
+                [-80.40, 26.05],
+                [-80.50, 26.05],
+                [-80.50, 25.95],
+            ]],
+        }
+        with open(area_file, "w") as f:
+            _json.dump(polygon, f)
+
+        captured: dict = {}
+
+        def fake_discover(**kwargs):
+            _write_discovery(kwargs["output_path"], count=1)
+            return {"count": 1, "file": str(kwargs["output_path"] / "discovery.json")}
+
+        def fake_analyze(**kwargs):
+            captured.update(kwargs)
+            return {"algorithm": "dnbr", "path": "/tmp/out", "statistics": {}}
+
+        with patch("cli.commands.run.run_discover", side_effect=fake_discover), \
+             patch("cli.commands.run.run_ingest", return_value={"count": 1, "total": 1}), \
+             patch("cli.commands.run.run_analyze", side_effect=fake_analyze), \
+             patch("cli.commands.run.run_validate", return_value={"score": 1.0, "passed": True}), \
+             patch("cli.commands.run.run_export", return_value={"formats": ["geotiff"]}):
+            CliRunner().invoke(
+                run_cmd,
+                [
+                    "--area", str(area_file),
+                    "--event", "wildfire",
+                    "--output", str(tmp_path / "out"),
+                    "--synthetic",
+                ],
+                obj={},
+            )
+
+        # bbox is forwarded to analyze as a "min_lon,min_lat,max_lon,max_lat" string.
+        analyze_bbox = captured.get("bbox")
+        assert analyze_bbox is not None, "analyze should receive a derived bbox"
+        parts = [float(x) for x in analyze_bbox.split(",")]
+        assert len(parts) == 4
+        assert parts[0] == pytest.approx(-80.50)
+        assert parts[1] == pytest.approx(25.95)
+        assert parts[2] == pytest.approx(-80.40)
+        assert parts[3] == pytest.approx(26.05)
+
+    def test_explicit_bbox_wins_over_area(self, tmp_path):
+        """If both --area and --bbox are given (--bbox alone here), bbox passes through unchanged."""
+        from click.testing import CliRunner
+
+        from cli.commands.run import run as run_cmd
+
+        captured: dict = {}
+
+        def fake_discover(**kwargs):
+            _write_discovery(kwargs["output_path"], count=1)
+            return {"count": 1, "file": str(kwargs["output_path"] / "discovery.json")}
+
+        def fake_analyze(**kwargs):
+            captured.update(kwargs)
+            return {"algorithm": "dnbr", "path": "/tmp/out", "statistics": {}}
+
+        with patch("cli.commands.run.run_discover", side_effect=fake_discover), \
+             patch("cli.commands.run.run_ingest", return_value={"count": 1, "total": 1}), \
+             patch("cli.commands.run.run_analyze", side_effect=fake_analyze), \
+             patch("cli.commands.run.run_validate", return_value={"score": 1.0, "passed": True}), \
+             patch("cli.commands.run.run_export", return_value={"formats": ["geotiff"]}):
+            CliRunner().invoke(
+                run_cmd,
+                [
+                    "--bbox", "-80.45,25.97,-80.42,26.00",
+                    "--event", "wildfire",
+                    "--output", str(tmp_path / "out"),
+                    "--synthetic",
+                ],
+                obj={},
+            )
+
+        assert captured.get("bbox") == "-80.45,25.97,-80.42,26.00"
+
+
 class TestRealAnalysisInputValidation:
     """Real-mode analyze must refuse to run without real input rasters."""
 

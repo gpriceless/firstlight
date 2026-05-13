@@ -216,6 +216,17 @@ class WorkflowState:
     default=False,
     help="Use synthetic data instead of downloading real satellite imagery. Useful for testing.",
 )
+@click.option(
+    "--max-cloud",
+    "max_cloud",
+    type=float,
+    default=None,
+    help=(
+        "Max cloud cover percentage for discover. Defaults to 90 for wildfire "
+        "(post-event observations are often the only options and frequently "
+        "cloudy) and 30 for flood/storm."
+    ),
+)
 @click.pass_obj
 def run(
     ctx,
@@ -231,6 +242,7 @@ def run(
     skip_validate: bool,
     dry_run: bool,
     synthetic: bool,
+    max_cloud: Optional[float],
 ):
     """
     Execute full analysis pipeline from specification to products.
@@ -275,6 +287,33 @@ def run(
     # Determine data mode
     data_mode = DATA_MODE_SYNTHETIC if synthetic else DATA_MODE_REAL
 
+    # Pick a max-cloud default that actually reflects the event. Wildfire
+    # post-event windows are often the only available acquisition and are
+    # frequently above 30% cloud (LGT-420 — Max Road Miramar at 78.9%).
+    if max_cloud is None:
+        max_cloud = 90.0 if event_type.lower() == "wildfire" else 30.0
+
+    # If only --area was provided, derive a bbox string for the analyze loader
+    # so it can window-read to the AOI instead of the full Sentinel-2 tile
+    # (LGT-420 — full-tile reads dominate stats with surrounding vegetation).
+    analyze_bbox: Optional[str] = bbox
+    if analyze_bbox is None and area_path is not None:
+        try:
+            from cli.commands.discover import (
+                extract_bbox_from_geometry,
+                load_geometry,
+            )
+
+            geometry = load_geometry(area_path, None)
+            derived = extract_bbox_from_geometry(geometry)
+            if derived and len(derived) == 4:
+                analyze_bbox = ",".join(f"{v:.6f}" for v in derived)
+                logger.info(
+                    "Derived AOI bbox from %s: %s", area_path, analyze_bbox,
+                )
+        except Exception as e:
+            logger.warning(f"Could not derive bbox from area {area_path}: {e}")
+
     click.echo(f"\n{'=' * 60}")
     click.echo(f"  FirstLight - Full Pipeline Execution")
     click.echo(f"{'=' * 60}")
@@ -302,6 +341,8 @@ def run(
     state.state["config"] = {
         "area_path": str(area_path) if area_path else None,
         "bbox": bbox,
+        "analyze_bbox": analyze_bbox,
+        "max_cloud": max_cloud,
         "start_date": start_dt.isoformat(),
         "end_date": end_dt.isoformat(),
         "event_type": event_type,
@@ -326,6 +367,7 @@ def run(
                 end_date=end_dt,
                 event_type=event_type,
                 output_path=output_path,
+                max_cloud=max_cloud,
             )
             state.complete_stage("discover", discover_result)
             click.echo(f"    Found {discover_result.get('count', 0)} datasets")
@@ -379,7 +421,7 @@ def run(
                 algorithm=algorithm,
                 profile_config=profile_config,
                 data_mode=data_mode,
-                bbox=bbox,
+                bbox=analyze_bbox,
                 event_date=event_dt,
             )
             state.complete_stage("analyze", analyze_result)
@@ -475,6 +517,7 @@ def run_discover(
     end_date: datetime,
     event_type: str,
     output_path: Path,
+    max_cloud: float = 30.0,
 ) -> Dict[str, Any]:
     """Run discovery stage."""
     # Try to use actual discover command
@@ -488,7 +531,7 @@ def run_discover(
             end=end_date,
             event_type=event_type,
             sources=None,
-            max_cloud=30.0,
+            max_cloud=max_cloud,
             config={},
         )
 
