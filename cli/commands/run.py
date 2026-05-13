@@ -369,6 +369,9 @@ def run(
         if not state.is_completed("analyze"):
             click.echo(f"\n[3/{'5' if not skip_validate else '4'}] Running analysis...")
             state.start_stage("analyze")
+            # Use the midpoint of the search window as the fire boundary date.
+            # Scenes before this date are treated as pre-fire, on/after as post-fire.
+            event_dt = start_dt + (end_dt - start_dt) / 2
             analyze_result = run_analyze(
                 input_path=output_path / "data",
                 output_path=output_path / "results",
@@ -377,6 +380,7 @@ def run(
                 profile_config=profile_config,
                 data_mode=data_mode,
                 bbox=bbox,
+                event_date=event_dt,
             )
             state.complete_stage("analyze", analyze_result)
             click.echo(f"    Algorithm: {analyze_result.get('algorithm', 'auto')}")
@@ -690,6 +694,7 @@ def run_analyze(
     profile_config: Dict[str, Any],
     data_mode: str = DATA_MODE_REAL,
     bbox: Optional[str] = None,
+    event_date: Optional[datetime] = None,
 ) -> Dict[str, Any]:
     """Run analysis stage - execute real algorithms or generate synthetic results."""
     output_path.mkdir(parents=True, exist_ok=True)
@@ -714,6 +719,8 @@ def run_analyze(
             event_type=event_type,
             algorithm=algorithm,
             profile_config=profile_config,
+            bbox=bbox,
+            event_date=event_date,
         )
         if not result.get("success"):
             error_msg = result.get("error", "Unknown analysis error")
@@ -750,6 +757,8 @@ def _run_real_analysis(
     event_type: str,
     algorithm: str,
     profile_config: Dict[str, Any],
+    bbox: Optional[str] = None,
+    event_date: Optional[datetime] = None,
 ) -> Dict[str, Any]:
     """Execute real analysis algorithms on ingested data."""
     from cli.commands.analyze import ALGORITHMS, load_algorithm
@@ -775,7 +784,15 @@ def _run_real_analysis(
     if event_type.lower() == "flood":
         return _analyze_flood(algo_instance, input_path, output_path, raster_files, npy_files)
     elif event_type.lower() == "wildfire":
-        return _analyze_wildfire(algo_instance, input_path, output_path, raster_files, npy_files)
+        return _analyze_wildfire(
+            algo_instance,
+            input_path,
+            output_path,
+            raster_files,
+            npy_files,
+            event_date=event_date,
+            bbox=bbox,
+        )
     else:
         return _analyze_storm(algo_instance, input_path, output_path, raster_files, npy_files)
 
@@ -827,12 +844,250 @@ def _analyze_flood(
     }
 
 
+def _parse_sentinel2_item_date(item_id: str) -> Optional[datetime]:
+    """Parse acquisition date from a Sentinel-2 item id.
+
+    Expected format: ``S2{A|B}_<tile>_<YYYYMMDD>_<rev>_<level>`` (the date is the
+    third underscore-delimited segment). Returns ``None`` if the id does not
+    match this layout — the caller is responsible for skipping such scenes.
+    """
+    parts = item_id.split("_")
+    if len(parts) < 3:
+        return None
+    date_segment = parts[2]
+    if len(date_segment) != 8 or not date_segment.isdigit():
+        return None
+    try:
+        return datetime.strptime(date_segment, "%Y%m%d")
+    except ValueError:
+        return None
+
+
+def _find_sentinel2_pre_post_scenes(
+    input_path: Path,
+    event_date: Optional[datetime] = None,
+) -> Dict[str, Dict[str, Any]]:
+    """Discover Sentinel-2 scenes and group them as pre-fire / post-fire.
+
+    The ingest stage writes scenes to ``<input_path>/sentinel2/<item_id>/`` with
+    a ``nir.tif`` and ``swir22.tif`` per scene. Returns a dict with ``pre`` and
+    ``post`` keys, each mapping to ``{item_id, date, nir, swir}``. Raises
+    ``FileNotFoundError`` if there isn't at least one scene on each side.
+    """
+    s2_root = input_path / "sentinel2"
+    candidates: List[Dict[str, Any]] = []
+    if s2_root.is_dir():
+        for item_dir in sorted(s2_root.iterdir()):
+            if not item_dir.is_dir():
+                continue
+            nir = item_dir / "nir.tif"
+            swir = item_dir / "swir22.tif"
+            if not (nir.exists() and swir.exists()):
+                continue
+            scene_date = _parse_sentinel2_item_date(item_dir.name)
+            if scene_date is None:
+                continue
+            candidates.append({
+                "item_id": item_dir.name,
+                "date": scene_date,
+                "nir": nir,
+                "swir": swir,
+            })
+
+    if not candidates:
+        raise FileNotFoundError(
+            "Real wildfire analysis requires pre/post NIR and SWIR rasters, "
+            f"but none were found in {input_path}. Refusing to fabricate "
+            "synthetic data in real mode."
+        )
+
+    candidates.sort(key=lambda s: s["date"])
+    if event_date is None:
+        # Split at the midpoint of available scene dates so we always end up
+        # with at least one pre and one post scene when 2+ are present.
+        midpoint_idx = len(candidates) // 2
+        split_date = candidates[midpoint_idx]["date"]
+        pre = [s for s in candidates if s["date"] < split_date]
+        post = [s for s in candidates if s["date"] >= split_date]
+        if not pre and len(candidates) >= 2:
+            pre = candidates[:1]
+            post = candidates[1:]
+    else:
+        pre = [s for s in candidates if s["date"] < event_date]
+        post = [s for s in candidates if s["date"] >= event_date]
+
+    if not pre or not post:
+        raise FileNotFoundError(
+            "Real wildfire analysis requires both pre-fire and post-fire "
+            f"Sentinel-2 scenes (NIR + SWIR22) under {input_path}/sentinel2/, "
+            f"but only {len(candidates)} scene(s) were found"
+            + (f" relative to event date {event_date.date()}" if event_date else "")
+            + ". Refusing to fabricate synthetic data in real mode."
+        )
+
+    # Pick the latest pre-fire scene and the earliest post-fire scene — those
+    # bracket the event most tightly and minimise spurious dNBR signal.
+    pre_choice = pre[-1]
+    post_choice = post[0]
+    return {"pre": pre_choice, "post": post_choice}
+
+
+def _read_sentinel2_band(
+    raster_path: Path,
+    bbox: Optional[str] = None,
+    target_shape: Optional[tuple] = None,
+    target_transform=None,
+) -> np.ndarray:
+    """Read a Sentinel-2 band as a float32 reflectance array.
+
+    Uses ``rasterio`` with a windowed read clipped to ``bbox`` (in geographic
+    coordinates) when provided. If ``target_shape`` and ``target_transform``
+    are provided, the band is resampled (bilinear) onto that grid — used to
+    bring 20 m SWIR22 onto the 10 m NIR grid.
+    """
+    import rasterio
+    from rasterio.warp import transform_bounds, reproject, Resampling
+    from rasterio.windows import from_bounds
+
+    with rasterio.open(raster_path) as src:
+        if target_shape is not None and target_transform is not None:
+            # Resample onto the supplied grid (NIR resolution + bbox).
+            dst = np.zeros(target_shape, dtype=np.float32)
+            reproject(
+                source=rasterio.band(src, 1),
+                destination=dst,
+                src_transform=src.transform,
+                src_crs=src.crs,
+                dst_transform=target_transform,
+                dst_crs=src.crs,
+                resampling=Resampling.bilinear,
+            )
+            return dst
+
+        if bbox:
+            parts = [float(x.strip()) for x in bbox.split(",")]
+            if len(parts) == 4:
+                min_lon, min_lat, max_lon, max_lat = parts
+                try:
+                    raster_bounds = transform_bounds(
+                        "EPSG:4326", src.crs,
+                        min_lon, min_lat, max_lon, max_lat,
+                        densify_pts=21,
+                    )
+                    window = from_bounds(*raster_bounds, transform=src.transform)
+                    window = window.intersection(
+                        rasterio.windows.Window(0, 0, src.width, src.height)
+                    )
+                    data = src.read(1, window=window).astype(np.float32)
+                    return data
+                except Exception as e:
+                    logger.warning(
+                        f"Could not clip {raster_path.name} to bbox ({e}); "
+                        "reading full raster."
+                    )
+
+        return src.read(1).astype(np.float32)
+
+
+def _load_sentinel2_pre_post(
+    input_path: Path,
+    event_date: Optional[datetime] = None,
+    bbox: Optional[str] = None,
+) -> tuple:
+    """Load pre/post NIR and SWIR22 arrays from an ingested Sentinel-2 tree.
+
+    Returns ``(pre_nir, pre_swir, post_nir, post_swir, pixel_size_m)``. SWIR22
+    is resampled to the NIR grid (typically 10 m) so all four arrays share the
+    same shape. AOI clipping uses ``bbox`` (geographic min_lon,min_lat,...).
+    """
+    import rasterio
+    from rasterio.warp import transform_bounds
+    from rasterio.windows import from_bounds
+
+    scenes = _find_sentinel2_pre_post_scenes(input_path, event_date=event_date)
+    pre = scenes["pre"]
+    post = scenes["post"]
+
+    # Establish the target grid using the pre-fire NIR raster (10 m for S2).
+    with rasterio.open(pre["nir"]) as nir_src:
+        target_crs = nir_src.crs
+        target_pixel_size = float(abs(nir_src.transform.a))
+        if bbox:
+            parts = [float(x.strip()) for x in bbox.split(",")]
+            if len(parts) == 4:
+                try:
+                    raster_bounds = transform_bounds(
+                        "EPSG:4326", target_crs,
+                        parts[0], parts[1], parts[2], parts[3],
+                        densify_pts=21,
+                    )
+                    window = from_bounds(*raster_bounds, transform=nir_src.transform)
+                    window = window.intersection(
+                        rasterio.windows.Window(0, 0, nir_src.width, nir_src.height)
+                    )
+                    target_transform = nir_src.window_transform(window)
+                    target_height = int(window.height)
+                    target_width = int(window.width)
+                except Exception as e:
+                    logger.warning(
+                        f"Could not derive AOI window from bbox ({e}); using full tile."
+                    )
+                    target_transform = nir_src.transform
+                    target_height, target_width = nir_src.height, nir_src.width
+            else:
+                target_transform = nir_src.transform
+                target_height, target_width = nir_src.height, nir_src.width
+        else:
+            target_transform = nir_src.transform
+            target_height, target_width = nir_src.height, nir_src.width
+
+    target_shape = (target_height, target_width)
+
+    pre_nir = _read_sentinel2_band(
+        pre["nir"], target_shape=target_shape, target_transform=target_transform
+    )
+    pre_swir = _read_sentinel2_band(
+        pre["swir"], target_shape=target_shape, target_transform=target_transform
+    )
+    post_nir = _read_sentinel2_band(
+        post["nir"], target_shape=target_shape, target_transform=target_transform
+    )
+    post_swir = _read_sentinel2_band(
+        post["swir"], target_shape=target_shape, target_transform=target_transform
+    )
+
+    # Sentinel-2 L2A surface reflectance is uint16 scaled by 10000. Convert to
+    # 0..1 reflectance so the dNBR ratio is well-conditioned regardless of the
+    # source dtype.
+    def _to_reflectance(arr: np.ndarray) -> np.ndarray:
+        if arr.size and np.nanmax(arr) > 1.5:
+            return (arr / 10000.0).astype(np.float32)
+        return arr.astype(np.float32)
+
+    logger.info(
+        "Wildfire real-mode loader: pre=%s (%s) post=%s (%s) shape=%s pixel=%sm",
+        pre["item_id"], pre["date"].date(),
+        post["item_id"], post["date"].date(),
+        target_shape, target_pixel_size,
+    )
+
+    return (
+        _to_reflectance(pre_nir),
+        _to_reflectance(pre_swir),
+        _to_reflectance(post_nir),
+        _to_reflectance(post_swir),
+        target_pixel_size,
+    )
+
+
 def _analyze_wildfire(
     algorithm,
     input_path: Path,
     output_path: Path,
     raster_files: List[Path],
     npy_files: List[Path],
+    event_date: Optional[datetime] = None,
+    bbox: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run wildfire/burn severity analysis."""
     synthetic_dir = input_path / "synthetic"
@@ -843,11 +1098,18 @@ def _analyze_wildfire(
         pre_swir = np.load(synthetic_dir / "pre_swir.npy")
         post_nir = np.load(synthetic_dir / "post_nir.npy")
         post_swir = np.load(synthetic_dir / "post_swir.npy")
+        pixel_size_m = 10.0
     else:
-        raise FileNotFoundError(
-            "Real wildfire analysis requires pre/post NIR and SWIR rasters, "
-            f"but none were found in {input_path}. Refusing to fabricate "
-            "synthetic data in real mode."
+        # Real mode: discover Sentinel-2 scenes and group into pre/post.
+        # _load_sentinel2_pre_post raises FileNotFoundError if pre+post are not
+        # both available — that matches the existing "refuse to fabricate"
+        # contract and is required by the LGT-416 regression test.
+        pre_nir, pre_swir, post_nir, post_swir, pixel_size_m = (
+            _load_sentinel2_pre_post(
+                input_path,
+                event_date=event_date,
+                bbox=bbox,
+            )
         )
 
     # Execute algorithm
@@ -856,7 +1118,7 @@ def _analyze_wildfire(
         swir_pre=pre_swir,
         nir_post=post_nir,
         swir_post=post_swir,
-        pixel_size_m=10.0,
+        pixel_size_m=pixel_size_m,
     )
 
     # Save outputs

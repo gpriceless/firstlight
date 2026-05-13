@@ -166,3 +166,140 @@ class TestRealAnalysisInputValidation:
                 raster_files=[],
                 npy_files=[],
             )
+
+
+def _write_s2_scene(
+    base: Path,
+    item_id: str,
+    nir_array,
+    swir_array,
+):
+    """Write a tiny S2-style scene directory with nir.tif and swir22.tif."""
+    rasterio = pytest.importorskip("rasterio")
+    import numpy as np
+    from rasterio.transform import from_origin
+
+    scene_dir = base / "sentinel2" / item_id
+    scene_dir.mkdir(parents=True, exist_ok=True)
+
+    # 10 m UTM grid for NIR.
+    nir_transform = from_origin(500000, 2900000, 10.0, 10.0)
+    nir_height, nir_width = nir_array.shape
+    with rasterio.open(
+        scene_dir / "nir.tif",
+        "w",
+        driver="GTiff",
+        height=nir_height,
+        width=nir_width,
+        count=1,
+        dtype=nir_array.dtype,
+        crs="EPSG:32617",
+        transform=nir_transform,
+    ) as dst:
+        dst.write(nir_array, 1)
+
+    # 20 m UTM grid for SWIR22 — coarser than NIR by 2x.
+    swir_transform = from_origin(500000, 2900000, 20.0, 20.0)
+    swir_height, swir_width = swir_array.shape
+    with rasterio.open(
+        scene_dir / "swir22.tif",
+        "w",
+        driver="GTiff",
+        height=swir_height,
+        width=swir_width,
+        count=1,
+        dtype=swir_array.dtype,
+        crs="EPSG:32617",
+        transform=swir_transform,
+    ) as dst:
+        dst.write(swir_array, 1)
+
+
+class TestWildfireRealModeLoader:
+    """LGT-416: `_analyze_wildfire` must load pre/post NIR + SWIR22 from ingested S2."""
+
+    def test_analyze_wildfire_real_mode_loads_sentinel2_pair(self, tmp_path):
+        pytest.importorskip("rasterio")
+        import numpy as np
+
+        from cli.commands.run import _analyze_wildfire
+
+        # Pre-fire scene: high NIR, low SWIR. Post-fire scene: low NIR, high SWIR.
+        pre_nir = np.full((128, 128), 4000, dtype=np.uint16)   # ~0.40 reflectance
+        pre_swir = np.full((64, 64), 1500, dtype=np.uint16)    # ~0.15 reflectance
+        post_nir = np.full((128, 128), 1000, dtype=np.uint16)  # ~0.10 reflectance
+        post_swir = np.full((64, 64), 3500, dtype=np.uint16)   # ~0.35 reflectance
+
+        _write_s2_scene(tmp_path, "S2B_17RNJ_20260404_0_L2A", pre_nir, pre_swir)
+        _write_s2_scene(tmp_path, "S2A_17RNJ_20260421_0_L2A", post_nir, post_swir)
+
+        captured = {}
+
+        class _Algo:
+            def execute(self, **kwargs):
+                captured.update(kwargs)
+                # Return a minimal stub matching DifferencedNBRResult shape.
+                shape = kwargs["nir_pre"].shape
+
+                class _Result:
+                    dnbr_map = np.zeros(shape, dtype=np.float32)
+                    burn_severity = np.zeros(shape, dtype=np.uint8)
+                    burn_extent = np.zeros(shape, dtype=np.uint8)
+                    confidence_raster = np.ones(shape, dtype=np.float32)
+                    statistics = {"burned_area_ha": 0.0}
+
+                return _Result()
+
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        result = _analyze_wildfire(
+            algorithm=_Algo(),
+            input_path=tmp_path,
+            output_path=out_dir,
+            raster_files=[],
+            npy_files=[],
+        )
+
+        assert result["success"] is True
+        # All four bands must reach the algorithm with matching shapes.
+        assert captured["nir_pre"].shape == captured["swir_pre"].shape
+        assert captured["nir_pre"].shape == captured["nir_post"].shape
+        assert captured["nir_pre"].shape == captured["swir_post"].shape
+        # SWIR22 should have been resampled up to the 10 m NIR grid.
+        assert captured["nir_pre"].shape == (128, 128)
+        # Pixel size should reflect the NIR resolution (10 m for Sentinel-2).
+        assert captured["pixel_size_m"] == pytest.approx(10.0)
+        # Reflectance scaling: uint16 DNs converted to 0..1 floats.
+        assert 0.35 < float(captured["nir_pre"].mean()) < 0.45
+        assert 0.05 < float(captured["nir_post"].mean()) < 0.15
+        # Pre vs post temporal ordering preserved (earlier date is the pre scene).
+        assert captured["nir_pre"].mean() > captured["nir_post"].mean()
+
+    def test_analyze_wildfire_real_mode_requires_pre_and_post(self, tmp_path):
+        pytest.importorskip("rasterio")
+        import numpy as np
+
+        from cli.commands.run import _analyze_wildfire
+
+        # Only a single dated scene — no temporal pair available.
+        only_nir = np.full((64, 64), 2000, dtype=np.uint16)
+        only_swir = np.full((32, 32), 1500, dtype=np.uint16)
+        _write_s2_scene(tmp_path, "S2A_17RNJ_20260415_0_L2A", only_nir, only_swir)
+
+        class _Algo:
+            def execute(self, *a, **k):
+                raise AssertionError("algorithm.execute called without a pre/post pair")
+
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        with pytest.raises(FileNotFoundError, match="both pre-fire and post-fire"):
+            _analyze_wildfire(
+                algorithm=_Algo(),
+                input_path=tmp_path,
+                output_path=out_dir,
+                raster_files=[],
+                npy_files=[],
+                event_date=__import__("datetime").datetime(2026, 4, 16),
+            )
