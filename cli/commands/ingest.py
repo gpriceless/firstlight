@@ -759,7 +759,10 @@ def normalize_item(
         # Import normalization modules - raise error if not available
         try:
             from core.data.ingestion.formats.cog import COGConverter
-            from core.data.ingestion.normalization.projection import RasterReprojector
+            from core.data.ingestion.normalization.projection import (
+                RasterReprojector,
+                ReprojectionConfig,
+            )
         except ImportError as e:
             error_msg = f"Normalization requested but modules unavailable: {e}"
             logger.error(error_msg)
@@ -772,7 +775,24 @@ def normalize_item(
             if output_format == "cog":
                 logger.info(f"Converting {input_file.name} to COG format")
                 converter = COGConverter()
-                converter.convert(input_file, output_file, target_crs=target_crs)
+
+                if target_crs:
+                    # Reproject to a temporary tif first, then COG-convert
+                    reproj_path = input_file.with_suffix(".reproj.tif")
+                    reprojector = RasterReprojector()
+                    reprojector.reproject_file(
+                        input_file,
+                        reproj_path,
+                        ReprojectionConfig(target_crs=target_crs),
+                        overwrite=True,
+                    )
+                    try:
+                        converter.convert_file(reproj_path, output_file, overwrite=True)
+                    finally:
+                        if reproj_path.exists():
+                            reproj_path.unlink()
+                else:
+                    converter.convert_file(input_file, output_file, overwrite=True)
             else:
                 logger.warning(f"Output format '{output_format}' not fully implemented, skipping conversion")
 

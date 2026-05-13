@@ -266,7 +266,7 @@ class COGConverter:
             # Build overviews
             if self.config.overview_factors:
                 resampling = getattr(
-                    Resampling, self.config.overview_resampling.value.upper()
+                    Resampling, self.config.overview_resampling.value
                 )
                 dst.build_overviews(self.config.overview_factors, resampling)
                 dst.update_tags(ns="rio_overview", resampling=resampling.name)
@@ -388,7 +388,7 @@ class COGConverter:
             # Build overviews
             if self.config.overview_factors:
                 resampling = getattr(
-                    Resampling, self.config.overview_resampling.value.upper()
+                    Resampling, self.config.overview_resampling.value
                 )
                 dst.build_overviews(self.config.overview_factors, resampling)
                 dst.update_tags(ns="rio_overview", resampling=resampling.name)

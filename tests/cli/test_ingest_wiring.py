@@ -296,5 +296,50 @@ def test_downloaded_file_is_real_raster(tmp_path, ingest_module):
                 assert header.startswith(b"II\x2a\x00") or header.startswith(b"MM\x00\x2a")
 
 
+def test_normalize_item_converts_tif_to_cog(tmp_path, ingest_module):
+    """Regression: normalize_item must call COGConverter.convert_file (not .convert).
+
+    The previous implementation called converter.convert(...), which doesn't exist;
+    AttributeError bubbled up and caused every real-data ingest to be marked failed
+    even after the downloads succeeded. See LGT-415.
+    """
+    if not HAS_RASTERIO:
+        pytest.skip("rasterio not available")
+
+    item_dir = tmp_path / "S2A_test"
+    item_dir.mkdir()
+    band_path = item_dir / "green.tif"
+    create_mock_geotiff(band_path, width=64, height=64)
+
+    success = ingest_module.normalize_item(
+        item_dir=item_dir,
+        output_format="cog",
+        target_crs=None,
+        target_resolution=None,
+    )
+
+    assert success is True, "normalize_item should succeed for a single-band TIF"
+
+    cog_path = item_dir / "green.cog"
+    assert cog_path.exists(), f"Expected COG output at {cog_path}"
+
+    with rasterio.open(cog_path) as src:
+        assert src.count == 1
+        assert src.width == 64
+        assert src.height == 64
+
+
+def test_normalize_item_no_convert_attribute_typo(ingest_module):
+    """Guard against re-introducing the COGConverter.convert typo."""
+    from core.data.ingestion.formats.cog import COGConverter
+
+    converter = COGConverter()
+    assert hasattr(converter, "convert_file"), "COGConverter must expose convert_file"
+    assert not hasattr(converter, "convert"), (
+        "COGConverter has no .convert method — callers must use .convert_file. "
+        "If you re-add .convert here, update normalize_item to match."
+    )
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
