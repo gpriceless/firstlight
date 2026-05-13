@@ -157,6 +157,7 @@ def resume(
             WorkflowState,
             PROFILES,
             parse_date,
+            DATA_MODE_REAL,
         )
         import time
 
@@ -178,6 +179,24 @@ def resume(
             workflow.start_stage(stage)
 
             try:
+                # Pull saved run config once per stage. Matches what `flight run`
+                # persists to `state.config`, so resume reproduces the original
+                # invocation rather than falling back to defaults that mismatch
+                # the originally-discovered data (LGT-419).
+                event_type = config.get("event_type", "flood")
+                profile_name = config.get("profile", "workstation")
+                profile_config = PROFILES.get(profile_name)
+                start_dt = parse_date(config.get("start_date", "2024-01-01")[:10])
+                end_dt = parse_date(config.get("end_date", "2024-01-07")[:10])
+                event_dt = start_dt + (end_dt - start_dt) / 2
+                data_mode = config.get("data_mode", DATA_MODE_REAL)
+                # `flight run` derives an analyze_bbox from --area; fall back to
+                # the raw --bbox if the older state.json predates LGT-420.
+                analyze_bbox = config.get("analyze_bbox") or config.get("bbox")
+                max_cloud = config.get("max_cloud")
+                if max_cloud is None:
+                    max_cloud = 90.0 if event_type.lower() == "wildfire" else 30.0
+
                 if stage == "discover":
                     area_path = config.get("area_path")
                     if area_path:
@@ -185,32 +204,41 @@ def resume(
                     result = run_discover(
                         area_path=area_path,
                         bbox=config.get("bbox"),
-                        start_date=parse_date(config.get("start_date", "2024-01-01")[:10]),
-                        end_date=parse_date(config.get("end_date", "2024-01-07")[:10]),
-                        event_type=config.get("event_type", "flood"),
+                        start_date=start_dt,
+                        end_date=end_dt,
+                        event_type=event_type,
                         output_path=workdir,
+                        max_cloud=max_cloud,
                     )
                     workflow.complete_stage(stage, result)
                     click.echo(f"    Found {result.get('count', 0)} datasets")
 
                 elif stage == "ingest":
-                    profile_config = PROFILES.get(config.get("profile", "workstation"))
                     result = run_ingest(
                         discovery_file=workdir / "discovery.json",
                         output_path=workdir / "data",
                         profile_config=profile_config,
+                        data_mode=data_mode,
+                        bbox=config.get("bbox"),
+                        event_type=event_type,
                     )
                     workflow.complete_stage(stage, result)
                     click.echo(f"    Ingested {result.get('count', 0)} items")
 
                 elif stage == "analyze":
-                    profile_config = PROFILES.get(config.get("profile", "workstation"))
+                    # LGT-419: forward event_date and bbox so the Sentinel-2
+                    # loader picks the right pre/post pair on resume instead
+                    # of falling back to the midpoint heuristic on three
+                    # scenes (which can pick two pre-fire scenes).
                     result = run_analyze(
                         input_path=workdir / "data",
                         output_path=workdir / "results",
-                        event_type=config.get("event_type", "flood"),
+                        event_type=event_type,
                         algorithm=config.get("algorithm"),
                         profile_config=profile_config,
+                        data_mode=data_mode,
+                        bbox=analyze_bbox,
+                        event_date=event_dt,
                     )
                     workflow.complete_stage(stage, result)
                     click.echo(f"    Algorithm: {result.get('algorithm', 'auto')}")
@@ -219,6 +247,7 @@ def resume(
                     result = run_validate(
                         input_path=workdir / "results",
                         output_path=workdir,
+                        data_mode=data_mode,
                     )
                     workflow.complete_stage(stage, result)
                     score = result.get("score", 0)
@@ -230,6 +259,8 @@ def resume(
                         input_path=workdir / "results",
                         output_path=workdir / "products",
                         formats=config.get("formats", "geotiff,geojson"),
+                        data_mode=data_mode,
+                        bbox=analyze_bbox,
                     )
                     workflow.complete_stage(stage, result)
                     click.echo(f"    Exported: {', '.join(result.get('formats', []))}")

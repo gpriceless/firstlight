@@ -349,6 +349,8 @@ def run(
         "profile": profile,
         "algorithm": algorithm,
         "formats": formats,
+        "data_mode": data_mode,
+        "skip_validate": skip_validate,
     }
     state.save()
 
