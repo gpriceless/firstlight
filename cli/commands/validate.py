@@ -276,37 +276,72 @@ def run_quality_checks(input_path: Path, checks: List[str]) -> List[Dict[str, An
 
 def _load_raster_data(input_path: Path) -> Optional[np.ndarray]:
     """
-    Load raster data from input path (GeoTIFF or directory containing GeoTIFFs).
+    Load raster data from input path.
+
+    Accepts a single GeoTIFF, a single ``.npy`` array, or a directory containing
+    either. Prefers GeoTIFFs when both are present in a directory. The ``.npy``
+    fallback exists because the analyze stage currently writes outputs as
+    ``.npy`` arrays only (see LGT-418); without it, every real-mode wildfire /
+    flood / storm run fails the validate stage.
     """
+    # Single .npy file
+    if input_path.is_file() and input_path.suffix.lower() == ".npy":
+        return _load_npy_array(input_path)
+
+    # Single GeoTIFF file
+    if input_path.is_file() and input_path.suffix.lower() in [".tif", ".tiff"]:
+        return _load_geotiff(input_path)
+
+    if input_path.is_dir():
+        # Prefer GeoTIFFs when present (they carry CRS/transform metadata).
+        for ext in ["*.tif", "*.tiff", "*.TIF", "*.TIFF"]:
+            for tif_file in sorted(input_path.glob(ext)):
+                data = _load_geotiff(tif_file)
+                if data is not None:
+                    return data
+
+        # Fall back to .npy arrays from the analyze stage.
+        for ext in ["*.npy", "*.NPY"]:
+            for npy_file in sorted(input_path.glob(ext)):
+                data = _load_npy_array(npy_file)
+                if data is not None:
+                    return data
+
+    return None
+
+
+def _load_geotiff(path: Path) -> Optional[np.ndarray]:
+    """Load the first band of a GeoTIFF as a numpy array."""
     try:
         import rasterio
     except ImportError:
         logger.error("rasterio not available - cannot load raster data")
         return None
 
-    # If input is a file, load it directly
-    if input_path.is_file() and input_path.suffix.lower() in ['.tif', '.tiff']:
-        try:
-            with rasterio.open(input_path) as src:
-                data = src.read(1)  # Read first band
-                return data
-        except Exception as e:
-            logger.warning(f"Failed to load {input_path}: {e}")
-            return None
+    try:
+        with rasterio.open(path) as src:
+            return src.read(1)
+    except Exception as e:
+        logger.warning(f"Failed to load {path}: {e}")
+        return None
 
-    # If input is a directory, find first GeoTIFF
-    if input_path.is_dir():
-        for ext in ['*.tif', '*.tiff', '*.TIF', '*.TIFF']:
-            tif_files = list(input_path.glob(ext))
-            if tif_files:
-                try:
-                    with rasterio.open(tif_files[0]) as src:
-                        data = src.read(1)  # Read first band
-                        return data
-                except Exception as e:
-                    logger.warning(f"Failed to load {tif_files[0]}: {e}")
-                    continue
 
+def _load_npy_array(path: Path) -> Optional[np.ndarray]:
+    """Load a ``.npy`` file and coerce it to a 2D array for quality checks."""
+    try:
+        arr = np.load(path, allow_pickle=False)
+    except Exception as e:
+        logger.warning(f"Failed to load {path}: {e}")
+        return None
+
+    if arr.ndim == 2:
+        return arr
+    if arr.ndim == 3 and arr.shape[0] >= 1:
+        # Treat first axis as bands (rasterio convention) and return band 1.
+        return arr[0]
+    logger.warning(
+        f"Skipping {path}: expected 2D or 3D array, got shape {arr.shape}"
+    )
     return None
 
 

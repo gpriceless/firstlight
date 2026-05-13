@@ -84,6 +84,50 @@ class TestLoadRasterData:
         data = _load_raster_data(fake_path)
         assert data is None
 
+    def test_load_npy_file(self, tmp_path, sample_raster_data):
+        """Loading a single .npy file should return the array (LGT-418)."""
+        npy_path = tmp_path / "dnbr.npy"
+        np.save(npy_path, sample_raster_data)
+
+        data = _load_raster_data(npy_path)
+        assert data is not None
+        assert data.shape == sample_raster_data.shape
+        np.testing.assert_array_equal(data, sample_raster_data)
+
+    def test_load_npy_from_directory(self, tmp_path, sample_raster_data):
+        """A directory with only .npy outputs (analyze stage) must load (LGT-418)."""
+        # Mirror what _analyze_wildfire writes to results/.
+        for name in ("dnbr.npy", "burn_severity.npy", "burn_extent.npy", "confidence.npy"):
+            np.save(tmp_path / name, sample_raster_data)
+
+        data = _load_raster_data(tmp_path)
+        assert data is not None
+        assert data.ndim == 2
+
+    def test_geotiff_preferred_over_npy(self, tmp_path, sample_raster_data, temp_raster_file):
+        """When both .tif and .npy live in a directory, prefer the .tif."""
+        # temp_raster_file already wrote a .tif into tmp_path. Add a different .npy.
+        directory = temp_raster_file.parent
+        decoy = np.zeros_like(sample_raster_data)
+        np.save(directory / "decoy.npy", decoy)
+
+        data = _load_raster_data(directory)
+        assert data is not None
+        # Should come from the .tif (sample_raster_data), not the all-zeros .npy.
+        assert data.shape == sample_raster_data.shape
+        assert not np.array_equal(data, decoy)
+
+    def test_load_3d_npy_returns_first_band(self, tmp_path):
+        """3D arrays (bands, h, w) should be reduced to band 1."""
+        cube = np.stack([np.ones((10, 10)) * i for i in range(3)])
+        npy_path = tmp_path / "cube.npy"
+        np.save(npy_path, cube)
+
+        data = _load_raster_data(npy_path)
+        assert data is not None
+        assert data.shape == (10, 10)
+        np.testing.assert_array_equal(data, cube[0])
+
 
 class TestSpatialCoherenceCheck:
     """Test spatial coherence check wiring."""
@@ -260,6 +304,72 @@ class TestValidateCommandIntegration:
             obj={},
         )
         assert md_output.exists()
+
+
+class TestValidateAcceptsAnalyzeNpyOutputs:
+    """Regression: validate must accept the .npy outputs analyze emits (LGT-418).
+
+    Before the fix, `_load_raster_data` only looked at `.tif` files, so every
+    real-mode wildfire/flood/storm run failed validate with:
+        ERROR - No valid raster data found in .../results
+    The synthetic wildfire fast path hit the same wall whenever
+    `--skip-validate` was omitted.
+    """
+
+    def _write_wildfire_results(self, results_dir: Path) -> None:
+        """Write the four .npy files _analyze_wildfire produces."""
+        results_dir.mkdir(parents=True, exist_ok=True)
+        rng = np.random.default_rng(0)
+        dnbr = rng.uniform(-0.2, 0.8, size=(64, 64)).astype(np.float32)
+        np.save(results_dir / "dnbr.npy", dnbr)
+        np.save(results_dir / "burn_severity.npy", (dnbr > 0.27).astype(np.uint8))
+        np.save(results_dir / "burn_extent.npy", (dnbr > 0.1).astype(np.uint8))
+        np.save(
+            results_dir / "confidence.npy",
+            rng.uniform(0.0, 1.0, size=(64, 64)).astype(np.float32),
+        )
+
+    def test_run_quality_checks_does_not_raise_on_npy_only(self, tmp_path):
+        """run_quality_checks must succeed on a results dir containing only .npy."""
+        from cli.commands.validate import run_quality_checks
+
+        results_dir = tmp_path / "results"
+        self._write_wildfire_results(results_dir)
+
+        # Pre-fix behaviour: FileNotFoundError("No valid raster data found ...").
+        results = run_quality_checks(results_dir, ["spatial_coherence", "value_range", "coverage"])
+        assert len(results) == 3
+        # No check should be a hard error stemming from "no data loaded".
+        for r in results:
+            assert "No valid raster data" not in r.get("message", "")
+
+    def test_validate_cli_does_not_raise_on_npy_only(self, tmp_path):
+        """Invoking `flight validate` against an analyze results/ dir must not crash."""
+        results_dir = tmp_path / "results"
+        self._write_wildfire_results(results_dir)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            validate,
+            [
+                "--input", str(results_dir),
+                "--checks", "coverage,value_range",
+                "--threshold", "0.0",
+            ],
+            obj={},
+        )
+
+        # Should not raise FileNotFoundError from _load_raster_data.
+        if result.exception is not None and not isinstance(result.exception, SystemExit):
+            raise AssertionError(
+                f"validate raised {type(result.exception).__name__}: {result.exception}\n"
+                f"Output:\n{result.output}"
+            )
+        # The pre-fix error message must be gone.
+        assert "No valid raster data found" not in result.output
+        # Exit 0 (passed) or 1 (failed-by-score) are both fine — what matters is
+        # that validate actually ran the checks instead of bailing on load.
+        assert result.exit_code in (0, 1)
 
 
 class TestNoRandomScores:
