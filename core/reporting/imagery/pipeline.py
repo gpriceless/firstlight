@@ -762,3 +762,92 @@ class ReportVisualPipeline:
             return None
 
         return manifest
+
+    def generate_static_map(
+        self,
+        bounds,
+        output_path: Path,
+        event_type: str = "flood",
+        flood_extent=None,
+        perimeter=None,
+        title: Optional[str] = None,
+        infrastructure=None,
+        source_crs: Optional[str] = None,
+    ) -> Optional[Path]:
+        """
+        Generate a static map via StaticMapGenerator with optional perimeter overlay.
+
+        Integrates the perimeter overlay pipeline: when a perimeter GeoDataFrame
+        is provided, the map includes a dashed boundary and containment metric.
+        When perimeter is None, behaviour is identical to calling
+        generate_flood_map / generate_fire_map directly.
+
+        This method is the pipeline-level entry point for perimeter overlays.
+        It is optional — callers that do not configure a perimeter loader will
+        receive maps without perimeter overlays.
+
+        Args:
+            bounds: MapBounds specifying the geographic extent.
+            output_path: Destination path for the generated image.
+            event_type: 'flood' or 'fire'. Controls perimeter colour and which
+                        underlying generate_*_map method is used.
+            flood_extent: Optional boolean ndarray of flood extent. Required
+                          when event_type='flood'.
+            perimeter: Optional GeoDataFrame of event perimeter polygon(s).
+                       When None, the map is generated without a perimeter layer.
+            title: Optional map title.
+            infrastructure: Optional list of infrastructure feature dicts.
+            source_crs: Optional CRS string for source data.
+
+        Returns:
+            Path to the generated image, or None if StaticMapGenerator is not
+            importable (e.g., matplotlib not installed).
+
+        Example:
+            from core.reporting.data.perimeter_loader import PerimeterLoader
+            loader = PerimeterLoader()
+            gdf = loader.load_nifc_perimeter("Park Fire", "2024-07-23")
+
+            path = pipeline.generate_static_map(
+                bounds=MapBounds(-122.5, 39.5, -121.5, 40.5),
+                output_path=Path("outputs/fire_map.png"),
+                event_type="fire",
+                perimeter=gdf,
+                title="Park Fire — July 2024",
+            )
+        """
+        try:
+            from core.reporting.maps.static_map import StaticMapGenerator
+            from core.reporting.maps.base import MapConfig
+        except ImportError:
+            import logging
+            logging.getLogger(__name__).error(
+                "StaticMapGenerator is unavailable: install matplotlib and cartopy"
+            )
+            return None
+
+        generator = StaticMapGenerator()
+
+        if event_type == "fire":
+            return generator.generate_fire_map(
+                bounds=bounds,
+                output_path=output_path,
+                title=title,
+                infrastructure=infrastructure,
+                source_crs=source_crs,
+                perimeter=perimeter,
+            )
+        else:
+            if flood_extent is None:
+                raise ValueError(
+                    "flood_extent is required when event_type='flood'"
+                )
+            return generator.generate_flood_map(
+                flood_extent=flood_extent,
+                bounds=bounds,
+                output_path=output_path,
+                title=title,
+                infrastructure=infrastructure,
+                source_crs=source_crs,
+                perimeter=perimeter,
+            )

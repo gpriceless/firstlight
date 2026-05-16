@@ -15,6 +15,13 @@ import numpy as np
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
 
+try:
+    import geopandas as gpd
+    _GEOPANDAS_AVAILABLE = True
+except ImportError:
+    gpd = None  # type: ignore
+    _GEOPANDAS_AVAILABLE = False
+
 from core.reporting.maps.base import MapConfig, MapBounds, MapType, MapOutputPreset
 from core.reporting.utils.color_utils import FLOOD_SEVERITY
 
@@ -109,6 +116,7 @@ class StaticMapGenerator:
         title: Optional[str] = None,
         infrastructure: Optional[List[Dict]] = None,
         source_crs: Optional[str] = None,
+        perimeter=None,
     ) -> Path:
         """
         Generate flood extent map with base layer.
@@ -122,6 +130,10 @@ class StaticMapGenerator:
                            {'lon', 'lat', 'type', 'name'} keys
             source_crs: Optional CRS string for the source data. Overrides
                         config.source_crs. Used for projection selection.
+            perimeter: Optional GeoDataFrame of event perimeter polygon(s).
+                       When provided, a dashed outline overlay is rendered and
+                       containment is computed relative to the flood extent.
+                       Requires geopandas to be installed.
 
         Returns:
             Path to generated map image
@@ -182,6 +194,103 @@ class StaticMapGenerator:
 
         # Add attribution block (replaces single-line text)
         self._add_attribution_block(ax)
+
+        # Add perimeter overlay if provided
+        if perimeter is not None:
+            self._render_perimeter_overlay(ax, perimeter, event_type="flood")
+
+        # Save
+        self.plt.savefig(
+            output_path,
+            dpi=self.config.dpi,
+            bbox_inches='tight',
+            facecolor='white'
+        )
+        self.plt.close()
+
+        return output_path
+
+    def generate_fire_map(
+        self,
+        bounds: MapBounds,
+        output_path: Path,
+        title: Optional[str] = None,
+        infrastructure: Optional[List[Dict]] = None,
+        source_crs: Optional[str] = None,
+        perimeter=None,
+    ) -> Path:
+        """
+        Generate a fire event map with optional perimeter overlay.
+
+        Creates a map showing the geographic area of interest for a fire event.
+        When a perimeter GeoDataFrame is provided, renders a dashed red outline
+        of the fire boundary and computes a containment metric. Designed as the
+        fire-specific counterpart to generate_flood_map().
+
+        Args:
+            bounds: Geographic bounds of the map area.
+            output_path: Where to save the output image.
+            title: Optional map title (overrides config.title).
+            infrastructure: Optional list of infrastructure features with
+                            'lon', 'lat', 'type', 'name' keys.
+            source_crs: Optional CRS string for source data. Overrides
+                        config.source_crs. Used for projection selection.
+            perimeter: Optional GeoDataFrame of fire perimeter polygon(s).
+                       When provided, a dashed red outline and containment
+                       metric are added to the map.
+
+        Returns:
+            Path to generated map image.
+
+        Example:
+            gdf = loader.load_nifc_perimeter("Park Fire", "2024-07-23")
+            generator.generate_fire_map(
+                bounds=MapBounds(-122.5, 39.5, -121.5, 40.5),
+                output_path=Path("fire_map.png"),
+                title="Park Fire Perimeter",
+                perimeter=gdf,
+            )
+        """
+        # Resolve CRS: kwarg > config field
+        effective_crs = source_crs or self.config.source_crs
+
+        # Set up figure
+        fig_width = self.config.width / self.config.dpi
+        fig_height = self.config.height / self.config.dpi
+
+        fig, ax = self.plt.subplots(
+            figsize=(fig_width, fig_height),
+            dpi=self.config.dpi
+        )
+
+        # Add base map if available
+        if self.has_contextily and self.has_cartopy:
+            self._add_basemap_with_projection(ax, bounds, source_crs=effective_crs)
+        else:
+            ax.set_xlim(bounds.min_lon, bounds.max_lon)
+            ax.set_ylim(bounds.min_lat, bounds.max_lat)
+            ax.set_aspect('equal')
+
+        # Add infrastructure if provided
+        if infrastructure:
+            self._plot_infrastructure(ax, infrastructure)
+
+        # Add map furniture
+        if self.config.show_scale_bar:
+            self._add_scale_bar(ax, bounds)
+
+        if self.config.show_north_arrow:
+            self._add_north_arrow(ax)
+
+        # Add title block
+        self._add_title_block(ax, override_title=title)
+
+        # Add attribution block
+        self._add_attribution_block(ax)
+
+        # Add perimeter overlay if provided
+        if perimeter is not None:
+            self._render_perimeter_overlay(ax, perimeter, event_type="fire")
 
         # Save
         self.plt.savefig(
