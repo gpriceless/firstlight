@@ -746,3 +746,154 @@ class StaticMapGenerator:
             ha='right',
             va='bottom',
         )
+
+    # =========================================================================
+    # Track B: V4.2 Event Perimeter Overlays
+    # =========================================================================
+
+    def _render_perimeter_overlay(
+        self,
+        ax,
+        perimeter,
+        analysis_extent=None,
+        event_type: str = "fire",
+    ) -> None:
+        """
+        Render a reference event perimeter as a dashed outline on the map.
+
+        Draws the perimeter boundary using a dashed line style. If an analysis
+        GeoDataFrame is provided, computes the containment metric — the fraction
+        of the perimeter area covered by the analysis extent — and adds it to
+        the legend. Source attribution and timestamp from the perimeter data are
+        also added to the legend when available.
+
+        Both the perimeter and analysis GeoDataFrames must be (or be converted
+        to) the same CRS before intersection. The method uses the perimeter's
+        own CRS as the reference projection for the intersection calculation,
+        then works in that space.
+
+        Args:
+            ax: matplotlib axes to draw on.
+            perimeter: GeoDataFrame containing the event perimeter polygon(s).
+                       Must have a 'geometry' column. Expected to be in WGS84
+                       or any geopandas-supported CRS.
+            analysis_extent: Optional GeoDataFrame of the analysis area. If
+                             provided, containment percentage is computed and
+                             shown in the legend. Multiple polygons are merged
+                             with shapely.ops.unary_union before intersection.
+            event_type: One of 'fire' (red outline) or 'flood' (blue outline).
+                        Defaults to 'fire'.
+
+        Note:
+            This method requires geopandas and shapely to be installed. If they
+            are not available, the method logs an error and returns without
+            rendering.
+        """
+        try:
+            import geopandas as gpd
+            from shapely.ops import unary_union
+        except ImportError:
+            import logging
+            logging.getLogger(__name__).error(
+                "_render_perimeter_overlay requires geopandas and shapely"
+            )
+            return
+
+        from matplotlib.lines import Line2D
+
+        # Color by event type
+        color_map = {
+            "fire": "red",
+            "flood": "blue",
+        }
+        color = color_map.get(event_type, "red")
+
+        # Determine target CRS for intersection (use perimeter CRS as reference)
+        target_crs = perimeter.crs if perimeter.crs is not None else "EPSG:4326"
+
+        # Plot the perimeter boundary as a dashed outline (not filled)
+        perimeter_plot = perimeter.copy()
+        if perimeter_plot.crs is None:
+            perimeter_plot = perimeter_plot.set_crs("EPSG:4326")
+
+        try:
+            perimeter_plot.boundary.plot(
+                ax=ax,
+                color=color,
+                linestyle="--",
+                linewidth=2,
+                zorder=9,
+            )
+        except Exception:
+            # Fallback: plot via geometry iteration if .boundary.plot fails
+            for geom in perimeter_plot.geometry:
+                if geom is None:
+                    continue
+                xs, ys = geom.exterior.coords.xy
+                ax.plot(xs, ys, color=color, linestyle="--", linewidth=2, zorder=9)
+
+        # Build legend label
+        label_parts = [f"Event Perimeter ({event_type.capitalize()})"]
+
+        # Compute containment metric if analysis_extent is provided
+        if analysis_extent is not None:
+            try:
+                # Align CRS
+                analysis_aligned = analysis_extent.copy()
+                if analysis_aligned.crs is None:
+                    analysis_aligned = analysis_aligned.set_crs("EPSG:4326")
+                analysis_aligned = analysis_aligned.to_crs(target_crs)
+
+                perimeter_aligned = perimeter.copy()
+                if perimeter_aligned.crs is None:
+                    perimeter_aligned = perimeter_aligned.set_crs("EPSG:4326")
+                perimeter_aligned = perimeter_aligned.to_crs(target_crs)
+
+                # Merge multiple analysis polygons into one
+                analysis_union = unary_union(analysis_aligned.geometry)
+
+                # Union of all perimeter polygons
+                perimeter_union = unary_union(perimeter_aligned.geometry)
+
+                perimeter_area = perimeter_union.area
+                if perimeter_area > 0:
+                    intersection_area = analysis_union.intersection(perimeter_union).area
+                    containment_pct = (intersection_area / perimeter_area) * 100.0
+                    label_parts.append(f"Containment: {containment_pct:.1f}%")
+                else:
+                    label_parts.append("Containment: N/A")
+
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Could not compute containment metric: %s", exc
+                )
+
+        # Add source attribution and timestamp from perimeter attributes if present
+        for col in ("source_attribution", "timestamp", "SourceOID", "DateCurrent"):
+            if col in perimeter.columns:
+                val = perimeter[col].iloc[0]
+                if val is not None and str(val).strip():
+                    label_parts.append(str(val).strip())
+                    break  # one attribution line is enough
+
+        legend_label = "\n".join(label_parts)
+
+        # Add legend entry using a proxy artist (dashed line)
+        legend_handle = Line2D(
+            [0], [0],
+            color=color,
+            linestyle="--",
+            linewidth=2,
+            label=legend_label,
+        )
+
+        # Retrieve existing legend handles and labels, add our entry
+        existing_handles, existing_labels = ax.get_legend_handles_labels()
+        ax.legend(
+            handles=existing_handles + [legend_handle],
+            labels=existing_labels + [legend_label],
+            loc="lower right",
+            framealpha=0.9,
+            fontsize=9,
+        )
