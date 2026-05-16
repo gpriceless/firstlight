@@ -19,6 +19,35 @@ class MapType(Enum):
 
 
 @dataclass
+class MapOutputPreset:
+    """
+    Preset output dimensions and DPI for common use cases.
+
+    Attributes:
+        width: Image width in pixels
+        height: Image height in pixels
+        dpi: Dots per inch
+
+    Examples:
+        preset = MapOutputPreset.web()   # 1200x800 at 144 DPI
+        preset = MapOutputPreset.print() # 3600x2400 at 300 DPI
+    """
+    width: int
+    height: int
+    dpi: int
+
+    @classmethod
+    def web(cls) -> "MapOutputPreset":
+        """Web display preset: 1200x800 at 144 DPI."""
+        return cls(width=1200, height=800, dpi=144)
+
+    @classmethod
+    def print(cls) -> "MapOutputPreset":
+        """Print quality preset: 3600x2400 at 300 DPI."""
+        return cls(width=3600, height=2400, dpi=300)
+
+
+@dataclass
 class MapConfig:
     """
     Configuration for map generation.
@@ -31,7 +60,20 @@ class MapConfig:
         show_scale_bar: Include scale bar
         show_north_arrow: Include north arrow
         show_legend: Include legend
-        attribution: Map data attribution text
+        attribution: Map data attribution text (legacy single-string field)
+        source_crs: Optional CRS string (e.g. 'EPSG:4326') for the source data.
+            When provided, auto-detection from a raster file is skipped.
+
+        # Title block metadata
+        event_name: Optional event name for title block (e.g. 'Hurricane Ian')
+        location: Optional location for title block (e.g. 'Fort Myers, FL')
+        event_date: Optional event date for title block (e.g. '2022-09-28')
+
+        # Attribution block metadata
+        data_source: Optional data source name (e.g. 'Sentinel-1 SAR')
+        satellite_platform: Optional satellite/platform name (e.g. 'ESA Sentinel-1A')
+        acquisition_date: Optional image acquisition date (e.g. '2022-09-29')
+        processing_level: Optional processing level (e.g. 'GRD')
 
     Examples:
         # Screen display
@@ -39,6 +81,22 @@ class MapConfig:
 
         # Print quality
         config = MapConfig(width=3300, height=2550, dpi=300)
+
+        # Web preset
+        from core.reporting.maps.base import MapOutputPreset
+        preset = MapOutputPreset.web()
+        config = MapConfig(width=preset.width, height=preset.height, dpi=preset.dpi)
+
+        # Full metadata
+        config = MapConfig(
+            event_name="Hurricane Ian",
+            location="Fort Myers, FL",
+            event_date="2022-09-28",
+            data_source="Sentinel-1 SAR",
+            satellite_platform="ESA Sentinel-1A",
+            acquisition_date="2022-09-29",
+            processing_level="GRD",
+        )
     """
     width: int = 800
     height: int = 600
@@ -48,6 +106,18 @@ class MapConfig:
     show_north_arrow: bool = True
     show_legend: bool = True
     attribution: str = "© OpenStreetMap contributors"
+    source_crs: Optional[str] = None
+
+    # Title block metadata
+    event_name: Optional[str] = None
+    location: Optional[str] = None
+    event_date: Optional[str] = None
+
+    # Attribution block metadata
+    data_source: Optional[str] = None
+    satellite_platform: Optional[str] = None
+    acquisition_date: Optional[str] = None
+    processing_level: Optional[str] = None
 
 
 @dataclass

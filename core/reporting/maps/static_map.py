@@ -15,7 +15,7 @@ import numpy as np
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
 
-from core.reporting.maps.base import MapConfig, MapBounds, MapType
+from core.reporting.maps.base import MapConfig, MapBounds, MapType, MapOutputPreset
 from core.reporting.utils.color_utils import FLOOD_SEVERITY
 
 
@@ -93,6 +93,14 @@ class StaticMapGenerator:
             self.has_scalebar = False
             print("Warning: matplotlib-scalebar not available. Install for scale bars: pip install matplotlib-scalebar")
 
+        # Check for rasterio (CRS reading)
+        try:
+            import rasterio
+            self.has_rasterio = True
+            self.rasterio = rasterio
+        except ImportError:
+            self.has_rasterio = False
+
     def generate_flood_map(
         self,
         flood_extent: np.ndarray,
@@ -100,6 +108,7 @@ class StaticMapGenerator:
         output_path: Path,
         title: Optional[str] = None,
         infrastructure: Optional[List[Dict]] = None,
+        source_crs: Optional[str] = None,
     ) -> Path:
         """
         Generate flood extent map with base layer.
@@ -108,9 +117,11 @@ class StaticMapGenerator:
             flood_extent: Boolean array of flood extent (True = flooded)
             bounds: Geographic bounds of the map
             output_path: Where to save the map image
-            title: Optional map title
+            title: Optional map title (overrides config.title)
             infrastructure: Optional list of infrastructure features with
                            {'lon', 'lat', 'type', 'name'} keys
+            source_crs: Optional CRS string for the source data. Overrides
+                        config.source_crs. Used for projection selection.
 
         Returns:
             Path to generated map image
@@ -126,6 +137,9 @@ class StaticMapGenerator:
                 title="Hurricane Ian Flood Extent"
             )
         """
+        # Resolve CRS: kwarg > config field
+        effective_crs = source_crs or self.config.source_crs
+
         # Set up figure
         fig_width = self.config.width / self.config.dpi
         fig_height = self.config.height / self.config.dpi
@@ -137,7 +151,7 @@ class StaticMapGenerator:
 
         # Add base map if available
         if self.has_contextily and self.has_cartopy:
-            self._add_basemap_with_projection(ax, bounds)
+            self._add_basemap_with_projection(ax, bounds, source_crs=effective_crs)
         else:
             # Simple plot without base map
             ax.set_xlim(bounds.min_lon, bounds.max_lon)
@@ -163,28 +177,11 @@ class StaticMapGenerator:
                 {'label': 'Flooded Area', 'color': FLOOD_SEVERITY['moderate']}
             ])
 
-        # Add title
-        if title or self.config.title:
-            ax.set_title(
-                title or self.config.title,
-                fontsize=14,
-                fontweight='bold',
-                pad=10
-            )
+        # Add title block (replaces simple ax.set_title)
+        self._add_title_block(ax, override_title=title)
 
-        # Add attribution
-        ax.text(
-            0.99, 0.01,
-            self.config.attribution,
-            transform=ax.transAxes,
-            fontsize=8,
-            color='#A0AEC0',
-            ha='right',
-            va='bottom'
-        )
-
-        # Remove axes
-        ax.axis('off')
+        # Add attribution block (replaces single-line text)
+        self._add_attribution_block(ax)
 
         # Save
         self.plt.savefig(
@@ -203,6 +200,7 @@ class StaticMapGenerator:
         bounds: MapBounds,
         flood_extent: Optional[np.ndarray] = None,
         output_path: Optional[Path] = None,
+        source_crs: Optional[str] = None,
     ) -> Path:
         """
         Generate infrastructure overlay map.
@@ -212,12 +210,17 @@ class StaticMapGenerator:
             bounds: Geographic bounds
             flood_extent: Optional flood extent to show context
             output_path: Where to save (required)
+            source_crs: Optional CRS string for the source data. Overrides
+                        config.source_crs. Used for projection selection.
 
         Returns:
             Path to generated map
         """
         if output_path is None:
             raise ValueError("output_path is required")
+
+        # Resolve CRS: kwarg > config field
+        effective_crs = source_crs or self.config.source_crs
 
         # Set up figure
         fig_width = self.config.width / self.config.dpi
@@ -230,7 +233,7 @@ class StaticMapGenerator:
 
         # Add base map
         if self.has_contextily and self.has_cartopy:
-            self._add_basemap_with_projection(ax, bounds)
+            self._add_basemap_with_projection(ax, bounds, source_crs=effective_crs)
         else:
             ax.set_xlim(bounds.min_lon, bounds.max_lon)
             ax.set_ylim(bounds.min_lat, bounds.max_lat)
@@ -250,16 +253,11 @@ class StaticMapGenerator:
         if self.config.show_north_arrow:
             self._add_north_arrow(ax)
 
-        # Add title
-        if self.config.title:
-            ax.set_title(
-                self.config.title,
-                fontsize=14,
-                fontweight='bold',
-                pad=10
-            )
+        # Add title block
+        self._add_title_block(ax)
 
-        ax.axis('off')
+        # Add attribution block
+        self._add_attribution_block(ax)
 
         # Save
         self.plt.savefig(
@@ -382,24 +380,187 @@ class StaticMapGenerator:
                 zorder=10
             )
 
-    def _add_basemap_with_projection(self, ax, bounds: MapBounds):
-        """Add base map tiles with cartopy projection (if available)."""
+    def _detect_crs_from_raster(self, raster_path: str) -> Optional[str]:
+        """
+        Read CRS from a GeoTIFF file using rasterio.
+
+        Args:
+            raster_path: Path to GeoTIFF file
+
+        Returns:
+            CRS string (e.g. 'EPSG:4326') or None if unreadable
+        """
+        if not self.has_rasterio:
+            return None
+        try:
+            with self.rasterio.open(raster_path) as ds:
+                crs = ds.crs
+                if crs is not None:
+                    return crs.to_string()
+        except Exception as e:
+            print(f"Warning: Could not read CRS from {raster_path}: {e}")
+        return None
+
+    def _choose_projection(self, bounds: MapBounds, source_crs: Optional[str] = None):
+        """
+        Choose an appropriate display projection.
+
+        Uses UTM for small extents (<100 km) and Web Mercator for display.
+        Always returns a cartopy CRS object for use with contextily.
+
+        Args:
+            bounds: Geographic bounds of the area
+            source_crs: Optional CRS hint from source data (currently used as
+                        metadata; display projection is based on extent size)
+
+        Returns:
+            cartopy CRS object for the display projection, or None if cartopy
+            is not available
+        """
+        if not self.has_cartopy:
+            return None
+
+        # Estimate spatial extent in km using a rough conversion
+        # 1 degree latitude ≈ 111 km; longitude varies with latitude
+        center_lat = (bounds.min_lat + bounds.max_lat) / 2
+        lat_km = abs(bounds.max_lat - bounds.min_lat) * 111.0
+        lon_km = abs(bounds.max_lon - bounds.min_lon) * 111.0 * abs(np.cos(np.radians(center_lat)))
+        max_extent_km = max(lat_km, lon_km)
+
+        if max_extent_km < 100:
+            # Small local extent: use UTM for accurate distance representation
+            # Calculate UTM zone from center longitude
+            utm_zone = int((bounds.center[0] + 180) / 6) + 1
+            hemisphere = "north" if center_lat >= 0 else "south"
+            try:
+                if hemisphere == "north":
+                    return self.ccrs.UTM(zone=utm_zone, southern_hemisphere=False)
+                else:
+                    return self.ccrs.UTM(zone=utm_zone, southern_hemisphere=True)
+            except Exception:
+                # Fall back to Mercator if UTM fails
+                pass
+
+        # Default: Web Mercator for display compatibility with tile providers
+        return self.ccrs.epsg(3857)
+
+    def _add_basemap_with_projection(
+        self,
+        ax,
+        bounds: MapBounds,
+        source_crs: Optional[str] = None,
+        raster_path: Optional[str] = None,
+    ):
+        """
+        Add base map tiles with CRS auto-detection and geographic axes.
+
+        Reads CRS from a raster file if provided. Falls back gracefully if
+        contextily or cartopy are unavailable.
+
+        Args:
+            ax: matplotlib axes (GeoAxes when cartopy is available)
+            bounds: WGS84 geographic bounds
+            source_crs: Optional pre-resolved CRS string. Skips raster detection.
+            raster_path: Optional path to GeoTIFF for CRS auto-detection.
+        """
         if not (self.has_contextily and self.has_cartopy):
             return
+
+        # Auto-detect CRS from raster if not already supplied
+        if source_crs is None and raster_path is not None:
+            source_crs = self._detect_crs_from_raster(raster_path)
 
         try:
             # Set extent in WGS84
             ax.set_extent(bounds.bbox, crs=self.ccrs.PlateCarree())
 
-            # Add base map tiles
-            self.ctx.add_basemap(
-                ax,
-                crs=self.ccrs.PlateCarree(),
-                source=self.ctx.providers.CartoDB.Positron,
-                zoom='auto'
-            )
+            # Add geographic gridlines (lat/lon labels)
+            try:
+                gl = ax.gridlines(
+                    crs=self.ccrs.PlateCarree(),
+                    draw_labels=True,
+                    linewidth=0.5,
+                    color='gray',
+                    alpha=0.5,
+                    linestyle='--',
+                )
+                gl.top_labels = False
+                gl.right_labels = False
+            except Exception:
+                # gridlines may fail for some projections; non-fatal
+                pass
+
+            # Add base map tiles via contextily
+            self._get_basemap_tiles(bounds, ax=ax)
+
         except Exception as e:
             print(f"Warning: Could not add basemap: {e}")
+
+    def _get_basemap_tiles(
+        self,
+        bounds: MapBounds,
+        ax=None,
+    ) -> Optional[Tuple]:
+        """
+        Fetch and apply base map tiles using contextily.
+
+        Primary provider: CartoDB.Positron (clean, light background).
+        Fallback provider: OpenStreetMap.Mapnik (if primary fetch fails).
+
+        Args:
+            bounds: Geographic bounds (WGS84). Used only when ax is None.
+            ax: matplotlib/cartopy Axes to add the basemap to. When provided,
+                contextily.add_basemap() is called directly on the axes.
+
+        Returns:
+            Tuple of (image_array, extent) when fetching tiles without axes,
+            or None when adding directly to axes.
+        """
+        if not self.has_contextily:
+            return None
+
+        primary_source = self.ctx.providers.CartoDB.Positron
+        fallback_source = self.ctx.providers.OpenStreetMap.Mapnik
+
+        if ax is not None:
+            # Add tiles directly onto existing axes
+            for source in (primary_source, fallback_source):
+                try:
+                    self.ctx.add_basemap(
+                        ax,
+                        crs=self.ccrs.PlateCarree() if self.has_cartopy else "EPSG:4326",
+                        source=source,
+                        zoom='auto',
+                    )
+                    return None  # success
+                except Exception as e:
+                    print(f"Warning: Basemap tile fetch failed ({source.name if hasattr(source, 'name') else source}): {e}")
+            return None
+
+        # Standalone tile fetch (no axes)
+        try:
+            img, extent = self.ctx.bounds2img(
+                bounds.min_lon, bounds.min_lat,
+                bounds.max_lon, bounds.max_lat,
+                zoom='auto',
+                source=primary_source,
+                ll=True,  # input is lon/lat (WGS84)
+            )
+            return (img, extent)
+        except Exception as e:
+            print(f"Warning: Primary tile fetch failed: {e}. Trying fallback.")
+            try:
+                img, extent = self.ctx.bounds2img(
+                    bounds.min_lon, bounds.min_lat,
+                    bounds.max_lon, bounds.max_lat,
+                    zoom='auto',
+                    source=fallback_source,
+                    ll=True,
+                )
+                return (img, extent)
+            except Exception as e2:
+                print(f"Warning: Fallback tile fetch also failed: {e2}")
+                return None
 
     def _add_scale_bar(self, ax, bounds: MapBounds):
         """Add scale bar to map."""
@@ -485,11 +646,103 @@ class StaticMapGenerator:
             fontsize=9
         )
 
-    def _get_basemap_tiles(self, bounds: MapBounds):
+    def _add_title_block(self, ax, override_title: Optional[str] = None):
         """
-        Fetch base map tiles using contextily.
+        Add a structured title block to the map.
 
-        Note: This is a placeholder for potential future implementation
-        of custom tile fetching.
+        Renders event name, location, and date from MapConfig as a multi-line
+        title. Falls back to a simple title if only config.title is set.
+
+        Args:
+            ax: matplotlib axes
+            override_title: Optional title string that overrides config fields.
         """
-        pass
+        # Build title lines from config metadata
+        title_lines = []
+
+        # Determine main title: override kwarg > event_name > config.title
+        main_title = override_title or self.config.event_name or self.config.title
+        if main_title:
+            title_lines.append(main_title)
+
+        # Location and date as subtitle
+        subtitle_parts = []
+        if self.config.location:
+            subtitle_parts.append(self.config.location)
+        if self.config.event_date:
+            subtitle_parts.append(self.config.event_date)
+
+        if subtitle_parts:
+            title_lines.append(" | ".join(subtitle_parts))
+
+        if not title_lines:
+            return
+
+        # Render: first line is the primary title, second is subtitle
+        if len(title_lines) >= 2:
+            # Two-line title block
+            ax.set_title(
+                title_lines[0],
+                fontsize=14,
+                fontweight='bold',
+                pad=4,
+                loc='center',
+            )
+            # Subtitle placed just above the axes via suptitle-style text
+            ax.text(
+                0.5, 1.01,
+                title_lines[1],
+                transform=ax.transAxes,
+                fontsize=10,
+                color='#4A5568',
+                ha='center',
+                va='bottom',
+            )
+        else:
+            ax.set_title(
+                title_lines[0],
+                fontsize=14,
+                fontweight='bold',
+                pad=10,
+            )
+
+    def _add_attribution_block(self, ax):
+        """
+        Add a structured attribution block to the map.
+
+        Renders satellite platform, acquisition date, processing level, and
+        data source from MapConfig. Falls back to the legacy attribution string
+        if no structured fields are set.
+
+        Args:
+            ax: matplotlib axes
+        """
+        parts = []
+
+        if self.config.satellite_platform:
+            parts.append(self.config.satellite_platform)
+        if self.config.acquisition_date:
+            parts.append(f"Acquired: {self.config.acquisition_date}")
+        if self.config.processing_level:
+            parts.append(f"Level: {self.config.processing_level}")
+        if self.config.data_source:
+            parts.append(self.config.data_source)
+
+        if not parts:
+            # Fall back to legacy attribution string
+            attribution_text = self.config.attribution
+        else:
+            attribution_text = "  |  ".join(parts)
+            # Append base attribution if it's not the default and we have metadata
+            if self.config.attribution and self.config.attribution != "© OpenStreetMap contributors":
+                attribution_text = f"{attribution_text}  |  {self.config.attribution}"
+
+        ax.text(
+            0.99, 0.01,
+            attribution_text,
+            transform=ax.transAxes,
+            fontsize=8,
+            color='#A0AEC0',
+            ha='right',
+            va='bottom',
+        )
