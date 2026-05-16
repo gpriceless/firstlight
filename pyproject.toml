@@ -33,6 +33,10 @@ dependencies = [
     "shapely>=2.0.2",
     "pyproj>=3.6.1",
     "rioxarray>=0.15.0",
+    # Cartographic rendering (static maps)
+    "contextily>=1.5.0",
+    "cartopy>=0.22.0",
+    "matplotlib-scalebar>=0.8.1",
     # Cloud-native formats
     "zarr>=2.16.1",
     "pyarrow>=14.0.1",
