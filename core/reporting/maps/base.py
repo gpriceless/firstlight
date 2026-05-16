@@ -82,12 +82,13 @@ class MapConfig:
         # Print quality
         config = MapConfig(width=3300, height=2550, dpi=300)
 
-        # Web preset
-        from core.reporting.maps.base import MapOutputPreset
-        preset = MapOutputPreset.web()
-        config = MapConfig(width=preset.width, height=preset.height, dpi=preset.dpi)
+        # Web preset via factory
+        config = MapConfig.from_preset(MapOutputPreset.web())
 
-        # Full metadata
+        # Print preset with title
+        config = MapConfig.from_preset(MapOutputPreset.print(), title="My Map")
+
+        # Full event metadata
         config = MapConfig(
             event_name="Hurricane Ian",
             location="Fort Myers, FL",
@@ -118,6 +119,24 @@ class MapConfig:
     satellite_platform: Optional[str] = None
     acquisition_date: Optional[str] = None
     processing_level: Optional[str] = None
+
+    @classmethod
+    def from_preset(cls, preset: MapOutputPreset, **kwargs) -> "MapConfig":
+        """
+        Create a MapConfig with dimensions and DPI from a MapOutputPreset.
+
+        Args:
+            preset: A MapOutputPreset instance (web or print)
+            **kwargs: Additional MapConfig fields to override
+
+        Returns:
+            MapConfig with width, height, dpi from the preset
+
+        Examples:
+            config = MapConfig.from_preset(MapOutputPreset.web())
+            config = MapConfig.from_preset(MapOutputPreset.print(), title="My Map")
+        """
+        return cls(width=preset.width, height=preset.height, dpi=preset.dpi, **kwargs)
 
 
 @dataclass
