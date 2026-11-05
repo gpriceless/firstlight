@@ -1,0 +1,59 @@
+[importlinter]
+root_packages =
+    agents
+    api
+    cli
+    core
+    openspec
+include_external_packages = False
+
+[importlinter:contract:core-is-a-library]
+name = core does not import the api, cli or agents
+type = forbidden
+source_modules =
+    core
+forbidden_modules =
+    api
+    cli
+    agents
+
+[importlinter:contract:front-doors-independent]
+name = api, cli and agents do not import each other
+type = independence
+modules =
+    api
+    cli
+    agents
+
+[importlinter:contract:core-layers]
+name = core layers: reporting over quality over analysis over data
+type = layers
+layers =
+    core.reporting
+    core.quality
+    core.analysis
+    core.data
+
+[importlinter:contract:execution-below-analysis]
+name = core.execution and core.resilience do not import analysis, quality or reporting
+type = forbidden
+source_modules =
+    core.execution
+    core.resilience
+forbidden_modules =
+    core.analysis
+    core.quality
+    core.reporting
+
+[importlinter:contract:intent-standalone]
+name = core.intent imports nothing else in core
+type = forbidden
+source_modules =
+    core.intent
+forbidden_modules =
+    core.analysis
+    core.data
+    core.quality
+    core.reporting
+    core.execution
+    core.resilience

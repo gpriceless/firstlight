@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-11-05T17:53:55+00:00",
+  "tool": "import-linter",
+  "contracts": [
+    {
+      "name": "core does not import the api, cli or agents",
+      "status": "green",
+      "paths": []
+    },
+    {
+      "name": "api, cli and agents do not import each other",
+      "status": "green",
+      "paths": []
+    },
+    {
+      "name": "core layers: reporting over quality over analysis over data",
+      "status": "green",
+      "paths": []
+    },
+    {
+      "name": "core.execution and core.resilience do not import analysis, quality or reporting",
+      "status": "green",
+      "paths": []
+    },
+    {
+      "name": "core.intent imports nothing else in core",
+      "status": "green",
+      "paths": []
+    }
+  ]
+}
