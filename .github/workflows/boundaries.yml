@@ -1,0 +1,20 @@
+name: Boundary contracts
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  import-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # import-linter reads the source statically, so the project's heavy
+      # geospatial dependencies are not needed for this check.
+      - run: pip install "import-linter>=2.1"
+      - run: lint-imports
+        env:
+          PYTHONPATH: ${{ github.workspace }}
