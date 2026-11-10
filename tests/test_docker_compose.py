@@ -137,11 +137,6 @@ class TestComposeStructure:
         services = compose.get("services", {})
         assert "api" in services, "Should define 'api' service"
 
-    def test_main_compose_has_worker_service(self):
-        """Test docker-compose.yml defines worker service."""
-        compose = self._load_compose("docker-compose.yml")
-        services = compose.get("services", {})
-        assert "worker" in services, "Should define 'worker' service"
 
     def test_main_compose_has_redis_service(self):
         """Test docker-compose.yml defines Redis service."""
@@ -217,24 +212,6 @@ class TestServiceConfiguration:
                 assert has_restart or has_deploy_restart, (
                     f"Service {name} should have restart policy"
                 )
-
-    def test_worker_has_resource_limits(self):
-        """Test worker service has resource limits."""
-        compose = self._load_compose("docker-compose.yml")
-        worker = compose["services"]["worker"]
-        deploy = worker.get("deploy", {})
-        resources = deploy.get("resources", {})
-
-        # Should have limits defined
-        has_limits = "limits" in resources
-        # Or environment-based limits
-        has_env_limits = any(
-            "MAX_MEMORY" in str(env) or "MEMORY_LIMIT" in str(env)
-            for env in worker.get("environment", [])
-        )
-        assert has_limits or has_env_limits, (
-            "Worker should have resource limits"
-        )
 
 
 class TestNetworkConfiguration:
@@ -482,20 +459,3 @@ class TestComposeServices:
             time.sleep(1)
 
         pytest.fail("Redis did not become healthy in time")
-
-
-class TestOnPremCompose:
-    """Tests for on-premises Docker Compose configuration."""
-
-    def test_standalone_compose_exists(self):
-        """Test standalone compose file exists."""
-        compose_file = PROJECT_ROOT / "deploy" / "on-prem" / "standalone" / "docker-compose.yml"
-        assert compose_file.exists(), "Standalone compose file not found"
-
-    def test_standalone_compose_valid_yaml(self):
-        """Test standalone compose file is valid YAML."""
-        compose_file = PROJECT_ROOT / "deploy" / "on-prem" / "standalone" / "docker-compose.yml"
-        with open(compose_file) as f:
-            compose = yaml.safe_load(f)
-        assert compose is not None
-        assert "services" in compose

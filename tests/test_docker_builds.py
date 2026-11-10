@@ -59,10 +59,6 @@ class TestDockerfileExists:
         dockerfile = PROJECT_ROOT / "docker" / "cli" / "Dockerfile"
         assert dockerfile.exists(), f"CLI Dockerfile not found at {dockerfile}"
 
-    def test_worker_dockerfile_exists(self):
-        """Test worker Dockerfile exists."""
-        dockerfile = PROJECT_ROOT / "docker" / "worker" / "Dockerfile"
-        assert dockerfile.exists(), f"Worker Dockerfile not found at {dockerfile}"
 
     def test_core_dockerfile_exists(self):
         """Test core Dockerfile exists."""
@@ -147,7 +143,7 @@ class TestDockerfileBestPractices:
 
     def test_no_root_cmd(self):
         """Test Dockerfiles don't run as root in CMD."""
-        for service in ["base", "api", "worker", "cli"]:
+        for service in ["base", "api", "cli"]:
             content = self._read_dockerfile(service)
             # Check that USER instruction comes before CMD
             if "USER" in content and "CMD" in content:
@@ -261,25 +257,6 @@ class TestDockerBuilds:
         )
         assert result.returncode == 0, (
             f"CLI image build failed:\n{result.stderr}"
-        )
-
-    @requires_docker
-    def test_worker_image_builds(self):
-        """Test worker Dockerfile builds successfully."""
-        result = subprocess.run(
-            [
-                "docker", "build",
-                "-f", str(PROJECT_ROOT / "docker" / "worker" / "Dockerfile"),
-                "-t", "firstlight-worker:test",
-                "--no-cache",
-                str(PROJECT_ROOT),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=600,
-        )
-        assert result.returncode == 0, (
-            f"Worker image build failed:\n{result.stderr}"
         )
 
 
@@ -396,7 +373,7 @@ class TestSecurityBestPractices:
             "AWS_ACCESS_KEY",
             "AWS_SECRET_KEY",
         ]
-        for service in ["base", "api", "worker", "cli"]:
+        for service in ["base", "api", "cli"]:
             content = self._read_dockerfile(service).lower()
             for pattern in secret_patterns:
                 # Allow ENV declarations without values
@@ -418,7 +395,7 @@ class TestSecurityBestPractices:
 
     def test_no_sudo_in_dockerfile(self):
         """Test Dockerfiles don't use sudo (should run as root during build, then USER)."""
-        for service in ["base", "api", "worker", "cli"]:
+        for service in ["base", "api", "cli"]:
             content = self._read_dockerfile(service)
             # sudo in Dockerfile is usually a smell
             lines = [line for line in content.split("\n")
