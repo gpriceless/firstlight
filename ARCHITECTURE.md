@@ -1,6 +1,6 @@
 # Architecture: FirstLight
 
-Last checked against the code: 2026-11-09, commit b836248, after the dead-code delete. Read by the owner: not yet.
+Last checked against the code: 2026-11-10, commit 1dc46c7. Read by the owner: not yet.
 
 Sources: `.harness/import-graph.json` (regex map), an AST reachability pass that also
 counts imports inside functions, the import-linter contracts in `.importlinter`, and
@@ -96,3 +96,21 @@ after "queue". Nothing consumes the queue.
   finish in 180 seconds. Most failures are tests that drifted from refactored code
   (`tests/cli/test_*_wiring.py`). The pyspark tests went with the Spark backend.
 - Dead and test-only clusters with a revive or delete call each: `history/left-in-the-dust.md`.
+
+## Retired
+
+Deprecated on 2026-03-18 by the owner (`docs/branch-triage-llm-control-plane.md`). None
+of it is on `main` and nothing here should be rebuilt without a new spec.
+
+- The LLM control plane: control API, event stream, OGC API Processes and pygeoapi,
+  pgSTAC, the PostGIS job schema, the Taskiq and Redis worker queue, tenant middleware.
+  The code is kept only as tag `archive/llm-control-plane`. Its proposal still sits in
+  `openspec/changes/add-llm-control-plane/` as a record, not as planned work.
+- The MAIA showcase: demo scripts and notebooks built for MAIA, and the separate
+  `maia_pipeline` repo. Not part of FirstLight.
+- The triage listed a few things on that branch worth keeping; the triage file says
+  which. The context lakehouse branch is kept as
+  `refs/attic/origin-context-data-lakehouse`; reviving it needs a spec.
+
+An agent memory file written in February still described both as in progress. It is
+kept verbatim in `history/left-in-the-dust.md` under "Old agent memory".

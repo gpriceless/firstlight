@@ -67,7 +67,6 @@ Thumbs.db
 
 # Local development
 .claude/
-CLAUDE.md
 .orchestrator_locks/
 
 # Development tracking (keep local only)

@@ -77,3 +77,79 @@ predate the history rewrite of 2026-03-30. The old local `main` is kept as tag
 | `generate_readme_images.py` (untracked) | | Draws a synthetic river valley; its images were shown in the README as product output | moved to the attic (the images left the README on 2026-11-09) |
 | `openspec/changes/viz-storytelling-phase4/` (untracked) | | Proposal for map storytelling; its first part is on main, the rest never started | moved to the attic; revive with a spec if map storytelling is still wanted |
 | `documentation/`, `mkdocs.yml`, `docs/study-guide/` (untracked) | | Generated docs from 2026-04-24, one study note | moved to the attic |
+
+## Old agent memory
+
+Two files under `~/.claude/projects/-home-gprice-projects-firstlight/memory/`, written in
+February 2026. Every run in this repo had the overview injected and it still called the
+deprecated control plane and MAIA work in progress. Moved out on 2026-11-10. The
+files went untouched to `~/projects/firstlight-attic-2026-11-10/claude-memory/`. Below, the lessons file
+verbatim and the overview cut to the claims that went stale, without tracker ids,
+board config or the details of the separate repo.
+
+What replaced them: `CLAUDE.md` and `LESSONS.md` in the repo, "Retired" in
+`ARCHITECTURE.md`.
+
+| Old line | Call | Why |
+|---|---|---|
+| Overview: workflow rules, role list, tracker config | dropped | Not about the code; the workflow lives outside the repo. |
+| Overview: "LLM Control Plane, build complete" and "MAIA Pipeline, build in progress" | dropped | Both deprecated 2026-03-18. See "Retired" in `ARCHITECTURE.md`. |
+| Lessons: stale `_events_store` imports (pattern) | kept as a pattern | The grep-every-importer rule still holds. |
+| Lessons: non-polygon AOI accepted | kept, reworded | The PostGIS column is gone; the API still accepts any geometry type. |
+| Lessons: use `python -m pytest`, not `run_tests.py` | kept | |
+| Lessons: `test_intent_resolution.py` broken import | dropped | The file was deleted on 2026-11-09. |
+| Lessons: `test_database.py` deprecation errors, 2 `test_jwt_auth.py` failures | dropped | Not rechecked since February; the test baseline is in `ARCHITECTURE.md`. |
+
+### MEMORY.md, scrubbed
+
+- Workflow: plan with the OpenSpec CLI under `openspec/changes/<id>/`; never in
+  `OPENSPEC.md` or `docs/design/`.
+- LLM control plane: "build complete, verified" on `feature/llm-control-plane`,
+  OpenSpec change `add-llm-control-plane`, 58 tasks checked, 54 commits, 84 files,
+  +14,914 lines, 379 tests. "Branch stays standalone, not merging to main."
+- MAIA pipeline: "build in progress" in a separate repo, `maia_pipeline`, with its plan
+  and stages listed.
+
+### LESSONS.md, verbatim
+
+````markdown
+# FirstLight - Bug Lessons
+
+Agents: Read this file at session start. Update it after resolving bugs.
+
+## Patterns (Recurring Root Causes)
+
+### Stale In-Memory Store References (frequency: 2)
+- **Shared symptom**: `ImportError: cannot import name '_events_store'` preventing module loading
+- **Shared root cause**: When a module moves from in-memory storage to DB storage, dependent modules still import the deleted in-memory store variable
+- **Fix pattern**: Replace in-memory store lookups with `db_session.get_event()` + `deserialize_event_from_db()`. Check ALL importers of the removed symbol (use grep across the entire codebase), not just the file the user reported.
+
+## Individual Lessons
+
+### Non-polygon geometry types pass API validation but fail at PostGIS
+- **Bug**: Point, LineString, MultiPoint, MultiLineString, GeometryCollection were accepted by the `CreateJobRequest` Pydantic validator but caused a type mismatch at PostGIS insert (column is `GEOMETRY(MULTIPOLYGON, 4326)`)
+- **Root cause**: The validator accepted all GeoJSON types as valid, but the DB column only accepts MultiPolygon. `ST_Multi(Point)` produces `MULTIPOINT`, not `MULTIPOLYGON`.
+- **Fix**: Added early rejection in `validate_aoi_geojson()` for any type that is not `Polygon` or `MultiPolygon`. Updated tests from "documents the gap" to "asserts rejection".
+- **Applies to**: Any API field that maps to a typed PostGIS column -- validate the geometry type at the API layer, not just coordinate bounds.
+
+### Broken _events_store import in products.py, status.py, and test_intent_resolution.py
+- **Bug**: `from api.routes.events import _events_store` fails because `_events_store` was removed when events moved to DB storage. This prevents FastAPI app from loading (chained via `__init__.py` imports).
+- **Root cause**: Events moved from in-memory dict to DB-backed storage, but three dependent files were not updated. The `api/routes/__init__.py` imports all route modules, so a broken import in any one prevents the entire app from starting.
+- **Fix**: Replaced `_events_store` lookups with `db_session.get_event()` + `deserialize_event_from_db()`. Removed the dead `clear_events_store` fixture from test_intent_resolution.py.
+- **Applies to**: Any migration from in-memory to DB storage -- always grep for all consumers of the removed symbol.
+
+## Operational Notes
+
+- `run_tests.py` uses a different collection path that triggers `jsonschema` import errors. Use `python -m pytest` directly for reliable test execution.
+- `tests/api/test_intent_resolution.py` has a pre-existing broken import (`EventIntent` not in `api.models.requests`) unrelated to the `_events_store` fix.
+- `tests/api/test_database.py` has pre-existing pytest deprecation errors.
+- `tests/api/test_jwt_auth.py` has 2 pre-existing failures related to auth config.
+
+## Anti-Patterns
+
+### Accepting all GeoJSON types when only polygons are valid
+Never accept arbitrary GeoJSON geometry types when the storage layer requires a specific type. Validate the geometry type at the API boundary, not just coordinate bounds. A `Point` is valid GeoJSON but invalid for an AOI column.
+
+### Not grepping all consumers when removing a module-level export
+When removing an exported symbol from a module, grep the entire codebase for all importers. Chained imports through `__init__.py` mean a single broken import can prevent the entire application from starting.
+````
