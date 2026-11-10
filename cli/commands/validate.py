@@ -281,7 +281,7 @@ def _load_raster_data(input_path: Path) -> Optional[np.ndarray]:
     Accepts a single GeoTIFF, a single ``.npy`` array, or a directory containing
     either. Prefers GeoTIFFs when both are present in a directory. The ``.npy``
     fallback exists because the analyze stage currently writes outputs as
-    ``.npy`` arrays only (see LGT-418); without it, every real-mode wildfire /
+    ``.npy`` arrays only; without it, every real-mode wildfire /
     flood / storm run fails the validate stage.
     """
     # Single .npy file

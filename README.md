@@ -16,10 +16,10 @@ FirstLight automates this entire pipeline. Given a natural language description 
 1. **Resolves the intent** to a structured event taxonomy (`flood.coastal.storm_surge`, 0.92 confidence) with ranked alternatives
 2. **Discovers optimal imagery** across 6 satellite constellations (Sentinel-1/2, Landsat-8/9, MODIS) plus DEMs and weather data
 3. **Selects and executes detection algorithms** matched to available data — SAR thresholding, NDWI, change detection, HAND modeling — with automatic fallback when primary methods fail
-4. **Validates results** through cross-sensor comparison, spatial coherence checks, and plausibility analysis
+4. **Validates results** through spatial coherence checks and plausibility analysis
 5. **Generates decision products**: interactive HTML reports, print-ready PDFs at 300 DPI, GeoTIFF maps, and GeoJSON vectors — all with complete provenance
 
-The same codebase scales from a Raspberry Pi (1GB RAM, serial processing) to a 100-node Spark cluster (continental-scale monitoring) through an automatic backend selection system.
+The same code runs serially on a small machine or in parallel with Dask on a workstation. An execution router picks the backend.
 
 ```mermaid
 graph LR
@@ -27,7 +27,7 @@ graph LR
     B -->|"flood.coastal.storm_surge<br/>0.92 confidence"| C[Data Discovery]
     C -->|"Sentinel-1, Sentinel-2<br/>DEM, Weather"| D[Algorithm Selection]
     D -->|"SAR Threshold + NDWI<br/>+ Change Detection"| E[Distributed Execution]
-    E -->|"Auto: Serial / Dask / Spark"| F[Quality Control]
+    E -->|"Auto: Serial / Dask"| F[Quality Control]
     F --> G[Report Generation]
     G --> H[HTML Report]
     G --> I[PDF 300 DPI]
@@ -85,7 +85,7 @@ datasets = await broker.discover(
 # - ERA5 weather data (storm surge context)
 ```
 
-### 3. Algorithm Execution: Multi-Sensor Fusion
+### 3. Algorithm Execution
 
 ```python
 from core.analysis.library.baseline.flood import ThresholdSARAlgorithm
@@ -98,18 +98,14 @@ print(f"Confidence: {result.confidence:.2f}")
 print(f"Affected population: {result.statistics['population_exposed']}")
 ```
 
-### 4. Quality Control: Cross-Validation and Sanity Checks
+### 4. Quality Control: Sanity Checks
 
 ```python
-from core.quality import SanityChecker, CrossValidator
+from core.quality import SanityChecker
 
 # Sanity checks: geometry validity, plausibility, completeness
 checker = SanityChecker()
 issues = checker.check(result.flood_extent, event_class="flood.coastal")
-
-# Cross-validation: consensus across multiple algorithms
-validator = CrossValidator()
-consensus = validator.validate([sar_result, optical_result, change_result])
 ```
 
 ---
@@ -151,7 +147,7 @@ Input: "flooding after hurricane in Miami area"
 
 ### 3. Distributed Processing Architecture
 
-**Challenge:** Same analysis needs to run on Raspberry Pi (edge deployment) and 100-node Spark cluster (continental monitoring). Cannot maintain separate codebases.
+**Challenge:** The same analysis has to run on a small machine and on a multi-core workstation without two codebases.
 
 **Solution:** ExecutionRouter pattern with abstraction layer:
 ```python
@@ -159,10 +155,7 @@ class ExecutionRouter:
     def select_backend(self, data_size_mb, available_memory_mb):
         if data_size_mb < 500:
             return SerialExecutor()
-        elif available_memory_mb > 8000:
-            return DaskExecutor(workers=4)
-        else:
-            return SparkExecutor(cluster_url)
+        return DaskExecutor(workers=4)
 
 # Algorithm code is backend-agnostic
 router = ExecutionRouter()
@@ -175,33 +168,10 @@ result = executor.run(algorithm, data)
 - `laptop` - 2GB RAM, 256px tiles, 2 workers
 - `workstation` - 8GB RAM, 512px tiles, 4 workers
 - `cloud` - 32GB RAM, 1024px tiles, 16 workers
-- `continental` - Spark cluster, dynamic resource allocation
 
 Same algorithm code runs across all profiles.
 
-### 4. Multi-Sensor Fusion Engine
-
-**Challenge:** Different satellites have different resolutions (10m vs 30m), projections (UTM vs geographic), acquisition times (minutes to days apart), and atmospheric conditions. Need consistent output.
-
-**Solution:**
-- **Spatial alignment** - Reproject all datasets to common CRS and resolution via GDAL warp
-- **Temporal alignment** - Weight contributions by temporal distance from event
-- **Atmospheric correction** - Sen2Cor for optical, radiometric calibration for SAR
-- **Terrain correction** - Range-Doppler terrain correction using Copernicus DEM
-- **Conflict resolution** - When sensors disagree, weight by per-sensor confidence and recency
-- **Uncertainty propagation** - Track error from each sensor through fusion to final output
-
-**Example fusion:**
-```
-Sentinel-1 SAR:  90% flood confidence (cloud-penetrating, day 0)
-Sentinel-2 MSI:  75% flood confidence (cloud-obscured, day 2)
-Landsat-8 OLI:   85% flood confidence (clear, day 3)
-
-→ Fused consensus: 88% confidence
-  Uncertainty: ±12% (propagated from input errors)
-```
-
-### 5. API Design
+### 4. API Design
 
 **Challenge:** Support both human-friendly natural language inputs and strict machine interfaces. Track requests across distributed pipeline stages. Handle geometry validation and authentication.
 
@@ -252,14 +222,14 @@ POST /api/v1/events → {"detail": "Rate limit exceeded: 100/hour"}
 
 | Metric | Value |
 |--------|-------|
-| Lines of Code | 170,000+ |
+| Lines of Code | 140,000+ |
 | Test Coverage | 518+ tests |
 | Detection Algorithms | 10 (8 baseline + 2 advanced) |
 | Data Sources | 6 satellite constellations + DEM + weather |
-| Deployment Targets | 10 (Docker, K8s, AWS, GCP, Azure, edge) |
+| Deployment Targets | Docker Compose (API, CLI) |
 | Supported Event Classes | 25+ hierarchical types |
 | API Endpoints | 30+ RESTful routes |
-| Processing Backends | 3 (Serial, Dask, Spark) |
+| Processing Backends | 2 (Serial, Dask) |
 
 ---
 
@@ -329,9 +299,9 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
 **Core:** Python 3.12, NumPy, SciPy, rasterio, GDAL, Shapely, GeoPandas
 **API:** FastAPI, Pydantic, JWT authentication, Uvicorn
-**Processing:** Dask (parallel), Apache Sedona (Spark), STAC
+**Processing:** Dask (parallel), STAC
 **Reporting:** Jinja2, WeasyPrint (PDF), Folium (maps), Pillow
-**Deployment:** Docker, Kubernetes, AWS Lambda/ECS, GCP Cloud Run, Azure Container Instances
+**Deployment:** Docker, Docker Compose
 **Testing:** pytest (518+ tests), property-based testing, hypothesis
 **Data:** Sentinel-1/2, Landsat-8/9, MODIS, Copernicus DEM, SRTM, ERA5
 
@@ -350,16 +320,10 @@ firstlight/
 ├── openspec/                # Specification layer
 │   ├── schemas/             # JSON Schema definitions
 │   └── definitions/         # YAML event classes, algorithms, data sources
-├── agents/                  # Autonomous agent implementations
 ├── api/                     # FastAPI REST interface
 ├── cli/                     # Command line interface (flight)
-├── deploy/                  # Deployment configurations
-│   ├── kubernetes/          # K8s manifests
-│   ├── aws/                 # AWS ECS/Lambda configs
-│   ├── gcp/                 # GCP Cloud Run configs
-│   ├── azure/               # Azure Container Instances / AKS
-│   └── edge/                # Edge device configs (Raspberry Pi, Jetson)
-├── docker/                  # Dockerfiles (API, CLI, worker)
+├── deploy/                  # Compose files, API Dockerfile, config reference
+├── docker/                  # Dockerfiles (base, API, CLI, core)
 ├── tests/                   # Test suites (518+ tests)
 │   ├── unit/                # Unit tests for core modules
 │   ├── integration/         # End-to-end pipeline tests

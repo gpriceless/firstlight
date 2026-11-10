@@ -1,8 +1,6 @@
 # FirstLight Product Analysis
 
 **Date:** 2026-03-17
-**Author:** Product Queen (Sentinel Pipeline)
-**Issue:** LGT-20
 
 ---
 

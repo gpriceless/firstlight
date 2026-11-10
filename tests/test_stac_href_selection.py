@@ -1,5 +1,5 @@
 """
-Regression tests for LGT-412: STAC asset href selection.
+Regression tests: STAC asset href selection.
 
 The Element84 `landsat-c2-l2` collection returns `s3://usgs-landsat/...`
 as the primary asset href; that scheme is unreachable from the HTTP-only

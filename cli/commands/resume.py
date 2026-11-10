@@ -182,7 +182,7 @@ def resume(
                 # Pull saved run config once per stage. Matches what `flight run`
                 # persists to `state.config`, so resume reproduces the original
                 # invocation rather than falling back to defaults that mismatch
-                # the originally-discovered data (LGT-419).
+                # the originally-discovered data.
                 event_type = config.get("event_type", "flood")
                 profile_name = config.get("profile", "workstation")
                 profile_config = PROFILES.get(profile_name)
@@ -191,7 +191,7 @@ def resume(
                 event_dt = start_dt + (end_dt - start_dt) / 2
                 data_mode = config.get("data_mode", DATA_MODE_REAL)
                 # `flight run` derives an analyze_bbox from --area; fall back to
-                # the raw --bbox if the older state.json predates LGT-420.
+                # the raw --bbox if the older state.json predates analyze_bbox.
                 analyze_bbox = config.get("analyze_bbox") or config.get("bbox")
                 max_cloud = config.get("max_cloud")
                 if max_cloud is None:
@@ -226,7 +226,7 @@ def resume(
                     click.echo(f"    Ingested {result.get('count', 0)} items")
 
                 elif stage == "analyze":
-                    # LGT-419: forward event_date and bbox so the Sentinel-2
+                    # Forward event_date and bbox so the Sentinel-2
                     # loader picks the right pre/post pair on resume instead
                     # of falling back to the midpoint heuristic on three
                     # scenes (which can pick two pre-fire scenes).

@@ -1,5 +1,5 @@
 """
-Regression tests for LGT-419: `flight resume` must forward event_date,
+Regression tests: `flight resume` must forward event_date,
 bbox, and data_mode into the analyze stage. Previously the analyze
 branch called `run_analyze` without those kwargs, causing the Sentinel-2
 pre/post loader to fall back to a midpoint heuristic that picked the
@@ -46,7 +46,7 @@ def _write_workflow_state(workdir: Path, completed_stages, config_overrides=None
 
 
 class TestResumeForwardsAnalyzeContext:
-    """LGT-419: analyze on resume forwards event_date, bbox, data_mode."""
+    """Analyze on resume forwards event_date, bbox, data_mode."""
 
     def test_resume_analyze_forwards_event_date_from_window_midpoint(self, tmp_path):
         from click.testing import CliRunner
@@ -129,7 +129,7 @@ class TestResumeForwardsAnalyzeContext:
         assert captured.get("data_mode") == "synthetic"
 
     def test_resume_falls_back_to_bbox_when_analyze_bbox_absent(self, tmp_path):
-        """Old state.json (pre-LGT-420) lacks analyze_bbox; resume must use bbox."""
+        """Old state.json (written before analyze_bbox existed) lacks analyze_bbox; resume must use bbox."""
         from click.testing import CliRunner
 
         from cli.commands.resume import resume as resume_cmd

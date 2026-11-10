@@ -289,13 +289,13 @@ def run(
 
     # Pick a max-cloud default that actually reflects the event. Wildfire
     # post-event windows are often the only available acquisition and are
-    # frequently above 30% cloud (LGT-420 — Max Road Miramar at 78.9%).
+    # frequently above 30% cloud (the Max Road Miramar scene was 78.9%).
     if max_cloud is None:
         max_cloud = 90.0 if event_type.lower() == "wildfire" else 30.0
 
     # If only --area was provided, derive a bbox string for the analyze loader
     # so it can window-read to the AOI instead of the full Sentinel-2 tile
-    # (LGT-420 — full-tile reads dominate stats with surrounding vegetation).
+    # (full-tile reads dominate stats with surrounding vegetation).
     analyze_bbox: Optional[str] = bbox
     if analyze_bbox is None and area_path is not None:
         try:
@@ -1068,7 +1068,7 @@ def _load_sentinel2_pre_post(
     share the same shape. AOI clipping uses ``bbox`` (geographic
     min_lon,min_lat,...). ``grid`` is a serializable dict capturing the output
     CRS + affine transform so the export stage can produce properly
-    georeferenced products (LGT-417).
+    georeferenced products.
     """
     import rasterio
     from rasterio.warp import transform_bounds
@@ -1243,7 +1243,7 @@ def _load_sentinel2_storm_pre_post(
     plus ``blue_pre, blue_post`` (each either an array or ``None``). All
     arrays share the NIR (10 m) grid; AOI clipping uses ``bbox`` in geographic
     coordinates. ``grid`` is the same georeferencing sidecar used by the
-    wildfire path so the export stage can produce proper GeoTIFFs (LGT-417).
+    wildfire path so the export stage can produce proper GeoTIFFs.
     """
     import rasterio
     from rasterio.warp import transform_bounds
@@ -1408,7 +1408,7 @@ def _analyze_wildfire(
         # Real mode: discover Sentinel-2 scenes and group into pre/post.
         # _load_sentinel2_pre_post raises FileNotFoundError if pre+post are not
         # both available — that matches the existing "refuse to fabricate"
-        # contract and is required by the LGT-416 regression test.
+        # contract and is required by the wildfire loader regression test.
         pre_nir, pre_swir, post_nir, post_swir, pixel_size_m, grid = (
             _load_sentinel2_pre_post(
                 input_path,
@@ -1433,7 +1433,7 @@ def _analyze_wildfire(
     np.save(output_path / "confidence.npy", result.confidence_raster)
 
     # Persist the analyze-stage grid so the export stage can produce properly
-    # georeferenced GeoTIFFs / GeoJSONs (LGT-417). Synthetic runs leave grid
+    # georeferenced GeoTIFFs / GeoJSONs. Synthetic runs leave grid
     # unset — the export stage falls back to its bbox-based placeholder.
     if grid is not None:
         with open(output_path / "grid.json", "w") as f:
@@ -1710,7 +1710,7 @@ def run_export(
     if not result_arrays:
         logger.warning("No result arrays found for export")
 
-    # Prefer the analyze stage's grid.json sidecar (LGT-417) over the bbox
+    # Prefer the analyze stage's grid.json sidecar over the bbox
     # placeholder so exported products land at real-world coordinates.
     grid = _load_grid_info(input_path)
 
@@ -1847,7 +1847,7 @@ def _export_geojson(
             json.dump(geojson, f)
         return
 
-    # Prefer the analyze-stage grid (LGT-417): when present, polygonize the
+    # Prefer the analyze-stage grid: when present, polygonize the
     # mask with rasterio.features.shapes against the real affine transform and
     # reproject each polygon to EPSG:4326. Falls back to the legacy bbox-based
     # bounding-box projection otherwise.

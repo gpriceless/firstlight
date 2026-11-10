@@ -1,5 +1,5 @@
 """
-Regression tests for LGT-413: `flight run` must fail-fast on 0 ingested items
+Regression tests: `flight run` must fail-fast on 0 ingested items
 and never emit fabricated analysis stats when real input rasters are absent.
 """
 
@@ -131,7 +131,7 @@ class TestRunCommandFailFast:
 
 
 class TestRunDiscoverMaxCloudDefault:
-    """LGT-420: `flight run` must pick an event-aware cloud default and pass --max-cloud through."""
+    """`flight run` must pick an event-aware cloud default and pass --max-cloud through."""
 
     def test_wildfire_default_uses_90_percent_cloud(self, tmp_path):
         from click.testing import CliRunner
@@ -244,7 +244,7 @@ class TestRunDiscoverMaxCloudDefault:
 
 
 class TestRunAreaToBboxDerivation:
-    """LGT-420: when only --area is supplied, run must derive a bbox for analyze."""
+    """When only --area is supplied, run must derive a bbox for analyze."""
 
     def test_area_geojson_derives_analyze_bbox(self, tmp_path):
         import json as _json
@@ -426,7 +426,7 @@ def _write_s2_scene(
 
 
 class TestWildfireRealModeLoader:
-    """LGT-416: `_analyze_wildfire` must load pre/post NIR + SWIR22 from ingested S2."""
+    """`_analyze_wildfire` must load pre/post NIR + SWIR22 from ingested S2."""
 
     def test_analyze_wildfire_real_mode_loads_sentinel2_pair(self, tmp_path):
         pytest.importorskip("rasterio")
@@ -562,7 +562,7 @@ def _write_s2_storm_scene(
 
 
 class TestStormRealModeLoader:
-    """LGT-414: `_analyze_storm` must load pre/post red + NIR from ingested Sentinel-2."""
+    """`_analyze_storm` must load pre/post red + NIR from ingested Sentinel-2."""
 
     def test_analyze_storm_real_mode_loads_sentinel2_pair(self, tmp_path):
         pytest.importorskip("rasterio")
@@ -617,7 +617,7 @@ class TestStormRealModeLoader:
         assert captured["red_pre"].mean() < captured["red_post"].mean()
         # Pixel size reflects NIR (10 m for Sentinel-2).
         assert captured["pixel_size_m"] == pytest.approx(10.0)
-        # Outputs and grid.json are written for the export stage (LGT-417).
+        # Outputs and grid.json are written for the export stage.
         assert (out_dir / "damage_extent.npy").exists()
         assert (out_dir / "confidence.npy").exists()
         assert (out_dir / "grid.json").exists()

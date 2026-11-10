@@ -301,7 +301,7 @@ def test_normalize_item_converts_tif_to_cog(tmp_path, ingest_module):
 
     The previous implementation called converter.convert(...), which doesn't exist;
     AttributeError bubbled up and caused every real-data ingest to be marked failed
-    even after the downloads succeeded. See LGT-415.
+    even after the downloads succeeded.
     """
     if not HAS_RASTERIO:
         pytest.skip("rasterio not available")

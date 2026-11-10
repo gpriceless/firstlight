@@ -85,7 +85,7 @@ class TestLoadRasterData:
         assert data is None
 
     def test_load_npy_file(self, tmp_path, sample_raster_data):
-        """Loading a single .npy file should return the array (LGT-418)."""
+        """Loading a single .npy file should return the array."""
         npy_path = tmp_path / "dnbr.npy"
         np.save(npy_path, sample_raster_data)
 
@@ -95,7 +95,7 @@ class TestLoadRasterData:
         np.testing.assert_array_equal(data, sample_raster_data)
 
     def test_load_npy_from_directory(self, tmp_path, sample_raster_data):
-        """A directory with only .npy outputs (analyze stage) must load (LGT-418)."""
+        """A directory with only .npy outputs (analyze stage) must load."""
         # Mirror what _analyze_wildfire writes to results/.
         for name in ("dnbr.npy", "burn_severity.npy", "burn_extent.npy", "confidence.npy"):
             np.save(tmp_path / name, sample_raster_data)
@@ -307,7 +307,7 @@ class TestValidateCommandIntegration:
 
 
 class TestValidateAcceptsAnalyzeNpyOutputs:
-    """Regression: validate must accept the .npy outputs analyze emits (LGT-418).
+    """Regression: validate must accept the .npy outputs analyze emits.
 
     Before the fix, `_load_raster_data` only looked at `.tif` files, so every
     real-mode wildfire/flood/storm run failed validate with:

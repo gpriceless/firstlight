@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-05T17:51:55+00:00",
+  "generated_at": "2026-11-10T04:45:27+00:00",
   "root": "..",
   "tool": "module-map.py",
   "nodes": [
@@ -22,141 +22,6 @@
       "id": "run_tests.py",
       "lang": "python",
       "module": "run_tests"
-    },
-    {
-      "id": "agents/__init__.py",
-      "lang": "python",
-      "module": "agents"
-    },
-    {
-      "id": "agents/base.py",
-      "lang": "python",
-      "module": "agents.base"
-    },
-    {
-      "id": "agents/discovery/__init__.py",
-      "lang": "python",
-      "module": "agents.discovery"
-    },
-    {
-      "id": "agents/discovery/acquisition.py",
-      "lang": "python",
-      "module": "agents.discovery.acquisition"
-    },
-    {
-      "id": "agents/discovery/catalog.py",
-      "lang": "python",
-      "module": "agents.discovery.catalog"
-    },
-    {
-      "id": "agents/discovery/main.py",
-      "lang": "python",
-      "module": "agents.discovery.main"
-    },
-    {
-      "id": "agents/discovery/selection.py",
-      "lang": "python",
-      "module": "agents.discovery.selection"
-    },
-    {
-      "id": "agents/orchestrator/__init__.py",
-      "lang": "python",
-      "module": "agents.orchestrator"
-    },
-    {
-      "id": "agents/orchestrator/assembly.py",
-      "lang": "python",
-      "module": "agents.orchestrator.assembly"
-    },
-    {
-      "id": "agents/orchestrator/delegation.py",
-      "lang": "python",
-      "module": "agents.orchestrator.delegation"
-    },
-    {
-      "id": "agents/orchestrator/main.py",
-      "lang": "python",
-      "module": "agents.orchestrator.main"
-    },
-    {
-      "id": "agents/orchestrator/state.py",
-      "lang": "python",
-      "module": "agents.orchestrator.state"
-    },
-    {
-      "id": "agents/pipeline/__init__.py",
-      "lang": "python",
-      "module": "agents.pipeline"
-    },
-    {
-      "id": "agents/pipeline/assembly.py",
-      "lang": "python",
-      "module": "agents.pipeline.assembly"
-    },
-    {
-      "id": "agents/pipeline/execution.py",
-      "lang": "python",
-      "module": "agents.pipeline.execution"
-    },
-    {
-      "id": "agents/pipeline/main.py",
-      "lang": "python",
-      "module": "agents.pipeline.main"
-    },
-    {
-      "id": "agents/pipeline/monitoring.py",
-      "lang": "python",
-      "module": "agents.pipeline.monitoring"
-    },
-    {
-      "id": "agents/quality/__init__.py",
-      "lang": "python",
-      "module": "agents.quality"
-    },
-    {
-      "id": "agents/quality/main.py",
-      "lang": "python",
-      "module": "agents.quality.main"
-    },
-    {
-      "id": "agents/quality/reporting.py",
-      "lang": "python",
-      "module": "agents.quality.reporting"
-    },
-    {
-      "id": "agents/quality/review.py",
-      "lang": "python",
-      "module": "agents.quality.review"
-    },
-    {
-      "id": "agents/quality/validation.py",
-      "lang": "python",
-      "module": "agents.quality.validation"
-    },
-    {
-      "id": "agents/reporting/__init__.py",
-      "lang": "python",
-      "module": "agents.reporting"
-    },
-    {
-      "id": "agents/reporting/delivery.py",
-      "lang": "python",
-      "module": "agents.reporting.delivery"
-    },
-    {
-      "id": "agents/reporting/formats.py",
-      "lang": "python",
-      "module": "agents.reporting.formats"
-    },
-    {
-      "id": "agents/reporting/main.py",
-      "lang": "python",
-      "module": "agents.reporting.main"
-    },
-    {
-      "id": "agents/reporting/products.py",
-      "lang": "python",
-      "module": "agents.reporting.products"
     },
     {
       "id": "api/__init__.py",
@@ -399,69 +264,9 @@
       "module": "core.analysis.execution.runner"
     },
     {
-      "id": "core/analysis/execution/sedona_adapters.py",
-      "lang": "python",
-      "module": "core.analysis.execution.sedona_adapters"
-    },
-    {
-      "id": "core/analysis/execution/sedona_backend.py",
-      "lang": "python",
-      "module": "core.analysis.execution.sedona_backend"
-    },
-    {
       "id": "core/analysis/execution/tiled_runner.py",
       "lang": "python",
       "module": "core.analysis.execution.tiled_runner"
-    },
-    {
-      "id": "core/analysis/forecast/__init__.py",
-      "lang": "python",
-      "module": "core.analysis.forecast"
-    },
-    {
-      "id": "core/analysis/forecast/ingestion.py",
-      "lang": "python",
-      "module": "core.analysis.forecast.ingestion"
-    },
-    {
-      "id": "core/analysis/forecast/projection.py",
-      "lang": "python",
-      "module": "core.analysis.forecast.projection"
-    },
-    {
-      "id": "core/analysis/forecast/scenarios.py",
-      "lang": "python",
-      "module": "core.analysis.forecast.scenarios"
-    },
-    {
-      "id": "core/analysis/forecast/validation.py",
-      "lang": "python",
-      "module": "core.analysis.forecast.validation"
-    },
-    {
-      "id": "core/analysis/fusion/__init__.py",
-      "lang": "python",
-      "module": "core.analysis.fusion"
-    },
-    {
-      "id": "core/analysis/fusion/alignment.py",
-      "lang": "python",
-      "module": "core.analysis.fusion.alignment"
-    },
-    {
-      "id": "core/analysis/fusion/conflict.py",
-      "lang": "python",
-      "module": "core.analysis.fusion.conflict"
-    },
-    {
-      "id": "core/analysis/fusion/corrections.py",
-      "lang": "python",
-      "module": "core.analysis.fusion.corrections"
-    },
-    {
-      "id": "core/analysis/fusion/uncertainty.py",
-      "lang": "python",
-      "module": "core.analysis.fusion.uncertainty"
     },
     {
       "id": "core/analysis/library/__init__.py",
@@ -559,21 +364,6 @@
       "module": "core.analysis.library.baseline.wildfire.thermal_anomaly"
     },
     {
-      "id": "core/analysis/selection/__init__.py",
-      "lang": "python",
-      "module": "core.analysis.selection"
-    },
-    {
-      "id": "core/analysis/selection/deterministic.py",
-      "lang": "python",
-      "module": "core.analysis.selection.deterministic"
-    },
-    {
-      "id": "core/analysis/selection/selector.py",
-      "lang": "python",
-      "module": "core.analysis.selection.selector"
-    },
-    {
       "id": "core/data/__init__.py",
       "lang": "python",
       "module": "core.data"
@@ -582,26 +372,6 @@
       "id": "core/data/broker.py",
       "lang": "python",
       "module": "core.data.broker"
-    },
-    {
-      "id": "core/data/cache/__init__.py",
-      "lang": "python",
-      "module": "core.data.cache"
-    },
-    {
-      "id": "core/data/cache/index.py",
-      "lang": "python",
-      "module": "core.data.cache.index"
-    },
-    {
-      "id": "core/data/cache/manager.py",
-      "lang": "python",
-      "module": "core.data.cache.manager"
-    },
-    {
-      "id": "core/data/cache/storage.py",
-      "lang": "python",
-      "module": "core.data.cache.storage"
     },
     {
       "id": "core/data/discovery/__init__.py",
@@ -619,39 +389,9 @@
       "module": "core.data.discovery.base"
     },
     {
-      "id": "core/data/discovery/provider_api.py",
-      "lang": "python",
-      "module": "core.data.discovery.provider_api"
-    },
-    {
-      "id": "core/data/discovery/stac.py",
-      "lang": "python",
-      "module": "core.data.discovery.stac"
-    },
-    {
       "id": "core/data/discovery/stac_client.py",
       "lang": "python",
       "module": "core.data.discovery.stac_client"
-    },
-    {
-      "id": "core/data/discovery/wms_wcs.py",
-      "lang": "python",
-      "module": "core.data.discovery.wms_wcs"
-    },
-    {
-      "id": "core/data/evaluation/__init__.py",
-      "lang": "python",
-      "module": "core.data.evaluation"
-    },
-    {
-      "id": "core/data/evaluation/constraints.py",
-      "lang": "python",
-      "module": "core.data.evaluation.constraints"
-    },
-    {
-      "id": "core/data/evaluation/ranking.py",
-      "lang": "python",
-      "module": "core.data.evaluation.ranking"
     },
     {
       "id": "core/data/ingestion/__init__.py",
@@ -924,36 +664,6 @@
       "module": "core.data.providers.weather.gfs"
     },
     {
-      "id": "core/data/selection/__init__.py",
-      "lang": "python",
-      "module": "core.data.selection"
-    },
-    {
-      "id": "core/data/selection/atmospheric.py",
-      "lang": "python",
-      "module": "core.data.selection.atmospheric"
-    },
-    {
-      "id": "core/data/selection/fusion.py",
-      "lang": "python",
-      "module": "core.data.selection.fusion"
-    },
-    {
-      "id": "core/data/selection/strategy.py",
-      "lang": "python",
-      "module": "core.data.selection.strategy"
-    },
-    {
-      "id": "core/data/storage/__init__.py",
-      "lang": "python",
-      "module": "core.data.storage"
-    },
-    {
-      "id": "core/data/storage/local.py",
-      "lang": "python",
-      "module": "core.data.storage.local"
-    },
-    {
       "id": "core/execution/__init__.py",
       "lang": "python",
       "module": "core.execution"
@@ -994,34 +704,9 @@
       "module": "core.intent.resolver"
     },
     {
-      "id": "core/provenance/__init__.py",
-      "lang": "python",
-      "module": "core.provenance"
-    },
-    {
       "id": "core/quality/__init__.py",
       "lang": "python",
       "module": "core.quality"
-    },
-    {
-      "id": "core/quality/actions/__init__.py",
-      "lang": "python",
-      "module": "core.quality.actions"
-    },
-    {
-      "id": "core/quality/actions/flagging.py",
-      "lang": "python",
-      "module": "core.quality.actions.flagging"
-    },
-    {
-      "id": "core/quality/actions/gating.py",
-      "lang": "python",
-      "module": "core.quality.actions.gating"
-    },
-    {
-      "id": "core/quality/actions/routing.py",
-      "lang": "python",
-      "module": "core.quality.actions.routing"
     },
     {
       "id": "core/quality/reporting/__init__.py",
@@ -1084,44 +769,9 @@
       "module": "core.quality.uncertainty.spatial_uncertainty"
     },
     {
-      "id": "core/quality/validation/__init__.py",
-      "lang": "python",
-      "module": "core.quality.validation"
-    },
-    {
-      "id": "core/quality/validation/consensus.py",
-      "lang": "python",
-      "module": "core.quality.validation.consensus"
-    },
-    {
-      "id": "core/quality/validation/cross_model.py",
-      "lang": "python",
-      "module": "core.quality.validation.cross_model"
-    },
-    {
-      "id": "core/quality/validation/cross_sensor.py",
-      "lang": "python",
-      "module": "core.quality.validation.cross_sensor"
-    },
-    {
-      "id": "core/quality/validation/historical.py",
-      "lang": "python",
-      "module": "core.quality.validation.historical"
-    },
-    {
       "id": "core/reporting/__init__.py",
       "lang": "python",
       "module": "core.reporting"
-    },
-    {
-      "id": "core/reporting/components/__init__.py",
-      "lang": "python",
-      "module": "core.reporting.components"
-    },
-    {
-      "id": "core/reporting/components/base.py",
-      "lang": "python",
-      "module": "core.reporting.components.base"
     },
     {
       "id": "core/reporting/data/__init__.py",
@@ -1154,6 +804,21 @@
       "module": "core.reporting.imagery"
     },
     {
+      "id": "core/reporting/imagery/algorithm_descriptions.py",
+      "lang": "python",
+      "module": "core.reporting.imagery.algorithm_descriptions"
+    },
+    {
+      "id": "core/reporting/imagery/area_metrics.py",
+      "lang": "python",
+      "module": "core.reporting.imagery.area_metrics"
+    },
+    {
+      "id": "core/reporting/imagery/attribution.py",
+      "lang": "python",
+      "module": "core.reporting.imagery.attribution"
+    },
+    {
       "id": "core/reporting/imagery/band_combinations.py",
       "lang": "python",
       "module": "core.reporting.imagery.band_combinations"
@@ -1162,6 +827,11 @@
       "id": "core/reporting/imagery/before_after.py",
       "lang": "python",
       "module": "core.reporting.imagery.before_after"
+    },
+    {
+      "id": "core/reporting/imagery/captions.py",
+      "lang": "python",
+      "module": "core.reporting.imagery.captions"
     },
     {
       "id": "core/reporting/imagery/cloud_mask.py",
@@ -1189,9 +859,24 @@
       "module": "core.reporting.imagery.histogram"
     },
     {
+      "id": "core/reporting/imagery/impact_metrics.py",
+      "lang": "python",
+      "module": "core.reporting.imagery.impact_metrics"
+    },
+    {
       "id": "core/reporting/imagery/legend.py",
       "lang": "python",
       "module": "core.reporting.imagery.legend"
+    },
+    {
+      "id": "core/reporting/imagery/locator_map.py",
+      "lang": "python",
+      "module": "core.reporting.imagery.locator_map"
+    },
+    {
+      "id": "core/reporting/imagery/methodology_text.py",
+      "lang": "python",
+      "module": "core.reporting.imagery.methodology_text"
     },
     {
       "id": "core/reporting/imagery/overlay.py",
@@ -1269,11 +954,6 @@
       "module": "core.reporting.templates.full_report"
     },
     {
-      "id": "core/reporting/templates/sections.py",
-      "lang": "python",
-      "module": "core.reporting.templates.sections"
-    },
-    {
       "id": "core/reporting/utils/__init__.py",
       "lang": "python",
       "module": "core.reporting.utils"
@@ -1297,106 +977,6 @@
       "id": "core/reporting/web/assets/interactive.js",
       "lang": "typescript",
       "module": "core/reporting/web/assets/interactive"
-    },
-    {
-      "id": "core/resilience/__init__.py",
-      "lang": "python",
-      "module": "core.resilience"
-    },
-    {
-      "id": "core/resilience/assessment/__init__.py",
-      "lang": "python",
-      "module": "core.resilience.assessment"
-    },
-    {
-      "id": "core/resilience/assessment/dem_quality.py",
-      "lang": "python",
-      "module": "core.resilience.assessment.dem_quality"
-    },
-    {
-      "id": "core/resilience/assessment/optical_quality.py",
-      "lang": "python",
-      "module": "core.resilience.assessment.optical_quality"
-    },
-    {
-      "id": "core/resilience/assessment/sar_quality.py",
-      "lang": "python",
-      "module": "core.resilience.assessment.sar_quality"
-    },
-    {
-      "id": "core/resilience/assessment/temporal_quality.py",
-      "lang": "python",
-      "module": "core.resilience.assessment.temporal_quality"
-    },
-    {
-      "id": "core/resilience/degraded_mode/__init__.py",
-      "lang": "python",
-      "module": "core.resilience.degraded_mode"
-    },
-    {
-      "id": "core/resilience/degraded_mode/low_confidence.py",
-      "lang": "python",
-      "module": "core.resilience.degraded_mode.low_confidence"
-    },
-    {
-      "id": "core/resilience/degraded_mode/mode_manager.py",
-      "lang": "python",
-      "module": "core.resilience.degraded_mode.mode_manager"
-    },
-    {
-      "id": "core/resilience/degraded_mode/partial_coverage.py",
-      "lang": "python",
-      "module": "core.resilience.degraded_mode.partial_coverage"
-    },
-    {
-      "id": "core/resilience/failure/__init__.py",
-      "lang": "python",
-      "module": "core.resilience.failure"
-    },
-    {
-      "id": "core/resilience/failure/failure_log.py",
-      "lang": "python",
-      "module": "core.resilience.failure.failure_log"
-    },
-    {
-      "id": "core/resilience/failure/provenance_tracking.py",
-      "lang": "python",
-      "module": "core.resilience.failure.provenance_tracking"
-    },
-    {
-      "id": "core/resilience/failure/recovery_strategies.py",
-      "lang": "python",
-      "module": "core.resilience.failure.recovery_strategies"
-    },
-    {
-      "id": "core/resilience/fallbacks/__init__.py",
-      "lang": "python",
-      "module": "core.resilience.fallbacks"
-    },
-    {
-      "id": "core/resilience/fallbacks/algorithm_fallback.py",
-      "lang": "python",
-      "module": "core.resilience.fallbacks.algorithm_fallback"
-    },
-    {
-      "id": "core/resilience/fallbacks/dem_fallback.py",
-      "lang": "python",
-      "module": "core.resilience.fallbacks.dem_fallback"
-    },
-    {
-      "id": "core/resilience/fallbacks/optical_fallback.py",
-      "lang": "python",
-      "module": "core.resilience.fallbacks.optical_fallback"
-    },
-    {
-      "id": "core/resilience/fallbacks/parameter_tuning.py",
-      "lang": "python",
-      "module": "core.resilience.fallbacks.parameter_tuning"
-    },
-    {
-      "id": "core/resilience/fallbacks/sar_fallback.py",
-      "lang": "python",
-      "module": "core.resilience.fallbacks.sar_fallback"
     },
     {
       "id": "docs/api/examples/submit_event.py",
@@ -1469,11 +1049,6 @@
       "module": "tests.test_advanced_algorithms"
     },
     {
-      "id": "tests/test_agents.py",
-      "lang": "python",
-      "module": "tests.test_agents"
-    },
-    {
       "id": "tests/test_algorithm_registry.py",
       "lang": "python",
       "module": "tests.test_algorithm_registry"
@@ -1494,19 +1069,9 @@
       "module": "tests.test_assembly"
     },
     {
-      "id": "tests/test_cache.py",
-      "lang": "python",
-      "module": "tests.test_cache"
-    },
-    {
       "id": "tests/test_cli.py",
       "lang": "python",
       "module": "tests.test_cli"
-    },
-    {
-      "id": "tests/test_constraints.py",
-      "lang": "python",
-      "module": "tests.test_constraints"
     },
     {
       "id": "tests/test_dask_execution.py",
@@ -1559,24 +1124,9 @@
       "module": "tests.test_flood_algorithms"
     },
     {
-      "id": "tests/test_forecast.py",
-      "lang": "python",
-      "module": "tests.test_forecast"
-    },
-    {
       "id": "tests/test_full_report_templates.py",
       "lang": "python",
       "module": "tests.test_full_report_templates"
-    },
-    {
-      "id": "tests/test_fusion.py",
-      "lang": "python",
-      "module": "tests.test_fusion"
-    },
-    {
-      "id": "tests/test_fusion_core.py",
-      "lang": "python",
-      "module": "tests.test_fusion_core"
     },
     {
       "id": "tests/test_fusion_core_comprehensive.py",
@@ -1629,11 +1179,6 @@
       "module": "tests.test_persistence"
     },
     {
-      "id": "tests/test_quality.py",
-      "lang": "python",
-      "module": "tests.test_quality"
-    },
-    {
       "id": "tests/test_quality_integration.py",
       "lang": "python",
       "module": "tests.test_quality_integration"
@@ -1649,16 +1194,6 @@
       "module": "tests.test_quality_uncertainty"
     },
     {
-      "id": "tests/test_quality_validation.py",
-      "lang": "python",
-      "module": "tests.test_quality_validation"
-    },
-    {
-      "id": "tests/test_ranking.py",
-      "lang": "python",
-      "module": "tests.test_ranking"
-    },
-    {
       "id": "tests/test_reporting.py",
       "lang": "python",
       "module": "tests.test_reporting"
@@ -1669,11 +1204,6 @@
       "module": "tests.test_reporting_data_integration"
     },
     {
-      "id": "tests/test_resilience.py",
-      "lang": "python",
-      "module": "tests.test_resilience"
-    },
-    {
       "id": "tests/test_sanity.py",
       "lang": "python",
       "module": "tests.test_sanity"
@@ -1682,16 +1212,6 @@
       "id": "tests/test_schemas.py",
       "lang": "python",
       "module": "tests.test_schemas"
-    },
-    {
-      "id": "tests/test_sedona_execution.py",
-      "lang": "python",
-      "module": "tests.test_sedona_execution"
-    },
-    {
-      "id": "tests/test_selection.py",
-      "lang": "python",
-      "module": "tests.test_selection"
     },
     {
       "id": "tests/test_stac_href_selection.py",
@@ -1742,11 +1262,6 @@
       "id": "tests/api/test_database.py",
       "lang": "python",
       "module": "tests.api.test_database"
-    },
-    {
-      "id": "tests/api/test_intent_resolution.py",
-      "lang": "python",
-      "module": "tests.api.test_intent_resolution"
     },
     {
       "id": "tests/api/test_jwt_auth.py",
@@ -1824,9 +1339,24 @@
       "module": "tests.reporting.imagery"
     },
     {
+      "id": "tests/reporting/imagery/test_algorithm_descriptions.py",
+      "lang": "python",
+      "module": "tests.reporting.imagery.test_algorithm_descriptions"
+    },
+    {
+      "id": "tests/reporting/imagery/test_area_metrics.py",
+      "lang": "python",
+      "module": "tests.reporting.imagery.test_area_metrics"
+    },
+    {
       "id": "tests/reporting/imagery/test_band_combinations.py",
       "lang": "python",
       "module": "tests.reporting.imagery.test_band_combinations"
+    },
+    {
+      "id": "tests/reporting/imagery/test_captions.py",
+      "lang": "python",
+      "module": "tests.reporting.imagery.test_captions"
     },
     {
       "id": "tests/reporting/imagery/test_cloud_mask.py",
@@ -1849,6 +1379,11 @@
       "module": "tests.reporting.imagery.test_histogram"
     },
     {
+      "id": "tests/reporting/imagery/test_impact_metrics.py",
+      "lang": "python",
+      "module": "tests.reporting.imagery.test_impact_metrics"
+    },
+    {
       "id": "tests/reporting/imagery/test_integration.py",
       "lang": "python",
       "module": "tests.reporting.imagery.test_integration"
@@ -1857,6 +1392,11 @@
       "id": "tests/reporting/imagery/test_legend.py",
       "lang": "python",
       "module": "tests.reporting.imagery.test_legend"
+    },
+    {
+      "id": "tests/reporting/imagery/test_methodology_text.py",
+      "lang": "python",
+      "module": "tests.reporting.imagery.test_methodology_text"
     },
     {
       "id": "tests/reporting/imagery/test_overlay.py",
@@ -1882,6 +1422,11 @@
       "id": "tests/reporting/imagery/test_utils.py",
       "lang": "python",
       "module": "tests.reporting.imagery.test_utils"
+    },
+    {
+      "id": "tests/reporting/imagery/test_visual_enhancements.py",
+      "lang": "python",
+      "module": "tests.reporting.imagery.test_visual_enhancements"
     },
     {
       "id": "tests/reporting/maps/__init__.py",
@@ -1915,326 +1460,6 @@
     }
   ],
   "edges": [
-    {
-      "from": "agents/discovery/__init__.py",
-      "to": "agents/base.py"
-    },
-    {
-      "from": "agents/discovery/__init__.py",
-      "to": "agents/discovery/acquisition.py"
-    },
-    {
-      "from": "agents/discovery/__init__.py",
-      "to": "agents/discovery/catalog.py"
-    },
-    {
-      "from": "agents/discovery/__init__.py",
-      "to": "agents/discovery/main.py"
-    },
-    {
-      "from": "agents/discovery/__init__.py",
-      "to": "agents/discovery/selection.py"
-    },
-    {
-      "from": "agents/discovery/catalog.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
-      "from": "agents/discovery/catalog.py",
-      "to": "core/data/providers/registry.py"
-    },
-    {
-      "from": "agents/discovery/main.py",
-      "to": "agents/base.py"
-    },
-    {
-      "from": "agents/discovery/main.py",
-      "to": "agents/discovery/acquisition.py"
-    },
-    {
-      "from": "agents/discovery/main.py",
-      "to": "agents/discovery/catalog.py"
-    },
-    {
-      "from": "agents/discovery/main.py",
-      "to": "agents/discovery/selection.py"
-    },
-    {
-      "from": "agents/discovery/main.py",
-      "to": "core/data/broker.py"
-    },
-    {
-      "from": "agents/discovery/main.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
-      "from": "agents/discovery/main.py",
-      "to": "core/data/discovery/stac.py"
-    },
-    {
-      "from": "agents/discovery/main.py",
-      "to": "core/data/providers/registry.py"
-    },
-    {
-      "from": "agents/discovery/selection.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
-      "from": "agents/discovery/selection.py",
-      "to": "core/data/providers/registry.py"
-    },
-    {
-      "from": "agents/orchestrator/__init__.py",
-      "to": "agents/orchestrator/assembly.py"
-    },
-    {
-      "from": "agents/orchestrator/__init__.py",
-      "to": "agents/orchestrator/delegation.py"
-    },
-    {
-      "from": "agents/orchestrator/__init__.py",
-      "to": "agents/orchestrator/main.py"
-    },
-    {
-      "from": "agents/orchestrator/__init__.py",
-      "to": "agents/orchestrator/state.py"
-    },
-    {
-      "from": "agents/orchestrator/main.py",
-      "to": "agents/base.py"
-    },
-    {
-      "from": "agents/orchestrator/main.py",
-      "to": "agents/orchestrator/__init__.py"
-    },
-    {
-      "from": "agents/orchestrator/main.py",
-      "to": "agents/orchestrator/assembly.py"
-    },
-    {
-      "from": "agents/orchestrator/main.py",
-      "to": "agents/orchestrator/delegation.py"
-    },
-    {
-      "from": "agents/orchestrator/main.py",
-      "to": "agents/orchestrator/state.py"
-    },
-    {
-      "from": "agents/orchestrator/main.py",
-      "to": "core/analysis/assembly/assembler.py"
-    },
-    {
-      "from": "agents/orchestrator/main.py",
-      "to": "core/analysis/library/registry.py"
-    },
-    {
-      "from": "agents/orchestrator/main.py",
-      "to": "core/data/broker.py"
-    },
-    {
-      "from": "agents/orchestrator/main.py",
-      "to": "core/intent/resolver.py"
-    },
-    {
-      "from": "agents/orchestrator/main.py",
-      "to": "core/quality/reporting/qa_report.py"
-    },
-    {
-      "from": "agents/orchestrator/main.py",
-      "to": "core/quality/sanity/__init__.py"
-    },
-    {
-      "from": "agents/pipeline/__init__.py",
-      "to": "agents/pipeline/assembly.py"
-    },
-    {
-      "from": "agents/pipeline/__init__.py",
-      "to": "agents/pipeline/execution.py"
-    },
-    {
-      "from": "agents/pipeline/__init__.py",
-      "to": "agents/pipeline/main.py"
-    },
-    {
-      "from": "agents/pipeline/__init__.py",
-      "to": "agents/pipeline/monitoring.py"
-    },
-    {
-      "from": "agents/pipeline/assembly.py",
-      "to": "core/analysis/assembly/assembler.py"
-    },
-    {
-      "from": "agents/pipeline/assembly.py",
-      "to": "core/analysis/assembly/graph.py"
-    },
-    {
-      "from": "agents/pipeline/assembly.py",
-      "to": "core/analysis/assembly/validator.py"
-    },
-    {
-      "from": "agents/pipeline/assembly.py",
-      "to": "core/analysis/library/registry.py"
-    },
-    {
-      "from": "agents/pipeline/execution.py",
-      "to": "core/analysis/assembly/graph.py"
-    },
-    {
-      "from": "agents/pipeline/execution.py",
-      "to": "core/analysis/assembly/optimizer.py"
-    },
-    {
-      "from": "agents/pipeline/execution.py",
-      "to": "core/analysis/execution/checkpoint.py"
-    },
-    {
-      "from": "agents/pipeline/execution.py",
-      "to": "core/analysis/execution/distributed.py"
-    },
-    {
-      "from": "agents/pipeline/execution.py",
-      "to": "core/analysis/execution/runner.py"
-    },
-    {
-      "from": "agents/pipeline/execution.py",
-      "to": "core/analysis/library/registry.py"
-    },
-    {
-      "from": "agents/pipeline/main.py",
-      "to": "core/analysis/assembly/assembler.py"
-    },
-    {
-      "from": "agents/pipeline/main.py",
-      "to": "core/analysis/assembly/graph.py"
-    },
-    {
-      "from": "agents/pipeline/main.py",
-      "to": "core/analysis/assembly/optimizer.py"
-    },
-    {
-      "from": "agents/pipeline/main.py",
-      "to": "core/analysis/assembly/validator.py"
-    },
-    {
-      "from": "agents/pipeline/main.py",
-      "to": "core/analysis/execution/checkpoint.py"
-    },
-    {
-      "from": "agents/pipeline/main.py",
-      "to": "core/analysis/execution/runner.py"
-    },
-    {
-      "from": "agents/pipeline/main.py",
-      "to": "core/analysis/library/registry.py"
-    },
-    {
-      "from": "agents/quality/__init__.py",
-      "to": "agents/quality/main.py"
-    },
-    {
-      "from": "agents/quality/__init__.py",
-      "to": "agents/quality/reporting.py"
-    },
-    {
-      "from": "agents/quality/__init__.py",
-      "to": "agents/quality/review.py"
-    },
-    {
-      "from": "agents/quality/__init__.py",
-      "to": "agents/quality/validation.py"
-    },
-    {
-      "from": "agents/quality/__init__.py",
-      "to": "core/quality/actions/__init__.py"
-    },
-    {
-      "from": "agents/quality/__init__.py",
-      "to": "core/quality/reporting/__init__.py"
-    },
-    {
-      "from": "agents/quality/main.py",
-      "to": "agents/base.py"
-    },
-    {
-      "from": "agents/quality/main.py",
-      "to": "core/quality/actions/__init__.py"
-    },
-    {
-      "from": "agents/quality/main.py",
-      "to": "core/quality/actions/gating.py"
-    },
-    {
-      "from": "agents/quality/main.py",
-      "to": "core/quality/reporting/__init__.py"
-    },
-    {
-      "from": "agents/quality/main.py",
-      "to": "core/quality/sanity/__init__.py"
-    },
-    {
-      "from": "agents/quality/main.py",
-      "to": "core/quality/uncertainty/__init__.py"
-    },
-    {
-      "from": "agents/quality/main.py",
-      "to": "core/quality/validation/__init__.py"
-    },
-    {
-      "from": "agents/quality/reporting.py",
-      "to": "core/quality/reporting/__init__.py"
-    },
-    {
-      "from": "agents/quality/review.py",
-      "to": "core/quality/actions/routing.py"
-    },
-    {
-      "from": "agents/quality/validation.py",
-      "to": "core/quality/sanity/__init__.py"
-    },
-    {
-      "from": "agents/quality/validation.py",
-      "to": "core/quality/validation/__init__.py"
-    },
-    {
-      "from": "agents/reporting/__init__.py",
-      "to": "agents/reporting/delivery.py"
-    },
-    {
-      "from": "agents/reporting/__init__.py",
-      "to": "agents/reporting/formats.py"
-    },
-    {
-      "from": "agents/reporting/__init__.py",
-      "to": "agents/reporting/main.py"
-    },
-    {
-      "from": "agents/reporting/__init__.py",
-      "to": "agents/reporting/products.py"
-    },
-    {
-      "from": "agents/reporting/main.py",
-      "to": "agents/reporting/__init__.py"
-    },
-    {
-      "from": "agents/reporting/main.py",
-      "to": "agents/reporting/delivery.py"
-    },
-    {
-      "from": "agents/reporting/main.py",
-      "to": "agents/reporting/formats.py"
-    },
-    {
-      "from": "agents/reporting/main.py",
-      "to": "agents/reporting/products.py"
-    },
-    {
-      "from": "agents/reporting/products.py",
-      "to": "agents/reporting/main.py"
-    },
-    {
-      "from": "agents/reporting/products.py",
-      "to": "core/quality/reporting/qa_report.py"
-    },
     {
       "from": "api/__init__.py",
       "to": "api/auth.py"
@@ -2661,14 +1886,6 @@
     },
     {
       "from": "core/analysis/execution/__init__.py",
-      "to": "core/analysis/execution/sedona_adapters.py"
-    },
-    {
-      "from": "core/analysis/execution/__init__.py",
-      "to": "core/analysis/execution/sedona_backend.py"
-    },
-    {
-      "from": "core/analysis/execution/__init__.py",
       "to": "core/analysis/execution/tiled_runner.py"
     },
     {
@@ -2685,10 +1902,6 @@
     },
     {
       "from": "core/analysis/execution/router.py",
-      "to": "core/analysis/execution/sedona_backend.py"
-    },
-    {
-      "from": "core/analysis/execution/router.py",
       "to": "core/analysis/execution/tiled_runner.py"
     },
     {
@@ -2698,54 +1911,6 @@
     {
       "from": "core/analysis/execution/tiled_runner.py",
       "to": "core/execution/tiling.py"
-    },
-    {
-      "from": "core/analysis/forecast/__init__.py",
-      "to": "core/analysis/forecast/ingestion.py"
-    },
-    {
-      "from": "core/analysis/forecast/__init__.py",
-      "to": "core/analysis/forecast/projection.py"
-    },
-    {
-      "from": "core/analysis/forecast/__init__.py",
-      "to": "core/analysis/forecast/scenarios.py"
-    },
-    {
-      "from": "core/analysis/forecast/__init__.py",
-      "to": "core/analysis/forecast/validation.py"
-    },
-    {
-      "from": "core/analysis/forecast/projection.py",
-      "to": "core/analysis/forecast/ingestion.py"
-    },
-    {
-      "from": "core/analysis/forecast/projection.py",
-      "to": "core/analysis/forecast/scenarios.py"
-    },
-    {
-      "from": "core/analysis/forecast/scenarios.py",
-      "to": "core/analysis/forecast/ingestion.py"
-    },
-    {
-      "from": "core/analysis/forecast/validation.py",
-      "to": "core/analysis/forecast/ingestion.py"
-    },
-    {
-      "from": "core/analysis/fusion/__init__.py",
-      "to": "core/analysis/fusion/alignment.py"
-    },
-    {
-      "from": "core/analysis/fusion/__init__.py",
-      "to": "core/analysis/fusion/conflict.py"
-    },
-    {
-      "from": "core/analysis/fusion/__init__.py",
-      "to": "core/analysis/fusion/corrections.py"
-    },
-    {
-      "from": "core/analysis/fusion/__init__.py",
-      "to": "core/analysis/fusion/uncertainty.py"
     },
     {
       "from": "core/analysis/library/__init__.py",
@@ -2816,88 +1981,20 @@
       "to": "core/analysis/library/baseline/wildfire/thermal_anomaly.py"
     },
     {
-      "from": "core/analysis/selection/__init__.py",
-      "to": "core/analysis/selection/deterministic.py"
-    },
-    {
-      "from": "core/analysis/selection/__init__.py",
-      "to": "core/analysis/selection/selector.py"
-    },
-    {
-      "from": "core/analysis/selection/deterministic.py",
-      "to": "core/analysis/library/registry.py"
-    },
-    {
-      "from": "core/analysis/selection/deterministic.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
-      "from": "core/analysis/selection/deterministic.py",
-      "to": "core/data/evaluation/ranking.py"
-    },
-    {
-      "from": "core/analysis/selection/selector.py",
-      "to": "core/analysis/library/registry.py"
-    },
-    {
       "from": "core/data/broker.py",
       "to": "core/data/discovery/base.py"
     },
     {
       "from": "core/data/broker.py",
       "to": "core/data/providers/registry.py"
-    },
-    {
-      "from": "core/data/cache/__init__.py",
-      "to": "core/data/cache/index.py"
-    },
-    {
-      "from": "core/data/cache/__init__.py",
-      "to": "core/data/cache/manager.py"
-    },
-    {
-      "from": "core/data/cache/__init__.py",
-      "to": "core/data/cache/storage.py"
     },
     {
       "from": "core/data/discovery/__init__.py",
       "to": "core/data/discovery/base.py"
     },
     {
-      "from": "core/data/discovery/provider_api.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
-      "from": "core/data/discovery/stac.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
       "from": "core/data/discovery/stac_client.py",
       "to": "core/data/discovery/band_config.py"
-    },
-    {
-      "from": "core/data/discovery/wms_wcs.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
-      "from": "core/data/evaluation/__init__.py",
-      "to": "core/data/evaluation/constraints.py"
-    },
-    {
-      "from": "core/data/evaluation/__init__.py",
-      "to": "core/data/evaluation/ranking.py"
-    },
-    {
-      "from": "core/data/evaluation/constraints.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
-      "from": "core/data/evaluation/ranking.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
-      "from": "core/data/evaluation/ranking.py",
-      "to": "core/data/providers/registry.py"
     },
     {
       "from": "core/data/ingestion/__init__.py",
@@ -3176,26 +2273,6 @@
       "to": "core/data/providers/registry.py"
     },
     {
-      "from": "core/data/selection/__init__.py",
-      "to": "core/data/selection/atmospheric.py"
-    },
-    {
-      "from": "core/data/selection/__init__.py",
-      "to": "core/data/selection/fusion.py"
-    },
-    {
-      "from": "core/data/selection/__init__.py",
-      "to": "core/data/selection/strategy.py"
-    },
-    {
-      "from": "core/data/selection/fusion.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
-      "from": "core/data/storage/__init__.py",
-      "to": "core/data/storage/local.py"
-    },
-    {
       "from": "core/execution/__init__.py",
       "to": "core/execution/profiles.py"
     },
@@ -3230,18 +2307,6 @@
     {
       "from": "core/quality/__init__.py",
       "to": "core/quality/uncertainty/__init__.py"
-    },
-    {
-      "from": "core/quality/actions/__init__.py",
-      "to": "core/quality/actions/flagging.py"
-    },
-    {
-      "from": "core/quality/actions/__init__.py",
-      "to": "core/quality/actions/gating.py"
-    },
-    {
-      "from": "core/quality/actions/__init__.py",
-      "to": "core/quality/actions/routing.py"
     },
     {
       "from": "core/quality/reporting/__init__.py",
@@ -3288,28 +2353,8 @@
       "to": "core/quality/uncertainty/spatial_uncertainty.py"
     },
     {
-      "from": "core/quality/validation/__init__.py",
-      "to": "core/quality/validation/consensus.py"
-    },
-    {
-      "from": "core/quality/validation/__init__.py",
-      "to": "core/quality/validation/cross_model.py"
-    },
-    {
-      "from": "core/quality/validation/__init__.py",
-      "to": "core/quality/validation/cross_sensor.py"
-    },
-    {
-      "from": "core/quality/validation/__init__.py",
-      "to": "core/quality/validation/historical.py"
-    },
-    {
       "from": "core/reporting/__init__.py",
       "to": "core/reporting/templates/__init__.py"
-    },
-    {
-      "from": "core/reporting/components/__init__.py",
-      "to": "core/reporting/components/base.py"
     },
     {
       "from": "core/reporting/data/__init__.py",
@@ -3325,11 +2370,27 @@
     },
     {
       "from": "core/reporting/imagery/__init__.py",
+      "to": "core/reporting/imagery/algorithm_descriptions.py"
+    },
+    {
+      "from": "core/reporting/imagery/__init__.py",
+      "to": "core/reporting/imagery/area_metrics.py"
+    },
+    {
+      "from": "core/reporting/imagery/__init__.py",
+      "to": "core/reporting/imagery/attribution.py"
+    },
+    {
+      "from": "core/reporting/imagery/__init__.py",
       "to": "core/reporting/imagery/band_combinations.py"
     },
     {
       "from": "core/reporting/imagery/__init__.py",
       "to": "core/reporting/imagery/before_after.py"
+    },
+    {
+      "from": "core/reporting/imagery/__init__.py",
+      "to": "core/reporting/imagery/captions.py"
     },
     {
       "from": "core/reporting/imagery/__init__.py",
@@ -3349,6 +2410,18 @@
     },
     {
       "from": "core/reporting/imagery/__init__.py",
+      "to": "core/reporting/imagery/impact_metrics.py"
+    },
+    {
+      "from": "core/reporting/imagery/__init__.py",
+      "to": "core/reporting/imagery/locator_map.py"
+    },
+    {
+      "from": "core/reporting/imagery/__init__.py",
+      "to": "core/reporting/imagery/methodology_text.py"
+    },
+    {
+      "from": "core/reporting/imagery/__init__.py",
       "to": "core/reporting/imagery/overlay.py"
     },
     {
@@ -3362,6 +2435,22 @@
     {
       "from": "core/reporting/imagery/__init__.py",
       "to": "core/reporting/imagery/utils.py"
+    },
+    {
+      "from": "core/reporting/imagery/captions.py",
+      "to": "core/reporting/imagery/area_metrics.py"
+    },
+    {
+      "from": "core/reporting/imagery/captions.py",
+      "to": "core/reporting/imagery/impact_metrics.py"
+    },
+    {
+      "from": "core/reporting/imagery/impact_metrics.py",
+      "to": "core/reporting/data/census_client.py"
+    },
+    {
+      "from": "core/reporting/imagery/impact_metrics.py",
+      "to": "core/reporting/data/infrastructure_client.py"
     },
     {
       "from": "core/reporting/imagery/legend.py",
@@ -3468,10 +2557,6 @@
       "to": "core/reporting/templates/executive_summary.py"
     },
     {
-      "from": "core/reporting/templates/sections.py",
-      "to": "core/reporting/templates/full_report.py"
-    },
-    {
       "from": "core/reporting/utils/__init__.py",
       "to": "core/reporting/utils/color_utils.py"
     },
@@ -3498,82 +2583,6 @@
     {
       "from": "core/reporting/web/interactive_report.py",
       "to": "core/reporting/templates/full_report.py"
-    },
-    {
-      "from": "core/resilience/__init__.py",
-      "to": "core/resilience/assessment/__init__.py"
-    },
-    {
-      "from": "core/resilience/__init__.py",
-      "to": "core/resilience/degraded_mode/__init__.py"
-    },
-    {
-      "from": "core/resilience/__init__.py",
-      "to": "core/resilience/failure/__init__.py"
-    },
-    {
-      "from": "core/resilience/__init__.py",
-      "to": "core/resilience/fallbacks/__init__.py"
-    },
-    {
-      "from": "core/resilience/assessment/__init__.py",
-      "to": "core/resilience/assessment/dem_quality.py"
-    },
-    {
-      "from": "core/resilience/assessment/__init__.py",
-      "to": "core/resilience/assessment/optical_quality.py"
-    },
-    {
-      "from": "core/resilience/assessment/__init__.py",
-      "to": "core/resilience/assessment/sar_quality.py"
-    },
-    {
-      "from": "core/resilience/assessment/__init__.py",
-      "to": "core/resilience/assessment/temporal_quality.py"
-    },
-    {
-      "from": "core/resilience/degraded_mode/__init__.py",
-      "to": "core/resilience/degraded_mode/low_confidence.py"
-    },
-    {
-      "from": "core/resilience/degraded_mode/__init__.py",
-      "to": "core/resilience/degraded_mode/mode_manager.py"
-    },
-    {
-      "from": "core/resilience/degraded_mode/__init__.py",
-      "to": "core/resilience/degraded_mode/partial_coverage.py"
-    },
-    {
-      "from": "core/resilience/failure/__init__.py",
-      "to": "core/resilience/failure/failure_log.py"
-    },
-    {
-      "from": "core/resilience/failure/__init__.py",
-      "to": "core/resilience/failure/provenance_tracking.py"
-    },
-    {
-      "from": "core/resilience/failure/__init__.py",
-      "to": "core/resilience/failure/recovery_strategies.py"
-    },
-    {
-      "from": "core/resilience/fallbacks/__init__.py",
-      "to": "core/resilience/fallbacks/algorithm_fallback.py"
-    },
-    {
-      "from": "core/resilience/fallbacks/__init__.py",
-      "to": "core/resilience/fallbacks/dem_fallback.py"
-    },
-    {
-      "from": "core/resilience/fallbacks/__init__.py",
-      "to": "core/resilience/fallbacks/optical_fallback.py"
-    },
-    {
-      "from": "core/resilience/fallbacks/__init__.py",
-      "to": "core/resilience/fallbacks/parameter_tuning.py"
-    },
-    {
-      "from": "core/resilience/fallbacks/__init__.py",
-      "to": "core/resilience/fallbacks/sar_fallback.py"
     },
     {
       "from": "examples/emergency_resources_demo.py",
@@ -3664,22 +2673,6 @@
       "to": "api/database.py"
     },
     {
-      "from": "tests/api/test_intent_resolution.py",
-      "to": "api/models/errors.py"
-    },
-    {
-      "from": "tests/api/test_intent_resolution.py",
-      "to": "api/models/requests.py"
-    },
-    {
-      "from": "tests/api/test_intent_resolution.py",
-      "to": "api/routes/events.py"
-    },
-    {
-      "from": "tests/api/test_intent_resolution.py",
-      "to": "core/intent/resolver.py"
-    },
-    {
       "from": "tests/api/test_jwt_auth.py",
       "to": "api/dependencies.py"
     },
@@ -3756,8 +2749,28 @@
       "to": "core/reporting/data/perimeter_loader.py"
     },
     {
+      "from": "tests/reporting/imagery/test_algorithm_descriptions.py",
+      "to": "core/reporting/imagery/algorithm_descriptions.py"
+    },
+    {
+      "from": "tests/reporting/imagery/test_area_metrics.py",
+      "to": "core/reporting/imagery/area_metrics.py"
+    },
+    {
       "from": "tests/reporting/imagery/test_band_combinations.py",
       "to": "core/reporting/imagery/band_combinations.py"
+    },
+    {
+      "from": "tests/reporting/imagery/test_captions.py",
+      "to": "core/reporting/imagery/area_metrics.py"
+    },
+    {
+      "from": "tests/reporting/imagery/test_captions.py",
+      "to": "core/reporting/imagery/captions.py"
+    },
+    {
+      "from": "tests/reporting/imagery/test_captions.py",
+      "to": "core/reporting/imagery/impact_metrics.py"
     },
     {
       "from": "tests/reporting/imagery/test_cloud_mask.py",
@@ -3774,6 +2787,18 @@
     {
       "from": "tests/reporting/imagery/test_histogram.py",
       "to": "core/reporting/imagery/histogram.py"
+    },
+    {
+      "from": "tests/reporting/imagery/test_impact_metrics.py",
+      "to": "core/reporting/data/census_client.py"
+    },
+    {
+      "from": "tests/reporting/imagery/test_impact_metrics.py",
+      "to": "core/reporting/data/infrastructure_client.py"
+    },
+    {
+      "from": "tests/reporting/imagery/test_impact_metrics.py",
+      "to": "core/reporting/imagery/impact_metrics.py"
     },
     {
       "from": "tests/reporting/imagery/test_integration.py",
@@ -3808,6 +2833,10 @@
       "to": "core/reporting/imagery/legend.py"
     },
     {
+      "from": "tests/reporting/imagery/test_methodology_text.py",
+      "to": "core/reporting/imagery/methodology_text.py"
+    },
+    {
       "from": "tests/reporting/imagery/test_overlay.py",
       "to": "core/reporting/imagery/color_scales.py"
     },
@@ -3838,6 +2867,18 @@
     {
       "from": "tests/reporting/imagery/test_utils.py",
       "to": "core/reporting/imagery/utils.py"
+    },
+    {
+      "from": "tests/reporting/imagery/test_visual_enhancements.py",
+      "to": "core/reporting/imagery/attribution.py"
+    },
+    {
+      "from": "tests/reporting/imagery/test_visual_enhancements.py",
+      "to": "core/reporting/imagery/locator_map.py"
+    },
+    {
+      "from": "tests/reporting/imagery/test_visual_enhancements.py",
+      "to": "core/reporting/imagery/overlay.py"
     },
     {
       "from": "tests/reporting/maps/test_perimeter_overlay.py",
@@ -3896,18 +2937,6 @@
       "to": "core/analysis/assembly/__init__.py"
     },
     {
-      "from": "tests/test_cache.py",
-      "to": "core/data/cache/index.py"
-    },
-    {
-      "from": "tests/test_cache.py",
-      "to": "core/data/cache/manager.py"
-    },
-    {
-      "from": "tests/test_cache.py",
-      "to": "core/data/cache/storage.py"
-    },
-    {
       "from": "tests/test_cli.py",
       "to": "cli/commands/discover.py"
     },
@@ -3922,14 +2951,6 @@
     {
       "from": "tests/test_cli.py",
       "to": "core/execution/state.py"
-    },
-    {
-      "from": "tests/test_constraints.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
-      "from": "tests/test_constraints.py",
-      "to": "core/data/evaluation/constraints.py"
     },
     {
       "from": "tests/test_dask_execution.py",
@@ -3976,76 +2997,12 @@
       "to": "core/analysis/library/baseline/flood/__init__.py"
     },
     {
-      "from": "tests/test_forecast.py",
-      "to": "core/analysis/forecast/__init__.py"
-    },
-    {
-      "from": "tests/test_forecast.py",
-      "to": "core/analysis/forecast/ingestion.py"
-    },
-    {
-      "from": "tests/test_forecast.py",
-      "to": "core/analysis/forecast/projection.py"
-    },
-    {
-      "from": "tests/test_forecast.py",
-      "to": "core/analysis/forecast/scenarios.py"
-    },
-    {
-      "from": "tests/test_forecast.py",
-      "to": "core/analysis/forecast/validation.py"
-    },
-    {
       "from": "tests/test_full_report_templates.py",
       "to": "core/reporting/templates/full_report.py"
     },
     {
-      "from": "tests/test_fusion.py",
-      "to": "core/analysis/fusion/__init__.py"
-    },
-    {
-      "from": "tests/test_fusion.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
-      "from": "tests/test_fusion.py",
-      "to": "core/data/selection/fusion.py"
-    },
-    {
-      "from": "tests/test_fusion_core.py",
-      "to": "core/analysis/fusion/__init__.py"
-    },
-    {
-      "from": "tests/test_fusion_core.py",
-      "to": "core/analysis/fusion/alignment.py"
-    },
-    {
-      "from": "tests/test_fusion_core.py",
-      "to": "core/analysis/fusion/conflict.py"
-    },
-    {
-      "from": "tests/test_fusion_core.py",
-      "to": "core/analysis/fusion/corrections.py"
-    },
-    {
-      "from": "tests/test_fusion_core.py",
-      "to": "core/analysis/fusion/uncertainty.py"
-    },
-    {
       "from": "tests/test_fusion_core_comprehensive.py",
-      "to": "core/analysis/fusion/alignment.py"
-    },
-    {
-      "from": "tests/test_fusion_core_comprehensive.py",
-      "to": "core/analysis/fusion/conflict.py"
-    },
-    {
-      "from": "tests/test_fusion_core_comprehensive.py",
-      "to": "core/analysis/fusion/corrections.py"
-    },
-    {
-      "from": "tests/test_fusion_core_comprehensive.py",
-      "to": "core/analysis/fusion/uncertainty.py"
+      "to": "core/analysis/__init__.py"
     },
     {
       "from": "tests/test_image_validation.py",
@@ -4054,10 +3011,6 @@
     {
       "from": "tests/test_image_validation.py",
       "to": "core/data/ingestion/validation/__init__.py"
-    },
-    {
-      "from": "tests/test_ingestion.py",
-      "to": "core/data/cache/manager.py"
     },
     {
       "from": "tests/test_ingestion.py",
@@ -4180,28 +3133,8 @@
       "to": "core/data/ingestion/persistence/__init__.py"
     },
     {
-      "from": "tests/test_quality.py",
-      "to": "core/quality/actions/__init__.py"
-    },
-    {
-      "from": "tests/test_quality.py",
-      "to": "core/quality/actions/flagging.py"
-    },
-    {
-      "from": "tests/test_quality.py",
-      "to": "core/quality/actions/gating.py"
-    },
-    {
-      "from": "tests/test_quality.py",
-      "to": "core/quality/actions/routing.py"
-    },
-    {
       "from": "tests/test_quality_integration.py",
       "to": "core/quality/__init__.py"
-    },
-    {
-      "from": "tests/test_quality_integration.py",
-      "to": "core/quality/actions/__init__.py"
     },
     {
       "from": "tests/test_quality_integration.py",
@@ -4209,23 +3142,11 @@
     },
     {
       "from": "tests/test_quality_integration.py",
-      "to": "core/quality/sanity/spatial.py"
-    },
-    {
-      "from": "tests/test_quality_integration.py",
       "to": "core/quality/uncertainty/__init__.py"
     },
     {
-      "from": "tests/test_quality_integration.py",
-      "to": "core/quality/validation/__init__.py"
-    },
-    {
       "from": "tests/test_quality_reporting.py",
-      "to": "core/quality/actions/flagging.py"
-    },
-    {
-      "from": "tests/test_quality_reporting.py",
-      "to": "core/quality/actions/gating.py"
+      "to": "core/quality/__init__.py"
     },
     {
       "from": "tests/test_quality_reporting.py",
@@ -4240,22 +3161,6 @@
       "to": "core/quality/uncertainty/__init__.py"
     },
     {
-      "from": "tests/test_quality_validation.py",
-      "to": "core/quality/validation/__init__.py"
-    },
-    {
-      "from": "tests/test_ranking.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
-      "from": "tests/test_ranking.py",
-      "to": "core/data/evaluation/ranking.py"
-    },
-    {
-      "from": "tests/test_ranking.py",
-      "to": "core/data/providers/registry.py"
-    },
-    {
       "from": "tests/test_reporting.py",
       "to": "core/quality/reporting/__init__.py"
     },
@@ -4266,30 +3171,6 @@
     {
       "from": "tests/test_reporting_data_integration.py",
       "to": "core/reporting/data/__init__.py"
-    },
-    {
-      "from": "tests/test_resilience.py",
-      "to": "core/resilience/degraded_mode/low_confidence.py"
-    },
-    {
-      "from": "tests/test_resilience.py",
-      "to": "core/resilience/degraded_mode/mode_manager.py"
-    },
-    {
-      "from": "tests/test_resilience.py",
-      "to": "core/resilience/degraded_mode/partial_coverage.py"
-    },
-    {
-      "from": "tests/test_resilience.py",
-      "to": "core/resilience/failure/failure_log.py"
-    },
-    {
-      "from": "tests/test_resilience.py",
-      "to": "core/resilience/failure/provenance_tracking.py"
-    },
-    {
-      "from": "tests/test_resilience.py",
-      "to": "core/resilience/failure/recovery_strategies.py"
     },
     {
       "from": "tests/test_sanity.py",
@@ -4312,46 +3193,6 @@
       "to": "core/quality/sanity/values.py"
     },
     {
-      "from": "tests/test_sedona_execution.py",
-      "to": "core/analysis/execution/router.py"
-    },
-    {
-      "from": "tests/test_sedona_execution.py",
-      "to": "core/analysis/execution/sedona_adapters.py"
-    },
-    {
-      "from": "tests/test_sedona_execution.py",
-      "to": "core/analysis/execution/sedona_backend.py"
-    },
-    {
-      "from": "tests/test_selection.py",
-      "to": "core/analysis/library/registry.py"
-    },
-    {
-      "from": "tests/test_selection.py",
-      "to": "core/analysis/selection/deterministic.py"
-    },
-    {
-      "from": "tests/test_selection.py",
-      "to": "core/analysis/selection/selector.py"
-    },
-    {
-      "from": "tests/test_selection.py",
-      "to": "core/data/discovery/base.py"
-    },
-    {
-      "from": "tests/test_selection.py",
-      "to": "core/data/evaluation/ranking.py"
-    },
-    {
-      "from": "tests/test_selection.py",
-      "to": "core/data/selection/atmospheric.py"
-    },
-    {
-      "from": "tests/test_selection.py",
-      "to": "core/data/selection/strategy.py"
-    },
-    {
       "from": "tests/test_stac_href_selection.py",
       "to": "core/data/discovery/stac_client.py"
     },
@@ -4366,10 +3207,6 @@
     {
       "from": "tests/test_tiling.py",
       "to": "core/data/ingestion/normalization/tiling.py"
-    },
-    {
-      "from": "tests/test_tiling.py",
-      "to": "core/data/storage/local.py"
     },
     {
       "from": "tests/test_tiling.py",
@@ -4465,265 +3302,6 @@
       "pathlib",
       "subprocess",
       "sys"
-    ],
-    "agents/base.py": [
-      "abc",
-      "asyncio",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "functools",
-      "json",
-      "logging",
-      "pathlib",
-      "random",
-      "sqlite3",
-      "threading",
-      "time",
-      "typing",
-      "uuid"
-    ],
-    "agents/discovery/acquisition.py": [
-      "aiohttp",
-      "asyncio",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "hashlib",
-      "logging",
-      "os",
-      "pathlib",
-      "typing",
-      "uuid"
-    ],
-    "agents/discovery/catalog.py": [
-      "aiohttp",
-      "asyncio",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "hashlib",
-      "json",
-      "logging",
-      "typing"
-    ],
-    "agents/discovery/main.py": [
-      "aiohttp",
-      "asyncio",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "os",
-      "typing"
-    ],
-    "agents/discovery/selection.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "math",
-      "typing"
-    ],
-    "agents/orchestrator/assembly.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "hashlib",
-      "json",
-      "logging",
-      "pathlib",
-      "shutil",
-      "tarfile",
-      "typing",
-      "uuid",
-      "zipfile"
-    ],
-    "agents/orchestrator/delegation.py": [
-      "asyncio",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "random",
-      "time",
-      "typing",
-      "uuid"
-    ],
-    "agents/orchestrator/main.py": [
-      "aiohttp",
-      "asyncio",
-      "dataclasses",
-      "datetime",
-      "logging",
-      "pathlib",
-      "sys",
-      "traceback",
-      "typing",
-      "uuid",
-      "yaml"
-    ],
-    "agents/orchestrator/state.py": [
-      "asyncio",
-      "contextlib",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "json",
-      "logging",
-      "pathlib",
-      "sqlite3",
-      "typing"
-    ],
-    "agents/pipeline/assembly.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "pathlib",
-      "typing"
-    ],
-    "agents/pipeline/execution.py": [
-      "asyncio",
-      "concurrent",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "pathlib",
-      "threading",
-      "time",
-      "typing",
-      "uuid"
-    ],
-    "agents/pipeline/main.py": [
-      "abc",
-      "asyncio",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "pathlib",
-      "typing",
-      "uuid"
-    ],
-    "agents/pipeline/monitoring.py": [
-      "collections",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "threading",
-      "time",
-      "typing"
-    ],
-    "agents/quality/main.py": [
-      "asyncio",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "time",
-      "typing"
-    ],
-    "agents/quality/reporting.py": [
-      "asyncio",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "json",
-      "logging",
-      "numpy",
-      "pathlib",
-      "time",
-      "typing"
-    ],
-    "agents/quality/review.py": [
-      "asyncio",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "typing",
-      "uuid"
-    ],
-    "agents/quality/validation.py": [
-      "asyncio",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "hashlib",
-      "logging",
-      "numpy",
-      "time",
-      "typing"
-    ],
-    "agents/reporting/delivery.py": [
-      "boto3",
-      "botocore",
-      "dataclasses",
-      "datetime",
-      "email",
-      "enum",
-      "google",
-      "hashlib",
-      "json",
-      "logging",
-      "pathlib",
-      "shutil",
-      "smtplib",
-      "time",
-      "typing",
-      "urllib"
-    ],
-    "agents/reporting/formats.py": [
-      "PIL",
-      "dataclasses",
-      "enum",
-      "json",
-      "logging",
-      "numpy",
-      "pathlib",
-      "rasterio",
-      "scipy",
-      "shutil",
-      "typing"
-    ],
-    "agents/reporting/main.py": [
-      "abc",
-      "asyncio",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "hashlib",
-      "json",
-      "logging",
-      "numpy",
-      "pathlib",
-      "shutil",
-      "typing"
-    ],
-    "agents/reporting/products.py": [
-      "PIL",
-      "affine",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "hashlib",
-      "io",
-      "json",
-      "logging",
-      "matplotlib",
-      "numpy",
-      "pathlib",
-      "platform",
-      "rasterio",
-      "scipy",
-      "shapely",
-      "sys",
-      "typing",
-      "weasyprint"
     ],
     "api/auth.py": [
       "dataclasses",
@@ -5114,8 +3692,6 @@
       "os",
       "pathlib",
       "psutil",
-      "pyspark",
-      "sedona",
       "time",
       "torch",
       "typing"
@@ -5136,39 +3712,6 @@
       "traceback",
       "typing"
     ],
-    "core/analysis/execution/sedona_adapters.py": [
-      "abc",
-      "dataclasses",
-      "hashlib",
-      "json",
-      "logging",
-      "numpy",
-      "pandas",
-      "pickle",
-      "pyspark",
-      "sedona",
-      "threading",
-      "typing"
-    ],
-    "core/analysis/execution/sedona_backend.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "hashlib",
-      "logging",
-      "numpy",
-      "os",
-      "pathlib",
-      "pickle",
-      "pyspark",
-      "rasterio",
-      "sedona",
-      "tempfile",
-      "threading",
-      "time",
-      "typing",
-      "uuid"
-    ],
     "core/analysis/execution/tiled_runner.py": [
       "abc",
       "concurrent",
@@ -5181,75 +3724,6 @@
       "pathlib",
       "threading",
       "time",
-      "typing"
-    ],
-    "core/analysis/forecast/ingestion.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "pathlib",
-      "time",
-      "typing",
-      "xarray"
-    ],
-    "core/analysis/forecast/projection.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "typing"
-    ],
-    "core/analysis/forecast/scenarios.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "typing"
-    ],
-    "core/analysis/forecast/validation.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "scipy",
-      "typing"
-    ],
-    "core/analysis/fusion/alignment.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "pathlib",
-      "scipy",
-      "typing"
-    ],
-    "core/analysis/fusion/conflict.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "typing"
-    ],
-    "core/analysis/fusion/corrections.py": [
-      "dataclasses",
-      "enum",
-      "logging",
-      "numpy",
-      "typing"
-    ],
-    "core/analysis/fusion/uncertainty.py": [
-      "dataclasses",
-      "enum",
-      "logging",
-      "numpy",
-      "scipy",
       "typing"
     ],
     "core/analysis/library/registry.py": [
@@ -5338,70 +3812,11 @@
       "numpy",
       "typing"
     ],
-    "core/analysis/selection/deterministic.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "hashlib",
-      "json",
-      "logging",
-      "typing"
-    ],
-    "core/analysis/selection/selector.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "typing"
-    ],
     "core/data/broker.py": [
       "asyncio",
       "concurrent",
       "datetime",
       "math",
-      "typing"
-    ],
-    "core/data/cache/index.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "json",
-      "logging",
-      "math",
-      "os",
-      "pathlib",
-      "sqlite3",
-      "struct",
-      "threading",
-      "typing"
-    ],
-    "core/data/cache/manager.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "hashlib",
-      "json",
-      "logging",
-      "os",
-      "pathlib",
-      "sqlite3",
-      "threading",
-      "time",
-      "typing"
-    ],
-    "core/data/cache/storage.py": [
-      "abc",
-      "boto3",
-      "botocore",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "hashlib",
-      "json",
-      "logging",
-      "os",
-      "pathlib",
-      "shutil",
       "typing"
     ],
     "core/data/discovery/band_config.py": [
@@ -5413,41 +3828,11 @@
       "datetime",
       "typing"
     ],
-    "core/data/discovery/provider_api.py": [
-      "abc",
-      "aiohttp",
-      "datetime",
-      "typing"
-    ],
-    "core/data/discovery/stac.py": [
-      "aiohttp",
-      "asyncio",
-      "datetime",
-      "typing"
-    ],
     "core/data/discovery/stac_client.py": [
       "dataclasses",
       "datetime",
       "logging",
       "pystac_client",
-      "typing"
-    ],
-    "core/data/discovery/wms_wcs.py": [
-      "aiohttp",
-      "datetime",
-      "typing",
-      "xml"
-    ],
-    "core/data/evaluation/constraints.py": [
-      "dataclasses",
-      "datetime",
-      "math",
-      "typing"
-    ],
-    "core/data/evaluation/ranking.py": [
-      "dataclasses",
-      "datetime",
-      "math",
       "typing"
     ],
     "core/data/ingestion/band_stack.py": [
@@ -5761,40 +4146,6 @@
       "typing",
       "yaml"
     ],
-    "core/data/selection/atmospheric.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "typing"
-    ],
-    "core/data/selection/fusion.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "math",
-      "typing"
-    ],
-    "core/data/selection/strategy.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "typing"
-    ],
-    "core/data/storage/local.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "hashlib",
-      "json",
-      "logging",
-      "os",
-      "pathlib",
-      "shutil",
-      "tempfile",
-      "typing"
-    ],
     "core/execution/profiles.py": [
       "dask",
       "dataclasses",
@@ -5852,31 +4203,6 @@
       "logging",
       "sys",
       "typing"
-    ],
-    "core/quality/actions/flagging.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "scipy",
-      "typing"
-    ],
-    "core/quality/actions/gating.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "typing"
-    ],
-    "core/quality/actions/routing.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "typing",
-      "uuid"
     ],
     "core/quality/reporting/diagnostics.py": [
       "dataclasses",
@@ -5966,48 +4292,6 @@
       "scipy",
       "typing"
     ],
-    "core/quality/validation/consensus.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "scipy",
-      "typing"
-    ],
-    "core/quality/validation/cross_model.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "scipy",
-      "typing"
-    ],
-    "core/quality/validation/cross_sensor.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "typing"
-    ],
-    "core/quality/validation/historical.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "scipy",
-      "typing"
-    ],
-    "core/reporting/components/base.py": [
-      "abc",
-      "dataclasses",
-      "enum",
-      "html",
-      "typing"
-    ],
     "core/reporting/data/census_client.py": [
       "aiohttp",
       "asyncio",
@@ -6047,6 +4331,21 @@
       "requests",
       "typing"
     ],
+    "core/reporting/imagery/algorithm_descriptions.py": [
+      "typing"
+    ],
+    "core/reporting/imagery/area_metrics.py": [
+      "dataclasses",
+      "numpy",
+      "typing"
+    ],
+    "core/reporting/imagery/attribution.py": [
+      "PIL",
+      "dataclasses",
+      "datetime",
+      "numpy",
+      "typing"
+    ],
     "core/reporting/imagery/band_combinations.py": [
       "dataclasses",
       "typing"
@@ -6057,6 +4356,12 @@
       "datetime",
       "numpy",
       "pathlib",
+      "typing"
+    ],
+    "core/reporting/imagery/captions.py": [
+      "dataclasses",
+      "datetime",
+      "enum",
       "typing"
     ],
     "core/reporting/imagery/cloud_mask.py": [
@@ -6091,11 +4396,27 @@
       "numpy",
       "typing"
     ],
+    "core/reporting/imagery/impact_metrics.py": [
+      "dataclasses",
+      "logging",
+      "numpy",
+      "shapely",
+      "typing"
+    ],
     "core/reporting/imagery/legend.py": [
       "PIL",
       "dataclasses",
       "numpy",
       "pathlib",
+      "typing"
+    ],
+    "core/reporting/imagery/locator_map.py": [
+      "PIL",
+      "numpy",
+      "typing"
+    ],
+    "core/reporting/imagery/methodology_text.py": [
+      "enum",
       "typing"
     ],
     "core/reporting/imagery/overlay.py": [
@@ -6183,9 +4504,6 @@
       "datetime",
       "typing"
     ],
-    "core/reporting/templates/sections.py": [
-      "typing"
-    ],
     "core/reporting/utils/color_utils.py": [
       "colorsys",
       "re",
@@ -6195,143 +4513,6 @@
       "dataclasses",
       "datetime",
       "pathlib",
-      "typing"
-    ],
-    "core/resilience/assessment/dem_quality.py": [
-      "dataclasses",
-      "enum",
-      "logging",
-      "numpy",
-      "scipy",
-      "time",
-      "typing"
-    ],
-    "core/resilience/assessment/optical_quality.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "scipy",
-      "time",
-      "typing"
-    ],
-    "core/resilience/assessment/sar_quality.py": [
-      "dataclasses",
-      "enum",
-      "logging",
-      "numpy",
-      "time",
-      "typing"
-    ],
-    "core/resilience/assessment/temporal_quality.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "time",
-      "typing"
-    ],
-    "core/resilience/degraded_mode/low_confidence.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "scipy",
-      "typing"
-    ],
-    "core/resilience/degraded_mode/mode_manager.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "typing",
-      "uuid"
-    ],
-    "core/resilience/degraded_mode/partial_coverage.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "scipy",
-      "typing"
-    ],
-    "core/resilience/failure/failure_log.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "hashlib",
-      "logging",
-      "traceback",
-      "typing",
-      "uuid"
-    ],
-    "core/resilience/failure/provenance_tracking.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "hashlib",
-      "json",
-      "logging",
-      "platform",
-      "sys",
-      "typing",
-      "uuid"
-    ],
-    "core/resilience/failure/recovery_strategies.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "random",
-      "time",
-      "typing",
-      "uuid"
-    ],
-    "core/resilience/fallbacks/algorithm_fallback.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "scipy",
-      "typing"
-    ],
-    "core/resilience/fallbacks/dem_fallback.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "numpy",
-      "typing"
-    ],
-    "core/resilience/fallbacks/optical_fallback.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
-      "typing"
-    ],
-    "core/resilience/fallbacks/parameter_tuning.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "itertools",
-      "logging",
-      "numpy",
-      "time",
-      "typing",
-      "uuid"
-    ],
-    "core/resilience/fallbacks/sar_fallback.py": [
-      "dataclasses",
-      "datetime",
-      "enum",
-      "logging",
       "typing"
     ],
     "docs/api/examples/submit_event.py": [
@@ -6416,21 +4597,6 @@
       "scipy",
       "typing"
     ],
-    "tests/test_agents.py": [
-      "asyncio",
-      "dataclasses",
-      "datetime",
-      "enum",
-      "json",
-      "numpy",
-      "pathlib",
-      "pytest",
-      "shutil",
-      "tempfile",
-      "typing",
-      "unittest",
-      "uuid"
-    ],
     "tests/test_algorithm_registry.py": [
       "pathlib",
       "pytest",
@@ -6471,20 +4637,6 @@
       "pathlib",
       "pytest"
     ],
-    "tests/test_cache.py": [
-      "datetime",
-      "hashlib",
-      "json",
-      "math",
-      "os",
-      "pathlib",
-      "pytest",
-      "tempfile",
-      "threading",
-      "time",
-      "typing",
-      "unittest"
-    ],
     "tests/test_cli.py": [
       "click",
       "datetime",
@@ -6496,13 +4648,6 @@
       "tempfile",
       "unittest",
       "yaml"
-    ],
-    "tests/test_constraints.py": [
-      "concurrent",
-      "datetime",
-      "math",
-      "pytest",
-      "time"
     ],
     "tests/test_dask_execution.py": [
       "gc",
@@ -6574,23 +4719,8 @@
       "pytest",
       "typing"
     ],
-    "tests/test_forecast.py": [
-      "datetime",
-      "numpy",
-      "pytest"
-    ],
     "tests/test_full_report_templates.py": [
       "datetime"
-    ],
-    "tests/test_fusion.py": [
-      "datetime",
-      "numpy",
-      "pytest"
-    ],
-    "tests/test_fusion_core.py": [
-      "datetime",
-      "numpy",
-      "pytest"
     ],
     "tests/test_fusion_core_comprehensive.py": [
       "datetime",
@@ -6609,7 +4739,6 @@
     "tests/test_ingestion.py": [
       "datetime",
       "geopandas",
-      "hashlib",
       "json",
       "numpy",
       "pathlib",
@@ -6619,8 +4748,6 @@
       "shapely",
       "shutil",
       "tempfile",
-      "threading",
-      "time",
       "unittest",
       "zarr"
     ],
@@ -6672,14 +4799,8 @@
       "time",
       "unittest"
     ],
-    "tests/test_quality.py": [
-      "datetime",
-      "numpy",
-      "pytest"
-    ],
     "tests/test_quality_integration.py": [
       "datetime",
-      "json",
       "numpy",
       "pytest",
       "typing"
@@ -6694,15 +4815,6 @@
     ],
     "tests/test_quality_uncertainty.py": [
       "numpy",
-      "pytest"
-    ],
-    "tests/test_quality_validation.py": [
-      "datetime",
-      "numpy",
-      "pytest"
-    ],
-    "tests/test_ranking.py": [
-      "datetime",
       "pytest"
     ],
     "tests/test_reporting.py": [
@@ -6725,13 +4837,6 @@
       "tempfile",
       "unittest"
     ],
-    "tests/test_resilience.py": [
-      "datetime",
-      "numpy",
-      "pytest",
-      "time",
-      "unittest"
-    ],
     "tests/test_sanity.py": [
       "datetime",
       "numpy",
@@ -6741,23 +4846,6 @@
     "tests/test_schemas.py": [
       "json",
       "pathlib",
-      "pytest"
-    ],
-    "tests/test_sedona_execution.py": [
-      "gc",
-      "logging",
-      "numpy",
-      "os",
-      "pathlib",
-      "pytest",
-      "tempfile",
-      "time",
-      "typing",
-      "unittest"
-    ],
-    "tests/test_selection.py": [
-      "datetime",
-      "math",
       "pytest"
     ],
     "tests/test_stac_href_selection.py": [
@@ -6817,11 +4905,6 @@
       "pathlib",
       "pytest",
       "tempfile"
-    ],
-    "tests/api/test_intent_resolution.py": [
-      "datetime",
-      "pytest",
-      "unittest"
     ],
     "tests/api/test_jwt_auth.py": [
       "datetime",
@@ -6934,7 +5017,19 @@
       "tempfile",
       "unittest"
     ],
+    "tests/reporting/imagery/test_algorithm_descriptions.py": [
+      "pytest",
+      "re"
+    ],
+    "tests/reporting/imagery/test_area_metrics.py": [
+      "numpy",
+      "pytest"
+    ],
     "tests/reporting/imagery/test_band_combinations.py": [
+      "pytest"
+    ],
+    "tests/reporting/imagery/test_captions.py": [
+      "datetime",
       "pytest"
     ],
     "tests/reporting/imagery/test_cloud_mask.py": [
@@ -6959,6 +5054,10 @@
       "pytest",
       "time"
     ],
+    "tests/reporting/imagery/test_impact_metrics.py": [
+      "numpy",
+      "pytest"
+    ],
     "tests/reporting/imagery/test_integration.py": [
       "numpy",
       "pathlib",
@@ -6971,6 +5070,10 @@
       "pathlib",
       "pytest",
       "tempfile"
+    ],
+    "tests/reporting/imagery/test_methodology_text.py": [
+      "pytest",
+      "re"
     ],
     "tests/reporting/imagery/test_overlay.py": [
       "numpy",
@@ -6994,6 +5097,11 @@
       "pytest"
     ],
     "tests/reporting/imagery/test_utils.py": [
+      "numpy",
+      "pytest"
+    ],
+    "tests/reporting/imagery/test_visual_enhancements.py": [
+      "datetime",
       "numpy",
       "pytest"
     ],
@@ -7037,7 +5145,6 @@
     ]
   },
   "entry_points": [
-    "agents/orchestrator/main.py",
     "api/main.py",
     "cli/main.py",
     "core/analysis/library/registry.py",
@@ -7062,13 +5169,12 @@
     "tests/cli/test_ingest_wiring.py",
     "tests/integration/test_before_after_imagery.py",
     "tests/integration/test_validation_integration.py",
+    "tests/reporting/imagery/test_captions.py",
+    "tests/reporting/imagery/test_methodology_text.py",
     "tests/reporting/imagery/test_pipeline.py",
-    "tests/test_agents.py",
     "tests/test_api.py",
     "tests/test_assembly.py",
-    "tests/test_cache.py",
     "tests/test_dask_execution.py",
-    "tests/test_forecast.py",
     "tests/test_full_report_templates.py",
     "tests/test_image_validation.py",
     "tests/test_ingestion.py",
@@ -7076,9 +5182,7 @@
     "tests/test_multiband_ingestion.py",
     "tests/test_quality_integration.py",
     "tests/test_quality_reporting.py",
-    "tests/test_resilience.py",
     "tests/test_sanity.py",
-    "tests/test_sedona_execution.py",
     "tests/test_templates.py",
     "tests/test_tiling_infrastructure.py",
     "tests/test_validation.py",

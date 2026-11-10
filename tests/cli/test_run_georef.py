@@ -1,6 +1,6 @@
-"""LGT-417 regression tests: analyze -> export preserves CRS + transform.
+"""Regression tests: analyze -> export preserves CRS + transform.
 
-Before LGT-417, the run pipeline's analyze stage wrote .npy arrays without
+Previously, the run pipeline's analyze stage wrote .npy arrays without
 persisting the source raster's CRS / transform, so the export stage fell
 back to a degenerate (-180,-90,180,90) world transform. This test round-trips
 a tiny synthetic 16x16 Sentinel-2 NIR/SWIR pair through the real-mode
@@ -213,10 +213,10 @@ def test_export_geojson_uses_grid_for_real_world_coords(tmp_path: Path) -> None:
         for ring in coords:
             for lon, lat, *_ in ring:
                 assert -90.0 < lon < 0.0, (
-                    f"unexpected longitude {lon}; LGT-417 placeholder regression"
+                    f"unexpected longitude {lon}; placeholder regression"
                 )
                 assert 0.0 < lat < 90.0, (
-                    f"unexpected latitude {lat}; LGT-417 placeholder regression"
+                    f"unexpected latitude {lat}; placeholder regression"
                 )
                 # AOI in test fixture is south Florida UTM 17N.
                 assert -82.0 < lon < -79.0

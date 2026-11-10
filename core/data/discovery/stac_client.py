@@ -46,7 +46,7 @@ class STACItem:
         # Extract asset URLs, preferring a downloadable HTTPS href over a raw
         # s3:// URI. The STAC `alternate-assets` extension exposes both, and
         # Element84's Landsat C2L2 collection only sets s3:// as the primary
-        # href (LGT-412 — `requests`/`httpx` cannot speak s3://).
+        # href (`requests`/`httpx` cannot speak s3://).
         assets = {}
         for key, asset in item.assets.items():
             href = _pick_downloadable_href(asset)
