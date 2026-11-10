@@ -287,6 +287,8 @@ POST /api/v1/events → {"detail": "Rate limit exceeded: 100/hour"}
 # Clone and install
 git clone https://github.com/gpriceless/firstlight.git
 cd firstlight
+python -m venv .venv && source .venv/bin/activate
+pip install --upgrade pip  # pip 24 gives up resolving the dependency tree
 pip install -e .
 
 # Install geospatial dependencies
