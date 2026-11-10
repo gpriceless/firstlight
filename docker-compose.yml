@@ -6,7 +6,7 @@
 #
 # Usage:
 #   docker compose up -d              # Start all services
-#   docker compose up -d api worker   # Start specific services
+#   docker compose up -d api          # Start specific services
 #   docker compose logs -f api        # Follow API logs
 #   docker compose down               # Stop and remove containers
 # =============================================================================
@@ -62,40 +62,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-
-  # ===========================================================================
-  # Background Worker
-  # ===========================================================================
-  worker:
-    build:
-      context: .
-      dockerfile: docker/worker/Dockerfile
-    image: firstlight-worker:latest
-    # Note: container_name removed because it's incompatible with replicas > 1
-    environment:
-      - WORKER_CONCURRENCY=4
-      - WORKER_QUEUE=default
-      - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=postgresql://firstlight:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/firstlight
-      - PYTHONPATH=/app
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - shared-data:/app/data
-      - shared-output:/app/output
-    networks:
-      - firstlight-network
-    restart: unless-stopped
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          cpus: '2'
-          memory: 4G
-        reservations:
-          cpus: '0.5'
-          memory: 1G
 
   # ===========================================================================
   # Redis - Task Queue and Caching

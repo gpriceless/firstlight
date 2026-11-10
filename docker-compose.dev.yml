@@ -29,7 +29,6 @@ services:
       # Mount source code for hot reload
       - ./core:/app/core:ro
       - ./openspec:/app/openspec:ro
-      - ./agents:/app/agents:ro
       - ./api:/app/api:ro
       - ./examples:/app/examples:ro
       # Local data directories
@@ -47,30 +46,6 @@ services:
       --reload-dir /app/api
       --reload-dir /app/core
       --log-level debug
-
-  # ===========================================================================
-  # Background Worker - Development Mode
-  # ===========================================================================
-  worker:
-    environment:
-      - WORKER_CONCURRENCY=1
-      - LOG_LEVEL=debug
-      - DEBUG=true
-    volumes:
-      # Mount source code for development
-      - ./core:/app/core:ro
-      - ./openspec:/app/openspec:ro
-      - ./agents:/app/agents:ro
-      - ./examples:/app/examples:ro
-      # Local data directories
-      - ./data:/app/data
-      - ./output:/app/output
-    deploy:
-      replicas: 1
-      resources:
-        limits:
-          cpus: '1'
-          memory: 2G
 
   # ===========================================================================
   # Redis - Development Mode

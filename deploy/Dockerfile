@@ -1,11 +1,10 @@
 # =============================================================================
 # FirstLight - Multi-Stage Production Dockerfile
 # =============================================================================
-# Combined Dockerfile for building API and Worker images.
+# Multi-stage Dockerfile for the API image.
 #
 # Usage:
 #   docker build --target api -t firstlight/api .
-#   docker build --target worker -t firstlight/worker .
 #
 # Or with docker-compose:
 #   docker-compose up --build
@@ -70,12 +69,11 @@ ENV PYTHONUNBUFFERED=1
 # -----------------------------------------------------------------------------
 FROM base AS api
 
-LABEL description="API service image with FastAPI and agent orchestration"
+LABEL description="API service image with FastAPI"
 
 # Copy application code
 COPY --chown=firstlight:firstlight core/ /app/core/
 COPY --chown=firstlight:firstlight openspec/ /app/openspec/
-COPY --chown=firstlight:firstlight agents/ /app/agents/
 COPY --chown=firstlight:firstlight api/ /app/api/
 COPY --chown=firstlight:firstlight cli/ /app/cli/
 COPY --chown=firstlight:firstlight examples/ /app/examples/
@@ -102,33 +100,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 # Start API server
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
 
-# -----------------------------------------------------------------------------
-# Worker Stage - Background job processing
-# -----------------------------------------------------------------------------
-FROM base AS worker
-
-LABEL description="Background worker image for distributed processing"
-
-# Copy application code (subset needed for workers)
-COPY --chown=firstlight:firstlight core/ /app/core/
-COPY --chown=firstlight:firstlight openspec/ /app/openspec/
-COPY --chown=firstlight:firstlight agents/ /app/agents/
-COPY --chown=firstlight:firstlight examples/ /app/examples/
-
-# Ensure proper permissions
-RUN chown -R firstlight:firstlight /app
-
-# Switch to non-root user
-USER firstlight
-
-# Worker configuration defaults
-ENV WORKER_CONCURRENCY=4
-ENV WORKER_QUEUE=default
-ENV REDIS_URL=redis://localhost:6379/0
-ENV LOG_LEVEL=info
-
-# No HTTP healthcheck for worker
-HEALTHCHECK NONE
-
-# Start worker process
-CMD ["python", "-m", "agents.orchestrator.agent"]

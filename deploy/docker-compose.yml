@@ -152,54 +152,6 @@ services:
           cpus: "2"
           memory: 1G
 
-  # ==========================================================================
-  # Worker - Background job processing
-  # ==========================================================================
-  worker:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile
-      target: worker
-    image: firstlight/worker:${VERSION:-latest}
-    container_name: firstlight-worker
-    restart: unless-stopped
-    profiles:
-      - worker  # Only start with: docker-compose --profile worker up
-    environment:
-      - ENVIRONMENT=${ENVIRONMENT:-production}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - PYTHONUNBUFFERED=1
-      - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=${DATABASE_URL:-}
-
-      # Worker configuration
-      - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-4}
-      - WORKER_QUEUE=${WORKER_QUEUE:-default}
-
-      # Storage
-      - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
-      - STORAGE_PATH=/data/products
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
-      - S3_BUCKET=${S3_BUCKET:-}
-      - S3_REGION=${S3_REGION:-us-east-1}
-
-    volumes:
-      - api-data:/data
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - firstlight-network
-    deploy:
-      resources:
-        limits:
-          cpus: "${WORKER_CPU_LIMIT:-4}"
-          memory: ${WORKER_MEMORY_LIMIT:-8G}
-        reservations:
-          cpus: "1"
-          memory: 1G
-
 # ==========================================================================
 # Networks
 # ==========================================================================

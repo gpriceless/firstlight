@@ -19,7 +19,6 @@ USER root
 # Copy all required modules
 COPY --chown=firstlight:firstlight core/ /app/core/
 COPY --chown=firstlight:firstlight openspec/ /app/openspec/
-COPY --chown=firstlight:firstlight agents/ /app/agents/
 COPY --chown=firstlight:firstlight api/ /app/api/
 
 # Copy configuration files

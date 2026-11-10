@@ -60,7 +60,6 @@ services:
       --reload
       --reload-dir /app/api
       --reload-dir /app/core
-      --reload-dir /app/agents
       --log-level debug
     # No health check in dev to allow startup debugging
     healthcheck:
@@ -97,29 +96,6 @@ services:
       - POSTGRES_USER=firstlight
       - POSTGRES_PASSWORD=dev_password
       - POSTGRES_DB=first_light_dev
-
-  # ==========================================================================
-  # Worker - Development overrides
-  # ==========================================================================
-  worker:
-    # Always start worker in dev mode
-    profiles: []
-    image: firstlight/worker:dev
-    container_name: firstlight-worker-dev
-    environment:
-      - ENVIRONMENT=development
-      - LOG_LEVEL=debug
-      - WORKER_CONCURRENCY=2
-    volumes:
-      - ../:/app
-      - ../data:/data
-      - /app/.venv
-      - /app/__pycache__
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 4G
 
   # ==========================================================================
   # Additional Development Tools

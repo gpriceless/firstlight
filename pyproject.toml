@@ -115,7 +115,7 @@ Repository = "https://github.com/yourusername/firstlight"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["openspec*", "core*", "agents*", "api*", "cli*"]
+include = ["openspec*", "core*", "api*", "cli*"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"

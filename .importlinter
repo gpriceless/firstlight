@@ -1,6 +1,5 @@
 [importlinter]
 root_packages =
-    agents
     api
     cli
     core
@@ -8,22 +7,20 @@ root_packages =
 include_external_packages = False
 
 [importlinter:contract:core-is-a-library]
-name = core does not import the api, cli or agents
+name = core does not import the api or cli
 type = forbidden
 source_modules =
     core
 forbidden_modules =
     api
     cli
-    agents
 
 [importlinter:contract:front-doors-independent]
-name = api, cli and agents do not import each other
+name = api and cli do not import each other
 type = independence
 modules =
     api
     cli
-    agents
 
 [importlinter:contract:core-layers]
 name = core layers: reporting over quality over analysis over data
