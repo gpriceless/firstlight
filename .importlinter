@@ -32,11 +32,10 @@ layers =
     core.data
 
 [importlinter:contract:execution-below-analysis]
-name = core.execution and core.resilience do not import analysis, quality or reporting
+name = core.execution does not import analysis, quality or reporting
 type = forbidden
 source_modules =
     core.execution
-    core.resilience
 forbidden_modules =
     core.analysis
     core.quality
@@ -53,4 +52,3 @@ forbidden_modules =
     core.quality
     core.reporting
     core.execution
-    core.resilience

@@ -201,50 +201,6 @@ from .dask_adapters import (
     validate_adapter,
 )
 
-# Sedona Backend (Group C: Distributed Processing - Cloud)
-from .sedona_backend import (
-    # Enums
-    SedonaDeployMode,
-    PartitionStrategy,
-    CheckpointMode,
-    RasterFormat,
-    # Configuration
-    SedonaConfig,
-    # Data classes
-    ClusterStatus,
-    TilePartition,
-    SedonaProcessingResult,
-    # Backend
-    SedonaBackend,
-    SedonaTileProcessor,
-    RasterSerializer,
-    # Utilities
-    create_sedona_backend,
-    process_with_sedona,
-    is_sedona_available,
-    get_sedona_info,
-)
-
-# Sedona Adapters (Group C: Distributed Processing - Cloud)
-from .sedona_adapters import (
-    # Configuration
-    AdapterConfig,
-    TileData as SedonaTileData,
-    TileResult as SedonaTileResult,
-    # Adapters
-    SedonaAlgorithmAdapter,
-    FloodSedonaAdapter,
-    WildfireSedonaAdapter,
-    StormSedonaAdapter,
-    AlgorithmSerializer,
-    ResultCollector,
-    # Factory functions
-    wrap_algorithm_for_sedona,
-    adapt_algorithms_for_sedona,
-    check_sedona_compatibility,
-    validate_sedona_adapter,
-)
-
 __all__ = [
     # Runner - Enums
     "TaskStatus",
@@ -351,39 +307,4 @@ __all__ = [
     # Dask Adapters - Validation
     "check_algorithm_compatibility",
     "validate_adapter",
-    # Sedona Backend - Config
-    "SedonaConfig",
-    "SedonaDeployMode",
-    "PartitionStrategy",
-    "CheckpointMode",
-    "RasterFormat",
-    # Sedona Backend - Data
-    "ClusterStatus",
-    "TilePartition",
-    "SedonaProcessingResult",
-    # Sedona Backend - Classes
-    "SedonaBackend",
-    "SedonaTileProcessor",
-    "RasterSerializer",
-    # Sedona Backend - Utilities
-    "create_sedona_backend",
-    "process_with_sedona",
-    "is_sedona_available",
-    "get_sedona_info",
-    # Sedona Adapters - Config
-    "AdapterConfig",
-    "SedonaTileData",
-    "SedonaTileResult",
-    # Sedona Adapters - Classes
-    "SedonaAlgorithmAdapter",
-    "FloodSedonaAdapter",
-    "WildfireSedonaAdapter",
-    "StormSedonaAdapter",
-    "AlgorithmSerializer",
-    "ResultCollector",
-    # Sedona Adapters - Factory
-    "wrap_algorithm_for_sedona",
-    "adapt_algorithms_for_sedona",
-    "check_sedona_compatibility",
-    "validate_sedona_adapter",
 ]

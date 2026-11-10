@@ -10,7 +10,6 @@ Backends:
 - Serial: Simple in-memory processing for small datasets (<100 tiles)
 - Dask Local: Parallel tile processing for medium datasets (100-1000 tiles)
 - Dask Distributed: Cluster processing for large datasets (1000+ tiles)
-- Sedona (Future): Apache Sedona on Spark for continental scale
 
 Key Components:
 - ExecutionRouter: Main routing logic
@@ -88,23 +87,6 @@ except ImportError:
     TiledAlgorithmRunner = None
     TiledProcessingResult = None
 
-try:
-    from .sedona_backend import (
-        SedonaBackend,
-        SedonaConfig,
-        SedonaTileProcessor,
-        SedonaProcessingResult,
-        is_sedona_available,
-    )
-    HAS_SEDONA = True
-except ImportError:
-    HAS_SEDONA = False
-    SedonaBackend = None
-    SedonaConfig = None
-    SedonaTileProcessor = None
-    SedonaProcessingResult = None
-    is_sedona_available = lambda: False
-
 
 # =============================================================================
 # Enumerations
@@ -119,8 +101,6 @@ class ExecutionProfile(Enum):
     TILED_SERIAL = "tiled_serial"  # Tiled but single-threaded
     DASK_LOCAL = "dask_local"  # Dask with local cluster
     DASK_DISTRIBUTED = "dask_distributed"  # Dask with remote cluster
-    SEDONA = "sedona"  # Apache Sedona on Spark local
-    SEDONA_CLUSTER = "sedona_cluster"  # Apache Sedona on Spark cluster
 
     # Convenience aliases
     LAPTOP = "laptop"  # Optimized for laptop resources
@@ -194,9 +174,6 @@ class SystemResources:
     cpu_count: int
     has_gpu: bool = False
     cluster_address: Optional[str] = None
-    spark_master: Optional[str] = None
-    has_spark: bool = False
-    has_sedona: bool = False
 
     @classmethod
     def detect(cls) -> "SystemResources":
@@ -222,32 +199,11 @@ class SystemResources:
         except ImportError:
             pass
 
-        # Check for Spark/Sedona
-        has_spark = False
-        has_sedona = False
-        try:
-            from pyspark.sql import SparkSession
-            has_spark = True
-            try:
-                from sedona.register import SedonaRegistrator
-                has_sedona = True
-            except ImportError:
-                pass
-        except ImportError:
-            pass
-
-        # Also check via our module
-        if HAS_SEDONA and is_sedona_available():
-            has_sedona = True
-            has_spark = True
-
         return cls(
             total_memory_gb=total_memory_gb,
             available_memory_gb=available_memory_gb,
             cpu_count=cpu_count,
             has_gpu=has_gpu,
-            has_spark=has_spark,
-            has_sedona=has_sedona,
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -258,9 +214,6 @@ class SystemResources:
             "cpu_count": self.cpu_count,
             "has_gpu": self.has_gpu,
             "cluster_address": self.cluster_address,
-            "spark_master": self.spark_master,
-            "has_spark": self.has_spark,
-            "has_sedona": self.has_sedona,
         }
 
 
@@ -274,29 +227,22 @@ class RoutingConfig:
         overlap: Overlap in pixels
         tile_threshold_serial: Below this, use serial processing
         tile_threshold_dask_local: Below this, use Dask local
-        tile_threshold_sedona: Above this, consider Sedona for continental scale
         memory_safety_factor: Safety margin for memory estimates
         target_time_minutes: Target processing time
         prefer_distributed: Prefer distributed even for smaller jobs
-        prefer_sedona: Prefer Sedona when available for large datasets
-        sedona_master: Spark master URL for Sedona
     """
 
     tile_size: Tuple[int, int] = (512, 512)
     overlap: int = 32
     tile_threshold_serial: int = 50
     tile_threshold_dask_local: int = 1000
-    tile_threshold_sedona: int = 10000  # Continental scale
     memory_safety_factor: float = 2.0
     target_time_minutes: float = 10.0
     prefer_distributed: bool = False
-    prefer_sedona: bool = False
-    sedona_master: Optional[str] = None
 
     # Time per tile estimates (seconds)
     time_per_tile_serial: float = 0.5
     time_per_tile_parallel: float = 0.1
-    time_per_tile_sedona: float = 0.05  # Sedona is faster at scale
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -305,12 +251,9 @@ class RoutingConfig:
             "overlap": self.overlap,
             "tile_threshold_serial": self.tile_threshold_serial,
             "tile_threshold_dask_local": self.tile_threshold_dask_local,
-            "tile_threshold_sedona": self.tile_threshold_sedona,
             "memory_safety_factor": self.memory_safety_factor,
             "target_time_minutes": self.target_time_minutes,
             "prefer_distributed": self.prefer_distributed,
-            "prefer_sedona": self.prefer_sedona,
-            "sedona_master": self.sedona_master,
         }
 
 
@@ -514,18 +457,13 @@ class BackendSelector:
         elif profile == ExecutionProfile.WORKSTATION:
             return ExecutionProfile.DASK_LOCAL, "Using Dask local for workstation profile"
         elif profile == ExecutionProfile.CLOUD:
-            if self.resources.spark_master or self.resources.has_spark:
-                return ExecutionProfile.SEDONA_CLUSTER, "Using Sedona on Spark cluster"
             if self.resources.cluster_address:
                 return ExecutionProfile.DASK_DISTRIBUTED, "Using distributed Dask cluster"
             return ExecutionProfile.DASK_LOCAL, "Using Dask local (no cluster available)"
         elif profile == ExecutionProfile.CONTINENTAL:
-            # Continental scale - prefer Sedona
-            if self.resources.has_spark or HAS_SEDONA:
-                if self.resources.spark_master:
-                    return ExecutionProfile.SEDONA_CLUSTER, "Using Sedona cluster for continental scale"
-                return ExecutionProfile.SEDONA, "Using Sedona local for continental scale"
-            return ExecutionProfile.DASK_LOCAL, "Using Dask local for continental scale (Sedona not available)"
+            if self.resources.cluster_address:
+                return ExecutionProfile.DASK_DISTRIBUTED, "Using distributed Dask cluster for continental scale"
+            return ExecutionProfile.DASK_LOCAL, "Using Dask local for continental scale"
 
         # Automatic selection
         return self._auto_select(estimate)
@@ -566,21 +504,6 @@ class BackendSelector:
                 f"Medium dataset ({n_tiles} tiles) - using Dask local cluster"
             )
 
-        # Check for continental scale (Sedona preferred)
-        if n_tiles >= self.config.tile_threshold_sedona:
-            if self.config.prefer_sedona or n_tiles >= self.config.tile_threshold_sedona * 2:
-                # Use Sedona for very large datasets
-                if self.resources.spark_master:
-                    return (
-                        ExecutionProfile.SEDONA_CLUSTER,
-                        f"Continental scale ({n_tiles} tiles) - using Sedona cluster"
-                    )
-                if self.resources.has_spark or HAS_SEDONA:
-                    return (
-                        ExecutionProfile.SEDONA,
-                        f"Continental scale ({n_tiles} tiles) - using Sedona local"
-                    )
-
         # Large dataset
         if self.resources.cluster_address:
             return (
@@ -606,29 +529,6 @@ class BackendSelector:
                     ExecutionProfile.DASK_LOCAL,
                     "Distributed requested but no cluster - falling back to local"
                 )
-
-        # Check if Sedona requested
-        if profile == ExecutionProfile.SEDONA:
-            if not HAS_SEDONA and not self.resources.has_spark:
-                return (
-                    ExecutionProfile.DASK_LOCAL,
-                    "Sedona requested but Spark not available - falling back to Dask local"
-                )
-            return profile, "Using Sedona local for processing"
-
-        # Check if Sedona cluster requested
-        if profile == ExecutionProfile.SEDONA_CLUSTER:
-            if not self.resources.spark_master:
-                if HAS_SEDONA or self.resources.has_spark:
-                    return (
-                        ExecutionProfile.SEDONA,
-                        "Sedona cluster requested but no Spark master - using Sedona local"
-                    )
-                return (
-                    ExecutionProfile.DASK_LOCAL,
-                    "Sedona cluster requested but Spark not available - falling back to Dask local"
-                )
-            return profile, f"Using Sedona cluster at {self.resources.spark_master}"
 
         return profile, f"Using requested profile: {profile.value}"
 
@@ -811,11 +711,6 @@ class ExecutionRouter:
                 data, algorithm, backend, bounds, resolution, output_path
             )
 
-        elif backend in [ExecutionProfile.SEDONA, ExecutionProfile.SEDONA_CLUSTER]:
-            return self._execute_sedona(
-                data, algorithm, backend, bounds, resolution, output_path
-            )
-
         else:
             # Fallback to tiled serial
             logger.warning(f"Unknown backend {backend}, using tiled serial")
@@ -925,92 +820,6 @@ class ExecutionRouter:
             resolution=resolution,
             output_path=output_path,
         )
-
-    def _execute_sedona(
-        self,
-        data: np.ndarray,
-        algorithm: Any,
-        backend: ExecutionProfile,
-        bounds: Optional[Tuple[float, float, float, float]],
-        resolution: Optional[Tuple[float, float]],
-        output_path: Optional[Union[str, Path]],
-    ) -> Any:
-        """Execute with Sedona/Spark backend."""
-        logger.info(f"Executing with {backend.value}")
-
-        if not HAS_SEDONA:
-            logger.warning("Sedona not available, falling back to Dask")
-            return self._execute_dask(
-                data, algorithm, ExecutionProfile.DASK_LOCAL,
-                bounds, resolution, output_path
-            )
-
-        # Configure Sedona
-        if backend == ExecutionProfile.SEDONA_CLUSTER:
-            master = self.config.sedona_master or self.resources.spark_master
-            if master:
-                sedona_config = SedonaConfig.for_cluster(
-                    master=master,
-                    num_executors=max(4, self.resources.cpu_count),
-                )
-            else:
-                # Fallback to local Spark
-                sedona_config = SedonaConfig.for_local_testing()
-        else:
-            # Local Sedona
-            sedona_config = SedonaConfig(
-                master=f"local[{self.resources.cpu_count}]",
-                tile_size=self.config.tile_size,
-                overlap=self.config.overlap,
-            )
-
-        # Override tile size from routing config
-        sedona_config.tile_size = self.config.tile_size
-        sedona_config.overlap = self.config.overlap
-
-        # Create backend and processor
-        sedona_backend = SedonaBackend(sedona_config)
-
-        try:
-            sedona_backend.connect()
-
-            processor = SedonaTileProcessor(
-                backend=sedona_backend,
-                progress_callback=self._sedona_progress_adapter,
-            )
-
-            result = processor.process(
-                data=data,
-                algorithm=algorithm,
-                bounds=bounds,
-                resolution=resolution,
-                output_path=str(output_path) if output_path else None,
-            )
-
-            # Return mosaic from result (SedonaProcessingResult)
-            # The result contains mosaic data in the output file if output_path was given
-            if hasattr(result, 'success') and result.success:
-                return result
-            return result
-
-        finally:
-            sedona_backend.disconnect()
-
-    def _sedona_progress_adapter(self, progress_dict: Dict) -> None:
-        """Adapt Sedona progress to standard callback."""
-        if self.progress_callback is not None:
-            # Convert to ProcessingProgress if needed
-            try:
-                from .dask_tiled import ProcessingProgress
-                progress = ProcessingProgress(
-                    total_tiles=progress_dict.get("total_tiles", 0),
-                    completed_tiles=progress_dict.get("completed_tiles", 0),
-                    failed_tiles=progress_dict.get("failed_tiles", 0),
-                )
-                self.progress_callback(progress)
-            except Exception:
-                # Progress callback failed, continue silently
-                pass
 
     def get_system_info(self) -> Dict[str, Any]:
         """Get system resource information."""
