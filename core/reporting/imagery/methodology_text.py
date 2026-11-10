@@ -124,7 +124,7 @@ helps distinguish flood water from permanent water bodies like lakes and rivers.
     # Wildfire algorithms
     "thermal_anomaly": """
 This analysis used thermal infrared sensors that detect heat. Active fires emit intense heat
-signatures visible from space, even through light smoke. The system identifies pixels significantly
+signatures visible from space, even through light smoke. The system identifies spots significantly
 hotter than their surroundings as active fire locations.
 """.strip(),
 
