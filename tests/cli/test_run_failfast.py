@@ -254,7 +254,8 @@ class TestRunAreaToBboxDerivation:
         from cli.commands.run import run as run_cmd
 
         area_file = tmp_path / "area.geojson"
-        # ~46 km² Max Road Miramar footprint, simplified to a polygon.
+        # A 0.1 degree box (about 111 km²) inside the Max Road Miramar AOI.
+        # The full AOI box is about 288 km²; the fire itself was about 46 km².
         polygon = {
             "type": "Polygon",
             "coordinates": [[
