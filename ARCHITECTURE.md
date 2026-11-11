@@ -1,6 +1,6 @@
 # Architecture: FirstLight
 
-Last checked against the code: 2026-11-10, commit 1dc46c7. Read by the owner: not yet.
+Last checked against the code: 2026-11-10, commit 1dc46c7. Read by the owner: 2026-11-11.
 
 Sources: `.harness/import-graph.json` (regex map), an AST reachability pass that also
 counts imports inside functions, the import-linter contracts in `.importlinter`, and
