@@ -112,5 +112,16 @@ of it is on `main` and nothing here should be rebuilt without a new spec.
   which. The context lakehouse branch is kept as
   `refs/attic/origin-context-data-lakehouse`; reviving it needs a spec.
 
+- Sentinel-1 ingestion, retired 2026-11-12. Discovery can search the `sentinel-1-grd`
+  collection and `core/data/providers/sar/sentinel1.py` describes it, but no loader
+  downloads or calibrates S1 scenes; the only S1 item ids the CLI writes are the mock
+  ones in the discover fallback (`cli/commands/run.py:554`). So `flight run --event
+  flood` has no real input and stops at analyze asking for SAR data. Earth Search
+  GRD assets sit on a requester-pays bucket and are uncalibrated. A real flood path
+  needs a spec: an analysis-ready S1 RTC source, or an optical water index on
+  Sentinel-2.
+- Landsat stays: it is read through the public landsatlook HTTPS mirror, not the
+  requester-pays bucket (see `stac_client`).
+
 An agent memory file written in February still described both as in progress. It is
 kept verbatim in `history/left-in-the-dust.md` under "Old agent memory".
