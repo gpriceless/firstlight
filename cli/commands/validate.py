@@ -616,9 +616,20 @@ def output_text(report: Dict[str, Any], output_path: Optional[Path]):
         click.echo(text)
 
 
+def _json_default(value: Any) -> Any:
+    """Convert numpy scalars and arrays, which checks return, to JSON types."""
+    import numpy as np
+
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
+
 def output_json(report: Dict[str, Any], output_path: Optional[Path]):
     """Output report as JSON."""
-    json_str = json.dumps(report, indent=2)
+    json_str = json.dumps(report, indent=2, default=_json_default)
 
     if output_path:
         with open(output_path, "w") as f:
