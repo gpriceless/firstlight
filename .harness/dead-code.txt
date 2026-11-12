@@ -1,4 +1,4 @@
-# Dead-code report for firstlight, 2026-11-10T04:45:14Z
+# Dead-code report for firstlight, 2026-11-12T22:34:44Z
 
 Findings are candidates, not verdicts: check each against the module map's entry
 points and dynamic imports before deleting. Decisions go in history/left-in-the-dust.md.

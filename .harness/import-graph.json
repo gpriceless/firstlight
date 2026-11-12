@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-10T04:45:27+00:00",
+  "generated_at": "2026-11-12T22:34:41+00:00",
   "root": "..",
   "tool": "module-map.py",
   "nodes": [
@@ -1129,11 +1129,6 @@
       "module": "tests.test_full_report_templates"
     },
     {
-      "id": "tests/test_fusion_core_comprehensive.py",
-      "lang": "python",
-      "module": "tests.test_fusion_core_comprehensive"
-    },
-    {
       "id": "tests/test_image_validation.py",
       "lang": "python",
       "module": "tests.test_image_validation"
@@ -1157,11 +1152,6 @@
       "id": "tests/test_interactive_reports.py",
       "lang": "python",
       "module": "tests.test_interactive_reports"
-    },
-    {
-      "id": "tests/test_k8s_manifests.py",
-      "lang": "python",
-      "module": "tests.test_k8s_manifests"
     },
     {
       "id": "tests/test_multiband_ingestion.py",
@@ -1259,9 +1249,19 @@
       "module": "tests.api"
     },
     {
+      "id": "tests/api/test_aoi_geometry.py",
+      "lang": "python",
+      "module": "tests.api.test_aoi_geometry"
+    },
+    {
       "id": "tests/api/test_database.py",
       "lang": "python",
       "module": "tests.api.test_database"
+    },
+    {
+      "id": "tests/api/test_event_roundtrip.py",
+      "lang": "python",
+      "module": "tests.api.test_event_roundtrip"
     },
     {
       "id": "tests/api/test_jwt_auth.py",
@@ -1277,6 +1277,11 @@
       "id": "tests/cli/test_discover_wiring.py",
       "lang": "python",
       "module": "tests.cli.test_discover_wiring"
+    },
+    {
+      "id": "tests/cli/test_flood_input.py",
+      "lang": "python",
+      "module": "tests.cli.test_flood_input"
     },
     {
       "id": "tests/cli/test_ingest_wiring.py",
@@ -2669,8 +2674,24 @@
       "to": "core/reporting/maps/static_map.py"
     },
     {
+      "from": "tests/api/test_aoi_geometry.py",
+      "to": "api/models/requests.py"
+    },
+    {
       "from": "tests/api/test_database.py",
       "to": "api/database.py"
+    },
+    {
+      "from": "tests/api/test_event_roundtrip.py",
+      "to": "api/models/requests.py"
+    },
+    {
+      "from": "tests/api/test_event_roundtrip.py",
+      "to": "api/models/responses.py"
+    },
+    {
+      "from": "tests/api/test_event_roundtrip.py",
+      "to": "api/routes/events.py"
     },
     {
       "from": "tests/api/test_jwt_auth.py",
@@ -2691,6 +2712,10 @@
     {
       "from": "tests/cli/test_discover_wiring.py",
       "to": "cli/commands/discover.py"
+    },
+    {
+      "from": "tests/cli/test_flood_input.py",
+      "to": "cli/commands/run.py"
     },
     {
       "from": "tests/cli/test_ingest_wiring.py",
@@ -3001,10 +3026,6 @@
       "to": "core/reporting/templates/full_report.py"
     },
     {
-      "from": "tests/test_fusion_core_comprehensive.py",
-      "to": "core/analysis/__init__.py"
-    },
-    {
       "from": "tests/test_image_validation.py",
       "to": "core/data/ingestion/streaming.py"
     },
@@ -3143,10 +3164,6 @@
     {
       "from": "tests/test_quality_integration.py",
       "to": "core/quality/uncertainty/__init__.py"
-    },
-    {
-      "from": "tests/test_quality_reporting.py",
-      "to": "core/quality/__init__.py"
     },
     {
       "from": "tests/test_quality_reporting.py",
@@ -4722,11 +4739,6 @@
     "tests/test_full_report_templates.py": [
       "datetime"
     ],
-    "tests/test_fusion_core_comprehensive.py": [
-      "datetime",
-      "numpy",
-      "pytest"
-    ],
     "tests/test_image_validation.py": [
       "io",
       "numpy",
@@ -4761,13 +4773,6 @@
       "datetime",
       "pathlib",
       "pytest"
-    ],
-    "tests/test_k8s_manifests.py": [
-      "pathlib",
-      "pytest",
-      "subprocess",
-      "typing",
-      "yaml"
     ],
     "tests/test_multiband_ingestion.py": [
       "click",
@@ -4899,12 +4904,19 @@
       "pytest",
       "typing"
     ],
+    "tests/api/test_aoi_geometry.py": [
+      "pydantic",
+      "pytest"
+    ],
     "tests/api/test_database.py": [
       "datetime",
       "json",
       "pathlib",
       "pytest",
       "tempfile"
+    ],
+    "tests/api/test_event_roundtrip.py": [
+      "datetime"
     ],
     "tests/api/test_jwt_auth.py": [
       "datetime",
@@ -4924,6 +4936,12 @@
     "tests/cli/test_discover_wiring.py": [
       "datetime",
       "pytest",
+      "unittest"
+    ],
+    "tests/cli/test_flood_input.py": [
+      "numpy",
+      "pytest",
+      "rasterio",
       "unittest"
     ],
     "tests/cli/test_ingest_wiring.py": [
