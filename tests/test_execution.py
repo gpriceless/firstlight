@@ -601,7 +601,7 @@ class TestPipelineRunner:
         result = runner.execute(pipeline)
 
         assert result.status == TaskStatus.FAILED
-        assert "timeout" in result.task_results["slow"].error.lower()
+        assert "timed out" in result.task_results["slow"].error.lower()
 
     def test_dependency_skipping(self):
         """Test that tasks are skipped when dependencies fail."""
