@@ -85,6 +85,9 @@ class Geometry(BaseModel):
     }}}
 
 
+AOI_GEOMETRY_TYPES = frozenset({GeometryType.POLYGON, GeometryType.MULTIPOLYGON})
+
+
 class BoundingBox(BaseModel):
     """Bounding box specification."""
 
@@ -139,6 +142,16 @@ class SpatialSpec(BaseModel):
         pattern=r"^EPSG:[0-9]+$",
         description="Coordinate reference system",
     )
+
+    @field_validator("geometry")
+    @classmethod
+    def require_area_geometry(cls, v: Optional[Geometry]) -> Optional[Geometry]:
+        """An AOI is an area: only Polygon and MultiPolygon are accepted."""
+        if v is not None and v.type not in AOI_GEOMETRY_TYPES:
+            raise ValueError(
+                f"AOI geometry must be Polygon or MultiPolygon, got {v.type.value}"
+            )
+        return v
 
     @model_validator(mode="after")
     def require_spatial_definition(self) -> "SpatialSpec":
