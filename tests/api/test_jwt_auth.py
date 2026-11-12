@@ -194,6 +194,13 @@ class TestJWTHandler:
 class TestGetBearerToken:
     """Test the get_bearer_token dependency."""
 
+    @pytest.fixture(autouse=True)
+    def fresh_jwt_handler(self, monkeypatch):
+        """The handler caches JWT_SECRET; each test sets its own."""
+        import api.jwt_handler
+
+        monkeypatch.setattr(api.jwt_handler, "_jwt_handler", None)
+
     @pytest.fixture
     def mock_settings(self):
         """Create mock settings."""

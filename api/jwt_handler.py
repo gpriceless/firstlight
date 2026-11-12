@@ -143,12 +143,13 @@ class JWTHandler:
             )
             exp = payload.get("exp")
             if exp is None:
-                return True
+                return False
 
             exp_datetime = datetime.fromtimestamp(exp, tz=timezone.utc)
             return datetime.now(timezone.utc) > exp_datetime
         except Exception:
-            return True
+            # Not a decodable JWT: it is invalid, not expired.
+            return False
 
 
 # Global handler instance
