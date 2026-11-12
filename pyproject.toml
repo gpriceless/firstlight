@@ -115,7 +115,7 @@ include = ["openspec*", "core*", "api*", "cli*"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --strict-markers -m 'not docker'"
+addopts = "-ra -q --strict-markers -m 'not docker and not e2e'"
 testpaths = ["tests"]
 pythonpath = ["."]
 asyncio_mode = "auto"

@@ -15,8 +15,10 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -e ".[dev]"
-      # The tile validation tests drive a headless browser.
-      - run: playwright install --with-deps chromium-headless-shell
       # Docker-marked tests build images and start the compose stack; the
-      # default options in pyproject.toml leave them out.
+      # default options in pyproject.toml leave them out, and the e2e tests.
       - run: python -m pytest --import-mode=importlib
+      # The e2e tests drive a headless browser whose event loop outlives them,
+      # so they run in their own process.
+      - run: playwright install --with-deps chromium-headless-shell
+      - run: python -m pytest -m e2e --import-mode=importlib

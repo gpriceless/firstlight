@@ -53,5 +53,5 @@ The LLM control plane and the MAIA showcase were deprecated on 2026-03-18. Neith
 ## Working here
 
 - Tests: `python -m pytest --import-mode=importlib`, the same command the Tests workflow
-  runs. Docker-marked tests are off by default; `-m docker` runs them.
+  runs. Docker and e2e tests are off by default; `-m docker` or `-m e2e` runs them.
 - Boundaries: `lint-imports` must stay green (5 contracts, `.importlinter`).

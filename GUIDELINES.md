@@ -45,6 +45,7 @@ python -m pytest --import-mode=importlib               # Whole suite, as CI runs
 python -m pytest tests/test_flood_algorithms.py --import-mode=importlib
 python -m pytest -m flood --import-mode=importlib       # By marker: flood, wildfire, storm
 python -m pytest -m docker --import-mode=importlib      # Docker builds and compose; off by default
+python -m pytest -m e2e --import-mode=importlib         # Browser tests; off by default, own process
 ```
 
 ### 1.3 CLI Usage (flight)
