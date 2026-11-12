@@ -47,7 +47,7 @@ class TestDiscoverWiring:
             }
         ]
 
-        with patch("cli.commands.discover.discover_data") as mock_discover:
+        with patch("core.data.discovery.stac_client.discover_data") as mock_discover:
             mock_discover.return_value = mock_results
 
             results = perform_discovery(
@@ -77,7 +77,7 @@ class TestDiscoverWiring:
             ]],
         }
 
-        with patch("cli.commands.discover.discover_data") as mock_discover:
+        with patch("core.data.discovery.stac_client.discover_data") as mock_discover:
             mock_discover.return_value = []  # No results
 
             results = perform_discovery(
@@ -106,7 +106,8 @@ class TestDiscoverWiring:
             ]],
         }
 
-        with patch("cli.commands.discover.discover_data", side_effect=ImportError("No module named 'pystac_client'")):
+        # A None entry in sys.modules makes the import raise ImportError.
+        with patch.dict("sys.modules", {"core.data.discovery.stac_client": None}):
             with pytest.raises(STACError) as exc_info:
                 perform_discovery(
                     geometry=geometry,
@@ -139,7 +140,7 @@ class TestDiscoverWiring:
             {"id": "L8_001", "source": "landsat", "datetime": "2024-09-15", "priority": "secondary"},
         ]
 
-        with patch("cli.commands.discover.discover_data") as mock_discover:
+        with patch("core.data.discovery.stac_client.discover_data") as mock_discover:
             mock_discover.return_value = mock_results
 
             # Filter for sentinel1 only
@@ -320,7 +321,7 @@ class TestNoMockFallback:
             ]],
         }
 
-        with patch("cli.commands.discover.discover_data") as mock_discover:
+        with patch("core.data.discovery.stac_client.discover_data") as mock_discover:
             mock_discover.side_effect = Exception("STAC catalog unreachable")
 
             with pytest.raises((NetworkError, STACError)):
@@ -336,7 +337,7 @@ class TestNoMockFallback:
 
     def test_no_random_imports(self):
         """Verify that random module is not imported (used by mock generator)."""
-        with patch("cli.commands.discover.discover_data") as mock_discover:
+        with patch("core.data.discovery.stac_client.discover_data") as mock_discover:
             mock_discover.return_value = []
 
             geometry = {
