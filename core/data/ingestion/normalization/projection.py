@@ -282,6 +282,7 @@ class CRSHandler:
         """
         try:
             from pyproj import CRS
+            from pyproj.exceptions import CRSError
         except ImportError:
             raise ImportError("pyproj is required for CRS operations")
 
@@ -289,7 +290,7 @@ class CRSHandler:
             pyproj_crs1 = CRS.from_user_input(crs1)
             pyproj_crs2 = CRS.from_user_input(crs2)
             return pyproj_crs1.equals(pyproj_crs2)
-        except (ValueError, TypeError) as e:
+        except (CRSError, ValueError, TypeError) as e:
             logger.debug(f"CRS equivalence check failed: {e}")
             return False
 
