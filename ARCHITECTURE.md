@@ -87,14 +87,10 @@ after "queue". Nothing consumes the queue.
 ## Known debt
 
 - God files: `cli/commands/run.py` 2,063, `core/quality/reporting/qa_report.py` 1,520.
-- The only workflow is the boundary-contract check. No workflow runs the tests.
-- `core/data/ingestion/formats/zarr.py` calls `zarr.DirectoryStore`, which zarr 3
-  removed; 10 tests in `tests/test_ingestion.py` fail on it.
-- Test suite on 2026-11-05, one file at a time with `--import-mode=importlib`: 3,223
-  passed, 58 failed, 15 skipped; 13 files failed to collect (the imagery modules,
-  committed since, and the API tests); `tests/test_cli.py` and `tests/test_docker_builds.py` did not
-  finish in 180 seconds. Most failures are tests that drifted from refactored code
-  (`tests/cli/test_*_wiring.py`). The pyspark tests went with the Spark backend.
+- Two workflows: the boundary-contract check and the Tests workflow, which runs the
+  whole suite except Docker-marked tests (`.github/workflows/tests.yml`).
+- `core/analysis/execution/` (runner, checkpoints, Dask, tiled runner) is reached only by
+  its tests since `flight analyze` stopped importing a runner class that never existed.
 - Dead and test-only clusters with a revive or delete call each: `history/left-in-the-dust.md`.
 
 ## Retired

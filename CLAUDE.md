@@ -52,7 +52,6 @@ The LLM control plane and the MAIA showcase were deprecated on 2026-03-18. Neith
 
 ## Working here
 
-- Tests: `python -m pytest <file> --import-mode=importlib`, one file at a time. Not
-  `run_tests.py`.
+- Tests: `python -m pytest --import-mode=importlib`, the same command the Tests workflow
+  runs. Docker-marked tests are off by default; `-m docker` runs them.
 - Boundaries: `lint-imports` must stay green (5 contracts, `.importlinter`).
-- `zarr.DirectoryStore` is gone in zarr 3; 10 tests in `tests/test_ingestion.py` fail on it.
