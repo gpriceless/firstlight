@@ -435,31 +435,7 @@ def run_analysis(
         "statistics": {},
     }
 
-    # Try to use actual execution infrastructure
-    try:
-        from core.analysis.execution.runner import PipelineRunner
-        from core.analysis.execution.tiled_runner import TiledRunner
-
-        if supports_tiled:
-            runner = TiledRunner(
-                algorithm=algorithm,
-                tile_size=tile_size,
-                parallel=parallel,
-            )
-            tile_results = runner.run_tiles(input_path, output_path, tiles)
-            results["tiles_completed"] = len([r for r in tile_results if r["success"]])
-            results["tiles_failed"] = len([r for r in tile_results if not r["success"]])
-        else:
-            runner = PipelineRunner()
-            result = runner.run(algorithm, input_path, output_path)
-            results["tiles_completed"] = 1
-
-        return results
-
-    except ImportError:
-        logger.debug("Execution modules not available, using mock processing")
-
-    # Mock processing for demonstration
+    # Process the first input raster directly
     try:
         import numpy as np
 
@@ -512,16 +488,22 @@ def run_analysis(
                         # Full array processing
                         data = src.read(1)
                         result = algorithm.execute(data)
-                        results["tiles_completed"] = 1
 
-                        # Save result
-                        profile = src.profile.copy()
-                        profile.update(dtype="uint8", count=1)
-                        output_file = output_path / "flood_extent.tif"
+                        # Algorithms return a result object; older ones a dict.
+                        extent = getattr(result, "flood_extent", None)
+                        if extent is None and isinstance(result, dict):
+                            extent = result.get("flood_extent")
 
-                        if result and "flood_extent" in result:
+                        if extent is not None:
+                            profile = src.profile.copy()
+                            profile.update(dtype="uint8", count=1)
+                            output_file = output_path / "flood_extent.tif"
                             with rasterio.open(output_file, "w", **profile) as dst:
-                                dst.write(result["flood_extent"].astype(np.uint8), 1)
+                                dst.write(np.asarray(extent).astype(np.uint8), 1)
+                            results["statistics"] = {
+                                "flood_percentage": float(np.mean(extent > 0) * 100.0),
+                            }
+                        results["tiles_completed"] = 1
 
             except Exception as e:
                 logger.error(f"Error processing raster: {e}")
@@ -534,15 +516,7 @@ def run_analysis(
                 f"Make sure you have ingested data before running analysis."
             )
 
-        # Calculate statistics
-        results["statistics"] = {
-            "mean_value": 0.0,
-            "flood_percentage": 0.0,
-        }
-
-    except ImportError:
-        # numpy not available
-        logger.warning("numpy not available, mock processing skipped")
-        results["tiles_completed"] = len(tiles)
+    except ImportError as e:
+        raise RuntimeError(f"Analysis needs numpy and rasterio: {e}") from e
 
     return results

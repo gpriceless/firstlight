@@ -105,58 +105,37 @@ class TestRunAnalysisWiring:
         input_path.mkdir()
         output_path.mkdir()
 
-        # Create a mock raster file
-        raster_file = input_path / "test.tif"
+        # A small real GeoTIFF of SAR-like backscatter in dB.
+        import rasterio
+        from rasterio.transform import from_origin
 
-        # Mock rasterio to avoid needing actual GeoTIFF
-        with patch("cli.commands.analyze.rasterio") as mock_rasterio:
-            mock_src = MagicMock()
-            mock_src.width = 512
-            mock_src.height = 512
-            mock_src.profile = {"dtype": "float32", "count": 1}
-            mock_src.nodata = None
-            mock_src.read.return_value = np.random.rand(512, 512).astype(np.float32) * -20.0
-            mock_src.__enter__.return_value = mock_src
-            mock_src.__exit__.return_value = None
+        raster_file = input_path / "vv.tif"
+        with rasterio.open(
+            raster_file, "w", driver="GTiff", height=64, width=64, count=1,
+            dtype="float32", crs="EPSG:32617",
+            transform=from_origin(500000, 2900000, 10, 10),
+        ) as dst:
+            dst.write(np.full((64, 64), -18.0, dtype=np.float32), 1)
 
-            mock_dst = MagicMock()
-            mock_dst.__enter__.return_value = mock_dst
-            mock_dst.__exit__.return_value = None
+        algorithm = load_algorithm("sar_threshold", {})
 
-            mock_rasterio.open.side_effect = lambda path, *args, **kwargs: (
-                mock_src if "w" not in str(args) and "w" not in kwargs.get("mode", "r")
-                else mock_dst
-            )
+        results = run_analysis(
+            input_path=input_path,
+            output_path=output_path,
+            algorithm=algorithm,
+            algo_info=ALGORITHMS["sar_threshold"],
+            tiles=[0],
+            tile_size=512,
+            parallel=1,
+            supports_tiled=False,
+        )
 
-            # Create a real algorithm instance
-            algorithm = load_algorithm("sar_threshold", {})
-
-            # Mock the algorithm's process_tile method
-            original_process = algorithm.execute
-            algorithm.execute = Mock(return_value={
-                "flood_extent": np.zeros((512, 512), dtype=np.uint8),
-                "confidence": np.ones((512, 512), dtype=np.float32)
-            })
-
-            # Create fake raster file
-            raster_file.touch()
-
-            # Run analysis
-            algo_info = ALGORITHMS["sar_threshold"]
-            results = run_analysis(
-                input_path=input_path,
-                output_path=output_path,
-                algorithm=algorithm,
-                algo_info=algo_info,
-                tiles=[0],
-                tile_size=512,
-                parallel=1,
-                supports_tiled=False
-            )
-
-            # Verify results
-            assert "tiles_completed" in results
-            assert "tiles_failed" in results
+        assert results["tiles_completed"] == 1
+        assert results["tiles_failed"] == 0
+        # -18 dB is below the water threshold, so every pixel is flagged.
+        assert results["statistics"]["flood_percentage"] == 100.0
+        with rasterio.open(output_path / "flood_extent.tif") as out:
+            assert out.crs.to_epsg() == 32617
 
     def test_missing_input_files_raises_error(self, tmp_path):
         """Test that missing input files raise FileNotFoundError."""
