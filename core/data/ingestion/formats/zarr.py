@@ -275,7 +275,7 @@ class ZarrConverter:
         compressor = self.config.get_compressor()
         for var in dataset.data_vars:
             encoding[var] = {
-                "compressor": compressor,
+                "compressors": [compressor] if compressor is not None else None,
             }
             if self.config.fill_value is not None:
                 encoding[var]["_FillValue"] = self.config.fill_value
@@ -286,6 +286,7 @@ class ZarrConverter:
             mode=mode,
             encoding=encoding,
             consolidated=self.config.consolidated,
+            zarr_format=2,
         )
 
         # Gather result info
@@ -356,12 +357,13 @@ class ZarrConverter:
 
         # Open/create store based on format
         if self.config.storage_format == ZarrStorageFormat.ZIP:
-            store = zarr.ZipStore(output_path, mode="w")
+            store = zarr.storage.ZipStore(output_path, mode="w")
         else:
-            store = zarr.DirectoryStore(output_path)
+            store = zarr.storage.LocalStore(output_path)
 
-        # Create root group
-        root = zarr.group(store, overwrite=True)
+        # Zarr format 2 keeps numcodecs compressors and the _ARRAY_DIMENSIONS
+        # attribute that xarray reads.
+        root = zarr.group(store, overwrite=True, zarr_format=2)
 
         # Set global attributes
         if attrs:
@@ -387,10 +389,10 @@ class ZarrConverter:
         # Write coordinate arrays
         for coord_name, coord_values in coords.items():
             coord_array = np.array(coord_values)
-            root.create_dataset(
+            root.create_array(
                 coord_name,
                 data=coord_array,
-                chunks=False,  # Coordinates are small, no chunking
+                chunks=coord_array.shape,  # Coordinates are small, one chunk
                 compressor=None,
             )
             # Mark as coordinate
@@ -405,13 +407,13 @@ class ZarrConverter:
             # Clamp chunks to array size
             chunks = tuple(min(c, s) for c, s in zip(chunks, data.shape))
 
-            arr = root.create_dataset(
+            arr = root.create_array(
                 var_name,
                 data=data,
                 chunks=chunks,
                 compressor=compressor,
                 fill_value=self.config.fill_value,
-                write_empty_chunks=self.config.write_empty_chunks,
+                config={"write_empty_chunks": self.config.write_empty_chunks},
             )
 
             # Set dimension attributes (for xarray compatibility)
@@ -584,8 +586,7 @@ class ZarrConverter:
         if not zarr_path.exists():
             raise FileNotFoundError(f"Zarr store not found: {zarr_path}")
 
-        store = zarr.DirectoryStore(zarr_path)
-        root = zarr.open_group(store, mode="r+")
+        root = zarr.open_group(zarr.storage.LocalStore(zarr_path), mode="r+")
 
         # Get existing array
         arr = root[variable_name]

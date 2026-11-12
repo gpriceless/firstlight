@@ -999,8 +999,9 @@ class PipelineRunner:
 
                     self._report_progress(progress)
 
-                # Check if we're done
-                if not running and not ready:
+                # Done only when nothing runs and nothing became ready. The
+                # ready list above predates the completions just processed.
+                if not running and not pipeline.get_independent_tasks(completed):
                     break
 
                 # Small sleep to prevent busy waiting

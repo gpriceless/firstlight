@@ -128,7 +128,7 @@ def deserialize_event_from_db(row: Any) -> EventResponse:
     """Convert database row to EventResponse."""
     import json
     from typing import Any
-    from api.models.requests import GeoJSONGeometry, GeometryType, TemporalWindow, DataConstraints
+    from api.models.requests import DataConstraints, Geometry, TemporalExtent
 
     intent_data = json.loads(row["intent_json"])
     spatial_data = json.loads(row["spatial_json"])
@@ -148,12 +148,12 @@ def deserialize_event_from_db(row: Any) -> EventResponse:
             parameters=intent_data.get("parameters"),
         ),
         spatial=SpatialInfo(
-            geometry=GeoJSONGeometry(**spatial_data["geometry"]) if spatial_data.get("geometry") else None,
+            geometry=Geometry(**spatial_data["geometry"]) if spatial_data.get("geometry") else None,
             bbox=BoundingBox(**spatial_data["bbox"]),
             crs=spatial_data["crs"],
             area_km2=spatial_data["area_km2"],
         ),
-        temporal=TemporalWindow(
+        temporal=TemporalExtent(
             start=datetime.fromisoformat(temporal_data["start"]),
             end=datetime.fromisoformat(temporal_data["end"]),
             reference_time=datetime.fromisoformat(temporal_data["reference_time"]) if temporal_data.get("reference_time") else None,

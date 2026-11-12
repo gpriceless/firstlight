@@ -69,6 +69,7 @@ dependencies = [
     # Utilities
     "python-dateutil>=2.8.2",
     "requests>=2.31.0",
+    "aiohttp>=3.9.0",
     "tqdm>=4.66.1",
     "python-dotenv>=1.0.0",
     # Reporting
@@ -114,9 +115,11 @@ include = ["openspec*", "core*", "api*", "cli*"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --strict-markers"
+addopts = "-ra -q --strict-markers -m 'not docker and not e2e'"
 testpaths = ["tests"]
 pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

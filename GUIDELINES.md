@@ -41,35 +41,11 @@ pip install rasterio geopandas xarray pyproj shapely
 ### 1.2 Running Tests
 
 ```bash
-# All tests
-./run_tests.py
-
-# By hazard type
-./run_tests.py flood           # Flood detection tests
-./run_tests.py wildfire        # Wildfire tests
-./run_tests.py storm           # Storm damage tests
-
-# By component
-./run_tests.py schemas         # Schema validation
-./run_tests.py intent          # Intent resolution
-./run_tests.py providers       # Data providers
-./run_tests.py algorithms      # All algorithm tests
-
-# By algorithm
-./run_tests.py --algorithm sar      # SAR threshold
-./run_tests.py --algorithm ndwi     # NDWI optical
-./run_tests.py --algorithm hand     # HAND model
-./run_tests.py --algorithm dnbr     # Burn severity
-./run_tests.py --algorithm thermal  # Thermal anomaly
-./run_tests.py --algorithm wind     # Wind damage
-
-# Test types
-./run_tests.py --quick         # Fast tests only
-./run_tests.py slow            # Slow/comprehensive tests
-./run_tests.py integration     # Integration tests
-
-# List all categories
-./run_tests.py --list
+python -m pytest --import-mode=importlib               # Whole suite, as CI runs it
+python -m pytest tests/test_flood_algorithms.py --import-mode=importlib
+python -m pytest -m flood --import-mode=importlib       # By marker: flood, wildfire, storm
+python -m pytest -m docker --import-mode=importlib      # Docker builds and compose; off by default
+python -m pytest -m e2e --import-mode=importlib         # Browser tests; off by default, own process
 ```
 
 ### 1.3 CLI Usage (flight)

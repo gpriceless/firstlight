@@ -582,6 +582,11 @@ class CheckpointManager:
             # Deserialize
             try:
                 checkpoint_dict = pickle.loads(data)
+                # Hand back the completed ids under the key save() reads them from.
+                checkpoint_dict.setdefault(
+                    "completed",
+                    list(checkpoint_dict.get("metadata", {}).get("completed_tasks", [])),
+                )
                 logger.info(f"Loaded checkpoint {checkpoint_id}")
                 return checkpoint_dict
             except Exception as e:
@@ -639,8 +644,12 @@ class CheckpointManager:
         if status:
             query += " AND status = ?"
             params.append(status.value)
+        else:
+            # A deleted checkpoint keeps its row but is gone.
+            query += " AND status != ?"
+            params.append(CheckpointStatus.DELETED.value)
 
-        query += " ORDER BY created_at DESC"
+        query += " ORDER BY created_at DESC, version DESC"
 
         with sqlite3.connect(str(self._db_path)) as conn:
             conn.row_factory = sqlite3.Row
@@ -668,7 +677,7 @@ class CheckpointManager:
             "checkpoint_id": metadata.checkpoint_id,
             "version": metadata.version,
             "progress_percent": metadata.progress_percent,
-            "completed_tasks": len(metadata.completed_tasks),
+            "completed_tasks": self._completed_count(metadata.checkpoint_id),
             "total_tasks": metadata.task_count,
             "created_at": metadata.created_at.isoformat() if metadata.created_at else None,
         }
@@ -803,6 +812,15 @@ class CheckpointManager:
                 return self._row_to_metadata(row)
         return None
 
+    def _completed_count(self, checkpoint_id: str) -> int:
+        """Completed task count recorded for a checkpoint."""
+        with sqlite3.connect(str(self._db_path)) as conn:
+            row = conn.execute(
+                "SELECT completed_count FROM checkpoints WHERE checkpoint_id = ?",
+                (checkpoint_id,),
+            ).fetchone()
+        return int(row[0]) if row and row[0] is not None else 0
+
     def _row_to_metadata(self, row: sqlite3.Row) -> CheckpointMetadata:
         """Convert database row to CheckpointMetadata."""
         return CheckpointMetadata(
@@ -814,7 +832,8 @@ class CheckpointManager:
             created_at=datetime.fromisoformat(row["created_at"])
             if row["created_at"]
             else None,
-            completed_tasks=[],  # Not stored in DB, load from file if needed
+            # Only the count is stored in the DB; the ids live in the checkpoint file.
+            completed_tasks=[],
             pending_tasks=[],
             task_count=row["task_count"],
             progress_percent=row["progress_percent"],

@@ -744,11 +744,10 @@ class TestNormalizationIntegration:
         handler = CRSHandler()
 
         # Test bounds in Europe (should suggest UTM zone 32-33)
-        bounds = (8.0, 45.0, 12.0, 48.0)  # Northern Italy
-        suggested = handler.suggest_utm_zone(bounds)
+        # Northern Italy, centre of (8, 45, 12, 48): UTM zone 32N
+        suggested = handler.suggest_utm_zone(10.0, 46.5)
 
-        # Should be UTM zone 32N or 33N
-        assert suggested is not None
+        assert suggested == "EPSG:32632"
 
     def test_temporal_resolution_enum(self):
         """Test temporal resolution enum values."""
@@ -1035,11 +1034,11 @@ class TestIngestionEdgeCases:
         # Empty array should fail or be handled gracefully
         with pytest.raises((ValueError, rasterio.errors.RasterioError if HAS_RASTERIO else ValueError)):
             if HAS_RASTERIO:
-                from rasterio.transform import from_bounds
+                from rasterio.transform import from_origin
                 converter.convert_array(
                     data=empty_data,
                     output_path=temp_dir / "empty.tif",
-                    transform=from_bounds(0, 0, 1, 1, 0, 0),
+                    transform=from_origin(0, 1, 0.1, 0.1),
                     crs="EPSG:4326",
                 )
             else:
@@ -1567,3 +1566,38 @@ class TestCOGConverterEdgeCases:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+def test_zarr_convert_xarray_keeps_compression(tmp_path):
+    """A dataset written through xarray reads back with its compressor."""
+    import xarray as xr
+    import zarr
+
+    from core.data.ingestion.formats.zarr import ZarrConverter
+
+    ds = xr.Dataset({"v": (("time", "y", "x"), np.ones((1, 8, 8), dtype="float32"))})
+    ZarrConverter().convert_xarray(ds, tmp_path / "a.zarr")
+
+    assert xr.open_zarr(tmp_path / "a.zarr")["v"].shape == (1, 8, 8)
+    assert zarr.open_array(tmp_path / "a.zarr" / "v").compressors
+
+
+def test_zarr_append_timestep_grows_time_axis(tmp_path):
+    """Appending a timestep adds one slice and one time label."""
+    from datetime import datetime
+
+    import zarr
+
+    from core.data.ingestion.formats.zarr import ZarrConverter
+
+    converter = ZarrConverter()
+    store = tmp_path / "b.zarr"
+    converter.convert_arrays(
+        {"v": np.ones((1, 8, 8), dtype="float32")},
+        store,
+        coords={"time": np.array(["2026-01-01"])},
+    )
+    converter.append_timestep(store, np.zeros((8, 8), dtype="float32"), datetime(2026, 1, 2), "v")
+
+    assert zarr.open_array(store / "v").shape == (2, 8, 8)
+    assert len(zarr.open_array(store / "time")[:]) == 2

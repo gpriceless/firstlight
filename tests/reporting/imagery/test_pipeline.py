@@ -335,7 +335,7 @@ class TestReportVisualPipeline:
         """Test web image optimization."""
         pipeline = ReportVisualPipeline(
             output_dir=temp_output_dir,
-            config=PipelineConfig(web_max_width=600, web_jpeg_quality=75)
+            config=PipelineConfig(web_max_width=256, web_jpeg_quality=75)
         )
 
         # Generate satellite image
@@ -352,8 +352,8 @@ class TestReportVisualPipeline:
 
         # Check image is resized
         img = Image.open(web_path)
-        assert img.width == 600  # Resized to max width
-        assert img.height == 600  # Maintains aspect ratio
+        assert img.width == 256  # The 512 px source is cut to max width
+        assert img.height == 256  # Maintains aspect ratio
 
         # Check file is compressed
         web_size = web_path.stat().st_size
@@ -381,7 +381,8 @@ class TestReportVisualPipeline:
 
         # Check DPI metadata
         img = Image.open(print_path)
-        assert img.info.get("dpi") == (300, 300)
+        # PNG stores pixels per metre, so 300 dpi reads back as 299.9994.
+        assert img.info.get("dpi") == pytest.approx((300, 300), abs=0.01)
 
     def test_caching(self, temp_output_dir, sample_bands):
         """Test caching prevents regeneration."""

@@ -42,8 +42,12 @@ requires_requests = pytest.mark.skipif(
 # Project root
 PROJECT_ROOT = Path(__file__).parent.parent
 
-# Default API URL (can be overridden with environment variable)
+# These probe a running deployment. Without API_URL they would hit whatever
+# else listens on localhost:8000, so they only run when it is set.
 DEFAULT_API_URL = os.environ.get("API_URL", "http://localhost:8000")
+requires_deployment = pytest.mark.skipif(
+    "API_URL" not in os.environ, reason="Set API_URL to smoke-test a deployment"
+)
 
 
 def docker_available() -> bool:
@@ -79,6 +83,7 @@ requires_docker = pytest.mark.skipif(
 )
 
 
+@requires_deployment
 class TestHealthEndpoints:
     """Tests for health check endpoints.
 
@@ -155,6 +160,7 @@ class TestHealthEndpoints:
             raise
 
 
+@requires_deployment
 class TestAPIDocsAvailable:
     """Tests for API documentation availability."""
 
@@ -209,6 +215,7 @@ class TestAPIDocsAvailable:
             pytest.skip("API not available")
 
 
+@requires_deployment
 class TestBasicAPIFunctionality:
     """Tests for basic API functionality."""
 

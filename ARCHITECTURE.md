@@ -87,14 +87,10 @@ after "queue". Nothing consumes the queue.
 ## Known debt
 
 - God files: `cli/commands/run.py` 2,063, `core/quality/reporting/qa_report.py` 1,520.
-- The only workflow is the boundary-contract check. No workflow runs the tests.
-- `core/data/ingestion/formats/zarr.py` calls `zarr.DirectoryStore`, which zarr 3
-  removed; 10 tests in `tests/test_ingestion.py` fail on it.
-- Test suite on 2026-11-05, one file at a time with `--import-mode=importlib`: 3,223
-  passed, 58 failed, 15 skipped; 13 files failed to collect (the imagery modules,
-  committed since, and the API tests); `tests/test_cli.py` and `tests/test_docker_builds.py` did not
-  finish in 180 seconds. Most failures are tests that drifted from refactored code
-  (`tests/cli/test_*_wiring.py`). The pyspark tests went with the Spark backend.
+- Two workflows: the boundary-contract check and the Tests workflow, which runs the
+  whole suite except Docker-marked tests (`.github/workflows/tests.yml`).
+- `core/analysis/execution/` (runner, checkpoints, Dask, tiled runner) is reached only by
+  its tests since `flight analyze` stopped importing a runner class that never existed.
 - Dead and test-only clusters with a revive or delete call each: `history/left-in-the-dust.md`.
 
 ## Retired
@@ -111,6 +107,17 @@ of it is on `main` and nothing here should be rebuilt without a new spec.
 - The triage listed a few things on that branch worth keeping; the triage file says
   which. The context lakehouse branch is kept as
   `refs/attic/origin-context-data-lakehouse`; reviving it needs a spec.
+
+- Sentinel-1 ingestion, retired 2026-11-12. Discovery can search the `sentinel-1-grd`
+  collection and `core/data/providers/sar/sentinel1.py` describes it, but no loader
+  downloads or calibrates S1 scenes; the only S1 item ids the CLI writes are the mock
+  ones in the discover fallback (`cli/commands/run.py:554`). So `flight run --event
+  flood` has no real input and stops at analyze asking for SAR data. Earth Search
+  GRD assets sit on a requester-pays bucket and are uncalibrated. A real flood path
+  needs a spec: an analysis-ready S1 RTC source, or an optical water index on
+  Sentinel-2.
+- Landsat stays: it is read through the public landsatlook HTTPS mirror, not the
+  requester-pays bucket (see `stac_client`).
 
 An agent memory file written in February still described both as in progress. It is
 kept verbatim in `history/left-in-the-dust.md` under "Old agent memory".

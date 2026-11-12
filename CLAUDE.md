@@ -20,7 +20,7 @@ raster, a severity map, GeoJSON and a report come out.
   Sentinel-2 L2A COGs on AWS.
 - Landsat assets come back as `s3://usgs-landsat/...` on a requester-pays bucket.
   `stac_client` rewrites them to the landsatlook HTTPS mirror. Keep that rewrite.
-- Sentinel-1 has no real loader; the only S1 item ids in the CLI are mock ones.
+- Sentinel-1 is retired (see "Retired" in `ARCHITECTURE.md`): real-mode flood has no input.
 - Algorithms are fixed per hazard: `sar_threshold` flood, `dnbr` wildfire,
   `wind_damage` storm. Wildfire defaults to `max_cloud` 90 because post-fire scenes are
   cloudy; the others default to 30.
@@ -52,7 +52,6 @@ The LLM control plane and the MAIA showcase were deprecated on 2026-03-18. Neith
 
 ## Working here
 
-- Tests: `python -m pytest <file> --import-mode=importlib`, one file at a time. Not
-  `run_tests.py`.
+- Tests: `python -m pytest --import-mode=importlib`, the same command the Tests workflow
+  runs. Docker and e2e tests are off by default; `-m docker` or `-m e2e` runs them.
 - Boundaries: `lint-imports` must stay green (5 contracts, `.importlinter`).
-- `zarr.DirectoryStore` is gone in zarr 3; 10 tests in `tests/test_ingestion.py` fail on it.

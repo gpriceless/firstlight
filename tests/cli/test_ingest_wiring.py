@@ -111,6 +111,7 @@ def test_download_real_data_uses_streaming_ingester(tmp_path, ingest_module):
         mock_instance.ingest.assert_called_once_with(
             source=str(mock_source),
             output_path=download_path,
+            skip_validation=False,
         )
 
 
@@ -266,7 +267,7 @@ def test_downloaded_file_is_real_raster(tmp_path, ingest_module):
     with patch.object(ingest_module, "StreamingIngester") as MockIngester:
         mock_instance = MockIngester.return_value
 
-        def mock_ingest(source, output_path):
+        def mock_ingest(source, output_path, skip_validation=False):
             # Simulate real download by copying
             import shutil
 

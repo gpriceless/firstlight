@@ -871,10 +871,16 @@ def _analyze_flood(
                 sar_data = np.load(f)
                 break
 
-    if sar_data is None and raster_files:
+    # Only a raster named as SAR backscatter counts. Ingest also writes
+    # Sentinel-2 bands under the same work dir, and an optical band read as
+    # SAR would produce a flood map from the wrong physics.
+    sar_rasters = [
+        f for f in raster_files if any(k in f.stem.lower() for k in ("sar", "vv"))
+    ]
+    if sar_data is None and sar_rasters:
         try:
             import rasterio
-            with rasterio.open(raster_files[0]) as src:
+            with rasterio.open(sar_rasters[0]) as src:
                 sar_data = src.read(1)
                 pixel_size_m = float(abs(src.transform.a)) or 10.0
                 grid = _grid_info_from_rasterio(
@@ -883,7 +889,7 @@ def _analyze_flood(
                     shape=(src.height, src.width),
                     pixel_size_m=pixel_size_m,
                     source="raster",
-                    extra={"raster": raster_files[0].name},
+                    extra={"raster": sar_rasters[0].name},
                 )
         except Exception as e:
             logger.warning(f"Could not load raster: {e}")

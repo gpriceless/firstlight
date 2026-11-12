@@ -276,11 +276,11 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 ### Run Tests
 
 ```bash
-./run_tests.py                    # All tests (518+)
-./run_tests.py flood              # Flood tests only
-./run_tests.py wildfire           # Wildfire tests
-./run_tests.py --algorithm sar    # Specific algorithm
-./run_tests.py --list             # Show all categories
+python -m pytest --import-mode=importlib               # Whole suite, as CI runs it
+python -m pytest tests/test_flood_algorithms.py --import-mode=importlib
+python -m pytest -m flood --import-mode=importlib       # By marker: flood, wildfire, storm
+python -m pytest -m docker --import-mode=importlib      # Docker builds and compose; off by default
+python -m pytest -m e2e --import-mode=importlib         # Browser tests; off by default, own process
 ```
 
 ---
