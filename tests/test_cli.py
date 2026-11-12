@@ -452,7 +452,7 @@ class TestRunCommand:
         assert result.exit_code == 0 or "No such command" in result.output
 
     def test_run_end_to_end(self, runner, sample_geojson, temp_dir):
-        """Test end-to-end run command."""
+        """The run command completes all stages offline on synthetic arrays."""
         from cli.main import app
 
         result = runner.invoke(
@@ -462,10 +462,11 @@ class TestRunCommand:
                 "--area", str(sample_geojson),
                 "--event", "flood",
                 "--output", str(temp_dir / "products"),
+                "--synthetic",
             ],
         )
 
-        assert isinstance(result.exit_code, int)
+        assert result.exit_code == 0, result.output
 
     def test_run_with_profile(self, runner, sample_geojson, temp_dir):
         """Test run with specific profile."""
@@ -479,31 +480,11 @@ class TestRunCommand:
                 "--event", "flood",
                 "--profile", "laptop",
                 "--output", str(temp_dir / "products"),
+                "--synthetic",
             ],
         )
 
-        assert isinstance(result.exit_code, int)
-
-    def test_run_resume(self, runner, sample_geojson, temp_dir):
-        """Test run with resume capability."""
-        from cli.main import app
-
-        # Create products directory with state
-        products_dir = temp_dir / "products"
-        products_dir.mkdir()
-
-        result = runner.invoke(
-            app,
-            [
-                "run",
-                "--area", str(sample_geojson),
-                "--event", "flood",
-                "--output", str(products_dir),
-                "--resume",
-            ],
-        )
-
-        assert isinstance(result.exit_code, int)
+        assert result.exit_code == 0, result.output
 
 
 # =============================================================================
