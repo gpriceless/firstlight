@@ -113,8 +113,7 @@ def simple_pipeline():
     return pipeline
 
 
-@pytest.fixture
-def parallel_pipeline():
+def build_parallel_pipeline():
     """Create a pipeline with parallel tasks: A -> [B, C] -> D."""
     pipeline = Pipeline("parallel_pipeline", name="Parallel Test")
 
@@ -146,6 +145,11 @@ def parallel_pipeline():
     ))
 
     return pipeline
+
+
+@pytest.fixture
+def parallel_pipeline():
+    return build_parallel_pipeline()
 
 
 @pytest.fixture
@@ -519,6 +523,14 @@ class TestPipelineRunner:
 
         assert result.success is True
         assert len(result.task_results) == 4
+
+    def test_parallel_runs_the_join_task_every_time(self):
+        """When the last branches finish together, the task after them still runs."""
+        config = ExecutionConfig(mode=ExecutionMode.PARALLEL, max_workers=4)
+        for _ in range(20):
+            result = PipelineRunner(config=config).execute(build_parallel_pipeline())
+            assert "end" in result.task_results
+            assert result.success is True
 
     def test_fail_fast(self):
         """Test fail_fast stops on first failure."""
