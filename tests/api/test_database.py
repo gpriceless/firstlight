@@ -54,16 +54,19 @@ async def test_database_initialization(db_path):
     assert db_path.exists()
 
     # Verify tables exist
-    async with manager.connect() as conn:
+    conn = await manager.connect()
+    try:
         cursor = await conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         )
         tables = await cursor.fetchall()
-        table_names = [row["name"] for row in tables]
+    finally:
+        await conn.close()
+    table_names = [row["name"] for row in tables]
 
-        assert "events" in table_names
-        assert "executions" in table_names
-        assert "products" in table_names
+    assert "events" in table_names
+    assert "executions" in table_names
+    assert "products" in table_names
 
 
 @pytest.mark.asyncio
