@@ -62,7 +62,6 @@ flight discover --area area.geojson --start 2024-09-15 --end 2024-09-20 --event 
 flight discover --bbox -80.5,25.5,-80.0,26.0 --event wildfire --format json
 
 # Data ingestion
-flight ingest --area area.geojson --source sentinel1 --output ./data/
 flight ingest --area area.geojson --source sentinel2,landsat8 --output ./data/
 
 # Analysis

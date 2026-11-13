@@ -33,6 +33,24 @@ class QueryError(STACError):
     pass
 
 
+# Sources that were supported once and are not now. Asking for one is an error,
+# never an empty result or a stand-in id.
+RETIRED_SOURCES = {
+    "sentinel1": (
+        "Sentinel-1 is retired: no loader downloads or calibrates S1 scenes, "
+        "so there is no real SAR input. Use sentinel2 or landsat."
+    ),
+}
+
+
+def reject_retired_sources(sources) -> None:
+    """Raise a usage error naming the first retired source asked for."""
+    for source in sources or ():
+        reason = RETIRED_SOURCES.get(source.lower())
+        if reason:
+            raise click.UsageError(reason)
+
+
 def format_size(size_bytes: Optional[int]) -> str:
     """Format bytes to human-readable string."""
     if size_bytes is None:
@@ -197,7 +215,7 @@ def extract_bbox_from_geometry(geometry: Dict[str, Any]) -> List[float]:
     "sources",
     multiple=True,
     type=str,
-    help="Filter by specific data sources (e.g., sentinel1, sentinel2, landsat).",
+    help="Filter by data source (sentinel2, landsat).",
 )
 @click.option(
     "--max-cloud",
@@ -250,8 +268,10 @@ def discover(
 
         # Filter by source and output as JSON
         flight discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 \\
-            --event flood --source sentinel1 --format json --output results.json
+            --event flood --source sentinel2 --format json --output results.json
     """
+    reject_retired_sources(sources)
+
     # Parse inputs
     start = parse_date(start_date)
     end = parse_date(end_date)

@@ -60,8 +60,7 @@ three of them red, so the checker can fail.
 The one path that runs on real data, `flight run --bbox ... --event ...`:
 
 1. discover: `core.data.discovery.stac_client.discover_data` queries Earth Search STAC.
-   On error it writes mock item ids and carries on (`cli/commands/run.py:548`); real
-   mode then fails at ingest.
+   On error the run stops; it never writes stand-in item ids.
 2. ingest: downloads COG bands into the work dir. Real mode fails hard on error;
    `--synthetic` generates arrays instead (`cli/commands/run.py:649`).
 3. analyze: picks the per-hazard algorithm (`sar_threshold`, `dnbr`, `wind_damage`),
@@ -108,11 +107,11 @@ of it is on `main` and nothing here should be rebuilt without a new spec.
   which. The context lakehouse branch is kept as
   `refs/attic/origin-context-data-lakehouse`; reviving it needs a spec.
 
-- Sentinel-1 ingestion, retired 2026-11-12. Discovery can search the `sentinel-1-grd`
-  collection and `core/data/providers/sar/sentinel1.py` describes it, but no loader
-  downloads or calibrates S1 scenes; the only S1 item ids the CLI writes are the mock
-  ones in the discover fallback (`cli/commands/run.py:554`). So `flight run --event
-  flood` has no real input and stops at analyze asking for SAR data. Earth Search
+- Sentinel-1 ingestion, retired 2026-11-12. `core/data/providers/sar/sentinel1.py`
+  still describes it, but no loader downloads or calibrates S1 scenes, discovery no
+  longer searches `sentinel-1-grd`, and `--source sentinel1` on discover or ingest
+  fails with a usage error (`RETIRED_SOURCES` in `cli/commands/discover.py`). So
+  `flight run --event flood` has no real input and stops at analyze asking for SAR data. Earth Search
   GRD assets sit on a requester-pays bucket and are uncalibrated. A real flood path
   needs a spec: an analysis-ready S1 RTC source, or an optical water index on
   Sentinel-2.

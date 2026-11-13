@@ -159,7 +159,7 @@ class TestDiscoverCommand:
                 "--start", "2024-09-15",
                 "--end", "2024-09-20",
                 "--event", "flood",
-                "--source", "sentinel1",
+                "--source", "sentinel2",
                 "--max-cloud", "20",
             ],
         )
@@ -309,7 +309,7 @@ class TestIngestCommand:
             [
                 "ingest",
                 "--area", str(sample_geojson),
-                "--source", "sentinel1",
+                "--source", "sentinel2",
                 "--output", str(temp_dir / "data"),
             ],
         )
@@ -328,7 +328,7 @@ class TestIngestCommand:
             [
                 "ingest",
                 "--area", str(sample_geojson),
-                "--source", "sentinel1",
+                "--source", "sentinel2",
                 "--output", str(temp_dir / "data"),
                 "--resume",
             ],
@@ -346,7 +346,7 @@ class TestIngestCommand:
             [
                 "ingest",
                 "--area", str(sample_geojson),
-                "--source", "sentinel1",
+                "--source", "sentinel2",
                 "--output", str(temp_dir / "data"),
                 "--validate",
             ],
