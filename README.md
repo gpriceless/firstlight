@@ -145,31 +145,16 @@ Input: "flooding after hurricane in Miami area"
 - Validates 20+ spectral bands in <100ms before compute starts
 - Resumes interrupted downloads without re-fetching completed chunks
 
-### 3. Distributed Processing Architecture
+### 3. Sizing the run to the machine
 
-**Challenge:** The same analysis has to run on a small machine and on a multi-core workstation without two codebases.
+**Challenge:** The same analysis has to run on a small machine and on a multi-core workstation.
 
-**Solution:** ExecutionRouter pattern with abstraction layer:
-```python
-class ExecutionRouter:
-    def select_backend(self, data_size_mb, available_memory_mb):
-        if data_size_mb < 500:
-            return SerialExecutor()
-        return DaskExecutor(workers=4)
-
-# Algorithm code is backend-agnostic
-router = ExecutionRouter()
-executor = router.select_backend(data_size, memory)
-result = executor.run(algorithm, data)
-```
-
-**Execution profiles** tune chunk size, parallelism, and memory limits:
-- `edge` - 1GB RAM, 128px tiles, serial processing
-- `laptop` - 2GB RAM, 256px tiles, 2 workers
-- `workstation` - 8GB RAM, 512px tiles, 4 workers
-- `cloud` - 32GB RAM, 1024px tiles, 16 workers
-
-Same algorithm code runs across all profiles.
+**Solution:** `flight analyze --profile` sets the memory budget and worker cap, and picks
+one from free memory when no profile is given. Tile size is `--tile-size`.
+- `edge` - 1GB RAM, 1 worker
+- `laptop` - 2GB RAM, 2 workers
+- `workstation` - 8GB RAM, 4 workers
+- `cloud` - 32GB RAM, 16 workers
 
 ### 4. API Design
 

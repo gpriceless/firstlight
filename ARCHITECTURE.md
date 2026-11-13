@@ -33,8 +33,8 @@ above; "tests only" means only the test suite imports it.
 | `api/` (9.6k) | FastAPI app, JWT auth, rate limit, SQLite via aiosqlite, webhooks | `core.intent`, `core.analysis.library`, `core.data.providers`, `openspec` | `cli` | prod, but a shell |
 | `core/intent/` (1.0k) | Event taxonomy and resolver. Keyword matching, not a language model (`core/intent/classifier.py:3`) | nothing in `core` | the rest of `core` | prod |
 | `core/data/` (23.9k) | Providers registry, STAC discovery (`stac_client.py`), ingestion (COG, Zarr, streaming, tiling, validation, enrichment, persistence) | nothing above it | `core.analysis`, `core.quality`, `core.reporting` | prod; `ingestion/enrichment` tests only; `broker.py` reached by nothing |
-| `core/analysis/` (18.3k) | Algorithm library (flood, wildfire, storm baselines; U-Net and ensemble flood), assembly graph, execution runners (serial, tiled, Dask) and the router that picks one | `core.data`, `core.execution` | `core.quality`, `core.reporting` | library and execution prod; `assembly` tests only |
-| `core/execution/` (3.3k) | Profiles, run state, tiling | nothing in `core` | analysis, quality, reporting | prod |
+| `core/analysis/` (10.6k) | Algorithm library (flood, wildfire, storm baselines; U-Net and ensemble flood) and the assembly graph | `core.data` | `core.quality`, `core.reporting` | library prod; `assembly` tests only |
+| `core/execution/` (3.3k) | Profiles, run state, tiling | nothing in `core` | analysis, quality, reporting | tests only since the analysis runners that imported it were deleted |
 | `core/quality/` (9.0k) | Sanity checks, uncertainty, QA report | `core.analysis` at most | `core.reporting` | prod |
 | `core/reporting/` (13.8k) | Templates, imagery renderers, maps (static, perimeters), PDF, interactive web report, census and infrastructure clients | `core.reporting.*` only | everything below it in reverse | prod via `scripts/` and `examples/`, not via the CLI |
 | `openspec/` (0.3k) | JSON schema validator for event and intent specs | none | | prod (API) |
@@ -88,8 +88,6 @@ after "queue". Nothing consumes the queue.
 - God files: `cli/commands/run.py` 2,063, `core/quality/reporting/qa_report.py` 1,520.
 - Two workflows: the boundary-contract check and the Tests workflow, which runs the
   whole suite except Docker-marked tests (`.github/workflows/tests.yml`).
-- `core/analysis/execution/` (runner, checkpoints, Dask, tiled runner) is reached only by
-  its tests since `flight analyze` stopped importing a runner class that never existed.
 - Dead and test-only clusters with a revive or delete call each: `history/left-in-the-dust.md`.
 
 ## Retired
