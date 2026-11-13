@@ -7,6 +7,7 @@ Usage:
 """
 
 import json
+import re
 import logging
 import os
 import sys
@@ -416,6 +417,62 @@ def load_algorithm(algorithm: str, params: Dict[str, Any]) -> Any:
         )
 
 
+def _declared_inputs(algorithm: Any) -> Dict[str, Dict[str, Any]]:
+    """The data inputs an algorithm declares in its METADATA requirements."""
+    metadata = getattr(algorithm, "METADATA", None) or {}
+    return dict(metadata.get("requirements", {}).get("data", {}))
+
+
+def _input_keywords(name: str, spec: Dict[str, Any]) -> List[str]:
+    """File-name tokens that identify a raster as this declared input."""
+    keywords = [str(k).lower() for k in spec.get("polarization", [])]
+    keywords += [str(k).lower() for k in spec.get("bands", [])]
+    if not keywords:
+        keywords = [name.lower()]
+        if spec.get("type"):
+            keywords.append(str(spec["type"]).lower())
+    return keywords
+
+
+def select_input_raster(
+    raster_files: List[Path], algorithm: Any, algorithm_name: str
+) -> Path:
+    """
+    Pick the one raster the algorithm declares it needs.
+
+    `flight analyze` reads a single band. An algorithm that declares more than
+    one input, or none, is refused; so is a work dir with no raster named for
+    the declared input. Never fall back to whichever file sorts first.
+    """
+    inputs = _declared_inputs(algorithm)
+    if len(inputs) != 1:
+        wanted = ", ".join(
+            f"{name} ({', '.join(_input_keywords(name, spec))})"
+            for name, spec in inputs.items()
+        ) or "nothing declared"
+        raise ValueError(
+            f"'{algorithm_name}' needs {len(inputs)} inputs: {wanted}. "
+            f"flight analyze reads one raster; use flight run for this algorithm."
+        )
+
+    name, spec = next(iter(inputs.items()))
+    keywords = _input_keywords(name, spec)
+
+    def tokens(path: Path) -> List[str]:
+        return [t for t in re.split(r"[^a-z0-9]+", path.stem.lower()) if t]
+
+    for keyword in keywords:
+        matches = sorted(f for f in raster_files if keyword in tokens(f))
+        if matches:
+            return matches[0]
+
+    found = ", ".join(sorted(f.name for f in raster_files)) or "none"
+    raise FileNotFoundError(
+        f"'{algorithm_name}' needs a {name} raster named with one of "
+        f"{', '.join(keywords)}; found: {found}"
+    )
+
+
 def run_analysis(
     input_path: Path,
     output_path: Path,
@@ -435,18 +492,20 @@ def run_analysis(
         "statistics": {},
     }
 
-    # Process the first input raster directly
     try:
         import numpy as np
 
-        # Try to load actual raster data
         raster_files = list(input_path.rglob("*.tif"))
 
         if raster_files:
+            input_raster = select_input_raster(
+                raster_files, algorithm, algo_info.get("name", "algorithm")
+            )
+            logger.info(f"Analysis input: {input_raster}")
             try:
                 import rasterio
 
-                with rasterio.open(raster_files[0]) as src:
+                with rasterio.open(input_raster) as src:
                     # Read data (or process tiles)
                     if supports_tiled and hasattr(algorithm, "process_tile"):
                         # Tiled processing
