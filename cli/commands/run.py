@@ -521,44 +521,25 @@ def run_discover(
     output_path: Path,
     max_cloud: float = 30.0,
 ) -> Dict[str, Any]:
-    """Run discovery stage."""
-    # Try to use actual discover command
-    try:
-        from cli.commands.discover import perform_discovery, load_geometry
+    """Run discovery stage. A failed search stops the run; it never writes stand-in ids."""
+    from cli.commands.discover import perform_discovery, load_geometry
 
-        geometry = load_geometry(area_path, bbox)
-        results = perform_discovery(
-            geometry=geometry,
-            start=start_date,
-            end=end_date,
-            event_type=event_type,
-            sources=None,
-            max_cloud=max_cloud,
-            config={},
-        )
+    geometry = load_geometry(area_path, bbox)
+    results = perform_discovery(
+        geometry=geometry,
+        start=start_date,
+        end=end_date,
+        event_type=event_type,
+        sources=None,
+        max_cloud=max_cloud,
+        config={},
+    )
 
-        # Save discovery results
-        discovery_file = output_path / "discovery.json"
-        with open(discovery_file, "w") as f:
-            json.dump({"count": len(results), "results": results}, f, indent=2)
+    discovery_file = output_path / "discovery.json"
+    with open(discovery_file, "w") as f:
+        json.dump({"count": len(results), "results": results}, f, indent=2)
 
-        return {"count": len(results), "file": str(discovery_file)}
-
-    except Exception as e:
-        logger.warning(f"Discovery failed: {e}, using mock data")
-        # Create mock discovery file
-        discovery_file = output_path / "discovery.json"
-        mock_results = {
-            "count": 3,
-            "results": [
-                {"id": "S1A_mock_1", "source": "sentinel1", "datetime": start_date.isoformat()},
-                {"id": "S1A_mock_2", "source": "sentinel1", "datetime": end_date.isoformat()},
-                {"id": "S2A_mock_1", "source": "sentinel2", "datetime": start_date.isoformat()},
-            ],
-        }
-        with open(discovery_file, "w") as f:
-            json.dump(mock_results, f, indent=2)
-        return {"count": 3, "file": str(discovery_file)}
+    return {"count": len(results), "file": str(discovery_file)}
 
 
 def run_ingest(

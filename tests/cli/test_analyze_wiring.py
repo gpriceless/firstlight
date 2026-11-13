@@ -164,6 +164,88 @@ class TestRunAnalysisWiring:
         assert str(input_path) in str(excinfo.value)
 
 
+def _write_band(path, value, size=16):
+    import rasterio
+    from rasterio.transform import from_origin
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with rasterio.open(
+        path, "w", driver="GTiff", height=size, width=size, count=1,
+        dtype="float32", crs="EPSG:32617",
+        transform=from_origin(500000, 2900000, 10, 10),
+    ) as dst:
+        dst.write(np.full((size, size), value, dtype=np.float32), 1)
+
+
+class TestAnalyzeInputSelection:
+    """flight analyze reads the raster the algorithm declares, not the first one found."""
+
+    def _run(self, input_path, output_path, name):
+        output_path.mkdir(exist_ok=True)
+        return run_analysis(
+            input_path=input_path,
+            output_path=output_path,
+            algorithm=load_algorithm(name, {}),
+            algo_info=ALGORITHMS[name],
+            tiles=[0],
+            tile_size=512,
+            parallel=1,
+            supports_tiled=False,
+        )
+
+    def test_sar_threshold_reads_vv_not_an_optical_band_found_first(self, tmp_path, monkeypatch):
+        input_path = tmp_path / "input"
+        nir = input_path / "a_scene" / "nir.tif"
+        vv = input_path / "z_scene" / "vv.tif"
+        _write_band(nir, 0.3)
+        _write_band(vv, -18.0)
+        # rglob order is up to the filesystem; put the optical band first.
+        monkeypatch.setattr(Path, "rglob", lambda self, pattern: iter([nir, vv]))
+
+        results = self._run(input_path, tmp_path / "out", "sar_threshold")
+
+        # Reflectance 0.3 read as dB would be "no water"; -18 dB is all water.
+        assert results["tiles_completed"] == 1
+        assert results["statistics"]["flood_percentage"] == 100.0
+
+    def test_refuses_and_names_the_input_it_wanted(self, tmp_path):
+        input_path = tmp_path / "input"
+        _write_band(input_path / "scene" / "nir.tif", 0.3)
+        _write_band(input_path / "scene" / "red.tif", 0.1)
+
+        with pytest.raises(FileNotFoundError) as excinfo:
+            self._run(input_path, tmp_path / "out", "sar_threshold")
+
+        message = str(excinfo.value)
+        assert "sar raster" in message
+        assert "vv, vh" in message
+        assert "nir.tif, red.tif" in message
+        assert not (tmp_path / "out" / "flood_extent.tif").exists()
+
+    def test_refuses_an_algorithm_that_needs_more_than_one_input(self, tmp_path):
+        input_path = tmp_path / "input"
+        _write_band(input_path / "scene" / "nir.tif", 0.3)
+        _write_band(input_path / "scene" / "swir16.tif", 0.2)
+
+        with pytest.raises(ValueError) as excinfo:
+            self._run(input_path, tmp_path / "out", "dnbr")
+
+        message = str(excinfo.value)
+        assert "needs 2 inputs" in message
+        assert "nir, swir" in message
+        assert "flight run" in message
+
+    def test_token_match_does_not_take_a_substring(self):
+        from cli.commands.analyze import select_input_raster
+
+        algorithm = load_algorithm("sar_threshold", {})
+        with pytest.raises(FileNotFoundError):
+            select_input_raster([Path("navvy.tif")], algorithm, "sar_threshold")
+        assert select_input_raster(
+            [Path("S1A_IW_VV_db.tif")], algorithm, "sar_threshold"
+        ) == Path("S1A_IW_VV_db.tif")
+
+
 class TestNoMockFallbacks:
     """Verify that no mock/fallback code exists."""
 

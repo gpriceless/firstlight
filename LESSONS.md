@@ -24,6 +24,19 @@ Seeded on 2026-11-10 from the February agent memory file, cut to what still hold
 - Do: test against a small real raster and assert the value that matters. A test that
   cannot fail is not coverage.
 
+### Whatever file sorts first is not the input (3)
+- Seen: flood analysis read the first GeoTIFF as SAR; `flight analyze` read whatever
+  `rglob` returned first and could run the SAR threshold on a reflectance band (0%
+  water where the VV band gave 100%); the validate stage reads the first `.npy` in the
+  results dir, which for wildfire is the boolean burn mask, and the value check throws
+  on it. That throw is scored 0 and gave Max Road its 0.67 FAILED.
+- Do: pick an input by what the consumer declares it needs, or refuse and name it.
+
+### A failed lookup must not write a stand-in
+- Bug: discovery failure in `flight run` wrote three invented Sentinel-1 ids and went on.
+- Lesson: a missing input is an error at the stage that missed it. Retired sources
+  fail with a usage error that says so (`RETIRED_SOURCES`).
+
 ## Entries
 
 ### 2026-02 AOI geometry type checked too late

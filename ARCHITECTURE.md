@@ -33,8 +33,8 @@ above; "tests only" means only the test suite imports it.
 | `api/` (9.6k) | FastAPI app, JWT auth, rate limit, SQLite via aiosqlite, webhooks | `core.intent`, `core.analysis.library`, `core.data.providers`, `openspec` | `cli` | prod, but a shell |
 | `core/intent/` (1.0k) | Event taxonomy and resolver. Keyword matching, not a language model (`core/intent/classifier.py:3`) | nothing in `core` | the rest of `core` | prod |
 | `core/data/` (23.9k) | Providers registry, STAC discovery (`stac_client.py`), ingestion (COG, Zarr, streaming, tiling, validation, enrichment, persistence) | nothing above it | `core.analysis`, `core.quality`, `core.reporting` | prod; `ingestion/enrichment` tests only; `broker.py` reached by nothing |
-| `core/analysis/` (18.3k) | Algorithm library (flood, wildfire, storm baselines; U-Net and ensemble flood), assembly graph, execution runners (serial, tiled, Dask) and the router that picks one | `core.data`, `core.execution` | `core.quality`, `core.reporting` | library and execution prod; `assembly` tests only |
-| `core/execution/` (3.3k) | Profiles, run state, tiling | nothing in `core` | analysis, quality, reporting | prod |
+| `core/analysis/` (10.6k) | Algorithm library (flood, wildfire, storm baselines; U-Net and ensemble flood) and the assembly graph | `core.data` | `core.quality`, `core.reporting` | library prod; `assembly` tests only |
+| `core/execution/` (3.3k) | Profiles, run state, tiling | nothing in `core` | analysis, quality, reporting | tests only since the analysis runners that imported it were deleted |
 | `core/quality/` (9.0k) | Sanity checks, uncertainty, QA report | `core.analysis` at most | `core.reporting` | prod |
 | `core/reporting/` (13.8k) | Templates, imagery renderers, maps (static, perimeters), PDF, interactive web report, census and infrastructure clients | `core.reporting.*` only | everything below it in reverse | prod via `scripts/` and `examples/`, not via the CLI |
 | `openspec/` (0.3k) | JSON schema validator for event and intent specs | none | | prod (API) |
@@ -60,8 +60,7 @@ three of them red, so the checker can fail.
 The one path that runs on real data, `flight run --bbox ... --event ...`:
 
 1. discover: `core.data.discovery.stac_client.discover_data` queries Earth Search STAC.
-   On error it writes mock item ids and carries on (`cli/commands/run.py:548`); real
-   mode then fails at ingest.
+   On error the run stops; it never writes stand-in item ids.
 2. ingest: downloads COG bands into the work dir. Real mode fails hard on error;
    `--synthetic` generates arrays instead (`cli/commands/run.py:649`).
 3. analyze: picks the per-hazard algorithm (`sar_threshold`, `dnbr`, `wind_damage`),
@@ -89,8 +88,6 @@ after "queue". Nothing consumes the queue.
 - God files: `cli/commands/run.py` 2,063, `core/quality/reporting/qa_report.py` 1,520.
 - Two workflows: the boundary-contract check and the Tests workflow, which runs the
   whole suite except Docker-marked tests (`.github/workflows/tests.yml`).
-- `core/analysis/execution/` (runner, checkpoints, Dask, tiled runner) is reached only by
-  its tests since `flight analyze` stopped importing a runner class that never existed.
 - Dead and test-only clusters with a revive or delete call each: `history/left-in-the-dust.md`.
 
 ## Retired
@@ -108,11 +105,11 @@ of it is on `main` and nothing here should be rebuilt without a new spec.
   which. The context lakehouse branch is kept as
   `refs/attic/origin-context-data-lakehouse`; reviving it needs a spec.
 
-- Sentinel-1 ingestion, retired 2026-11-12. Discovery can search the `sentinel-1-grd`
-  collection and `core/data/providers/sar/sentinel1.py` describes it, but no loader
-  downloads or calibrates S1 scenes; the only S1 item ids the CLI writes are the mock
-  ones in the discover fallback (`cli/commands/run.py:554`). So `flight run --event
-  flood` has no real input and stops at analyze asking for SAR data. Earth Search
+- Sentinel-1 ingestion, retired 2026-11-12. `core/data/providers/sar/sentinel1.py`
+  still describes it, but no loader downloads or calibrates S1 scenes, discovery no
+  longer searches `sentinel-1-grd`, and `--source sentinel1` on discover or ingest
+  fails with a usage error (`RETIRED_SOURCES` in `cli/commands/discover.py`). So
+  `flight run --event flood` has no real input and stops at analyze asking for SAR data. Earth Search
   GRD assets sit on a requester-pays bucket and are uncalibrated. A real flood path
   needs a spec: an analysis-ready S1 RTC source, or an optical water index on
   Sentinel-2.

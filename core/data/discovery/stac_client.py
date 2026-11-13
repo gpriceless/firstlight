@@ -94,10 +94,6 @@ class STACClient:
             "earth_search": "sentinel-2-l2a",
             "planetary_computer": "sentinel-2-l2a",
         },
-        "sentinel1_grd": {
-            "earth_search": "sentinel-1-grd",
-            "planetary_computer": "sentinel-1-rtc",
-        },
         "landsat_c2_l2": {
             "earth_search": "landsat-c2-l2",
             "planetary_computer": "landsat-c2-l2",
@@ -225,43 +221,6 @@ class STACClient:
 
         # Sort by cloud cover (ascending)
         items.sort(key=lambda x: x.cloud_cover if x.cloud_cover is not None else 100)
-
-        return items
-
-    def search_sentinel1(
-        self,
-        bbox: List[float],
-        start_date: str,
-        end_date: str,
-        max_items: int = 50,
-    ) -> List[STACItem]:
-        """
-        Search for Sentinel-1 GRD imagery.
-
-        Args:
-            bbox: Bounding box [west, south, east, north]
-            start_date: Start date (YYYY-MM-DD)
-            end_date: End date (YYYY-MM-DD)
-            max_items: Maximum items to return
-
-        Returns:
-            List of STACItem objects sorted by date
-        """
-        collection = self.COLLECTIONS["sentinel1_grd"].get(
-            self.catalog_name, "sentinel-1-grd"
-        )
-
-        items = self.search(
-            collections=[collection],
-            bbox=bbox,
-            start_date=start_date,
-            end_date=end_date,
-            max_cloud_cover=None,  # SAR has no cloud issues
-            max_items=max_items,
-        )
-
-        # Sort by date (newest first)
-        items.sort(key=lambda x: x.datetime, reverse=True)
 
         return items
 
@@ -526,9 +485,9 @@ def discover_data(
 
     # Event-specific data sources
     event_sources = {
-        "flood": ["sentinel1", "sentinel2"],
+        "flood": ["sentinel2"],
         "wildfire": ["sentinel2", "landsat"],
-        "storm": ["sentinel1", "sentinel2"],
+        "storm": ["sentinel2"],
     }
 
     sources = event_sources.get(event_type.lower(), ["sentinel2"])
@@ -542,12 +501,6 @@ def discover_data(
                     start_date=start_date,
                     end_date=end_date,
                     max_cloud_cover=max_cloud_cover,
-                )
-            elif source == "sentinel1":
-                items = client.search_sentinel1(
-                    bbox=bbox,
-                    start_date=start_date,
-                    end_date=end_date,
                 )
             elif source == "landsat":
                 items = client.search_landsat(
@@ -564,7 +517,6 @@ def discover_data(
                 # Estimate size based on sensor
                 size_estimate = {
                     "sentinel2": 800_000_000,
-                    "sentinel1": 1_000_000_000,
                     "landsat": 300_000_000,
                 }.get(source, 500_000_000)
 
@@ -573,7 +525,7 @@ def discover_data(
                     "source": source,
                     "datetime": item.datetime.isoformat(),
                     "cloud_cover": item.cloud_cover,
-                    "resolution_m": 10.0 if source in ["sentinel1", "sentinel2"] else 30.0,
+                    "resolution_m": 10.0 if source == "sentinel2" else 30.0,
                     "size_bytes": size_estimate,
                     # Backward compatibility: primary band or fallback to visual
                     "url": _get_primary_url(item, source),
@@ -583,7 +535,7 @@ def discover_data(
                     "visualization_url": item.assets.get("visual", ""),
                     # NEW: Expected but missing bands
                     "missing_bands": _get_missing_bands(item, source),
-                    "priority": "primary" if source in ["sentinel1", "sentinel2"] else "secondary",
+                    "priority": "primary" if source == "sentinel2" else "secondary",
                     "bbox": item.bbox,
                     "assets": item.assets,
                 })

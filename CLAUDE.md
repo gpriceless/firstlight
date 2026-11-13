@@ -40,7 +40,7 @@ Every product keeps the grid it was computed on.
 
 ## Real or fake
 
-- Discover failure writes mock item ids and carries on; real mode then fails at ingest.
+- Discover failure stops the run. Never write stand-in item ids for data that is not there.
 - `--synthetic` generates arrays. Synthetic output is for exercising code paths only; it
   never goes in a README, figure, report or claim. Analyzers once fabricated severity
   statistics; check any number against the rasters that made it.

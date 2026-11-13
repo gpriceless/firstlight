@@ -363,3 +363,103 @@ class TestNoMockFallback:
 
             # Should return empty list, not mock data with random values
             assert results == []
+
+
+class TestRetiredSentinel1:
+    """Sentinel-1 is retired: asking for it fails, and nothing writes stand-in ids."""
+
+    def test_discover_refuses_sentinel1_source(self):
+        from click.testing import CliRunner
+        from cli.main import app
+
+        with patch("core.data.discovery.stac_client.discover_data") as mock_discover:
+            result = CliRunner().invoke(
+                app,
+                [
+                    "discover",
+                    "--bbox", "-80.5,25.5,-80.0,26.0",
+                    "--start", "2024-09-15",
+                    "--end", "2024-09-20",
+                    "--event", "flood",
+                    "--source", "sentinel1",
+                ],
+                obj=None,
+            )
+
+        assert result.exit_code == 2
+        assert "Sentinel-1 is retired" in result.output
+        mock_discover.assert_not_called()
+
+    def test_ingest_refuses_sentinel1_source(self, tmp_path):
+        from click.testing import CliRunner
+        from cli.main import app
+
+        result = CliRunner().invoke(
+            app,
+            ["ingest", "--source", "sentinel1", "--output", str(tmp_path / "data")],
+        )
+
+        assert result.exit_code == 2
+        assert "Sentinel-1 is retired" in result.output
+        assert not any((tmp_path / "data").rglob("*.json"))
+
+    def test_help_does_not_offer_sentinel1(self):
+        from click.testing import CliRunner
+        from cli.main import app
+
+        for command in ("discover", "ingest"):
+            result = CliRunner().invoke(app, [command, "--help"])
+            assert result.exit_code == 0
+            assert "sentinel1" not in result.output.lower()
+            assert "sentinel2" in result.output
+
+    def test_run_discover_raises_instead_of_writing_mock_ids(self, tmp_path):
+        from cli.commands.run import run_discover
+
+        with patch(
+            "cli.commands.discover.perform_discovery",
+            side_effect=NetworkError("Network error after 3 attempts"),
+        ):
+            with pytest.raises(NetworkError):
+                run_discover(
+                    area_path=None,
+                    bbox="-80.5,25.5,-80.0,26.0",
+                    start_date=datetime(2024, 9, 15),
+                    end_date=datetime(2024, 9, 20),
+                    event_type="flood",
+                    output_path=tmp_path,
+                )
+
+        assert not (tmp_path / "discovery.json").exists()
+
+    def test_flood_discovery_does_not_search_sentinel1(self):
+        from core.data.discovery import stac_client
+
+        searched = []
+
+        class FakeClient:
+            def __init__(self, catalog):
+                pass
+
+            def search_sentinel1(self, **kwargs):
+                searched.append("sentinel1")
+                return []
+
+            def search_sentinel2(self, **kwargs):
+                searched.append("sentinel2")
+                return []
+
+            def search_landsat(self, **kwargs):
+                searched.append("landsat")
+                return []
+
+        with patch.object(stac_client, "STACClient", FakeClient):
+            for event in ("flood", "storm"):
+                stac_client.discover_data(
+                    bbox=[-80.5, 25.5, -80.0, 26.0],
+                    start_date="2024-09-15",
+                    end_date="2024-09-20",
+                    event_type=event,
+                )
+
+        assert searched == ["sentinel2", "sentinel2"]

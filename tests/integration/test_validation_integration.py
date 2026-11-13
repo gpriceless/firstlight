@@ -153,60 +153,6 @@ class TestStreamingIngesterValidation:
 
 
 @pytest.mark.integration
-class TestTiledRunnerValidation:
-    """Tests for validation integration with TiledAlgorithmRunner."""
-
-    def test_validate_input_method(self, tmp_path):
-        """Test the validate_input method on TiledAlgorithmRunner."""
-        from core.analysis.execution.tiled_runner import TiledAlgorithmRunner
-
-        # Create valid raster
-        source = tmp_path / "tiled_test.tif"
-        TestRasterFactory.create_optical_raster(source, valid=True)
-
-        # Create a simple algorithm
-        class SimpleAlgorithm:
-            def process_tile(self, data, context):
-                return data
-
-        runner = TiledAlgorithmRunner(
-            algorithm=SimpleAlgorithm(),
-            tile_size=32,
-        )
-
-        # Validate should succeed
-        result = runner.validate_input(source)
-        if result is not None:
-            assert result.is_valid is True
-
-    def test_validation_failure_raises_exception(self, tmp_path):
-        """Test that validation failure raises ImageValidationError."""
-        from core.analysis.execution.tiled_runner import TiledAlgorithmRunner
-        from core.data.ingestion.validation import ImageValidationError
-
-        # Create invalid raster
-        source = tmp_path / "invalid_tiled.tif"
-        TestRasterFactory.create_optical_raster(source, valid=False)
-
-        class SimpleAlgorithm:
-            def process_tile(self, data, context):
-                return data
-
-        runner = TiledAlgorithmRunner(
-            algorithm=SimpleAlgorithm(),
-            tile_size=32,
-        )
-
-        # Validation should raise exception
-        try:
-            runner.validate_input(source)
-        except ImageValidationError:
-            pass  # Expected
-        except Exception:
-            pass  # Validation may be disabled
-
-
-@pytest.mark.integration
 class TestValidationWithRealPatterns:
     """Tests with realistic data patterns."""
 

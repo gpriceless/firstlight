@@ -2,7 +2,7 @@
 Ingest Command - Download and normalize data to analysis-ready format.
 
 Usage:
-    flight ingest --area miami.geojson --source sentinel1 --output ./data/
+    flight ingest --area miami.geojson --source sentinel2 --output ./data/
     flight ingest --input discovery.json --output ./data/ --resume
 """
 
@@ -320,7 +320,7 @@ def download_bands(
     "sources",
     multiple=True,
     type=str,
-    help="Data sources to ingest (e.g., sentinel1, sentinel2).",
+    help="Data sources to ingest (sentinel2, landsat).",
 )
 @click.option(
     "--output",
@@ -398,8 +398,8 @@ def ingest(
 
     \b
     Examples:
-        # Ingest Sentinel-1 data for an area
-        flight ingest --area miami.geojson --source sentinel1 --output ./data/
+        # Ingest Sentinel-2 data for an area
+        flight ingest --area miami.geojson --source sentinel2 --output ./data/
 
         # Ingest from discovery results
         flight ingest --input discovery.json --output ./data/ --format zarr
@@ -420,6 +420,10 @@ def ingest(
 
     # Initialize progress tracker
     tracker = ProgressTracker(output_path)
+
+    from cli.commands.discover import reject_retired_sources
+
+    reject_retired_sources(sources)
 
     # Load items to ingest
     items = load_ingest_items(area_path, input_path, sources)
