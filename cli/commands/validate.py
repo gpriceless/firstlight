@@ -17,6 +17,15 @@ import numpy as np
 
 logger = logging.getLogger("flight.validate")
 
+# The layer each analysis writes that carries its measurement, in the order a
+# results directory is searched, with the value type its range is checked
+# against. Masks and class maps (burn_extent, burn_severity, flood_extent)
+# are derived from these and are not what the value check should read.
+MEASUREMENT_LAYERS = (
+    ("dnbr", "dnbr"),
+    ("confidence", "confidence"),
+)
+
 
 # Quality check definitions
 QUALITY_CHECKS = {
@@ -209,11 +218,13 @@ def run_quality_checks(input_path: Path, checks: List[str]) -> List[Dict[str, An
         logger.error(f"Failed to import quality modules: {e}")
         raise ImportError(f"Quality control modules not available: {e}")
 
-    # Load raster data from input path
-    raster_data = _load_raster_data(input_path)
+    # Load the measurement layer from the input path
+    layer_path, value_type = _resolve_measurement_layer(input_path)
+    raster_data = _load_raster_file(layer_path) if layer_path else None
     if raster_data is None:
         logger.error(f"No valid raster data found in {input_path}")
         raise FileNotFoundError(f"No valid raster data found in {input_path}")
+    logger.info(f"Validating {layer_path.name}")
 
     # Run each requested check
     for check_id in checks:
@@ -223,7 +234,7 @@ def run_quality_checks(input_path: Path, checks: List[str]) -> List[Dict[str, An
             if check_id == "spatial_coherence":
                 result = _run_spatial_coherence_check(raster_data, check_info)
             elif check_id == "value_range":
-                result = _run_value_range_check(raster_data, check_info)
+                result = _run_value_range_check(raster_data, check_info, value_type)
             elif check_id == "artifacts":
                 result = _run_artifact_check(raster_data, check_info)
             elif check_id == "coverage":
@@ -274,40 +285,61 @@ def run_quality_checks(input_path: Path, checks: List[str]) -> List[Dict[str, An
     return results
 
 
+_RASTER_SUFFIXES = (".tif", ".tiff", ".npy")
+
+
+def _resolve_measurement_layer(input_path: Path) -> tuple:
+    """
+    Pick the raster to validate and the value type to check it against.
+
+    A file is taken as given. In a directory, the measurement layer an analysis
+    declares (``dnbr``, then ``confidence``; GeoTIFF before ``.npy``) is used;
+    failing that, a directory holding exactly one raster. A directory with
+    several rasters and no measurement layer is refused rather than reading
+    whichever file sorts first.
+
+    Returns ``(path or None, value type name or None)``.
+    """
+    if input_path.is_file():
+        if input_path.suffix.lower() not in _RASTER_SUFFIXES:
+            return None, None
+        return input_path, dict(MEASUREMENT_LAYERS).get(input_path.stem.lower())
+
+    if not input_path.is_dir():
+        return None, None
+
+    rasters = sorted(
+        p for p in input_path.iterdir()
+        if p.is_file() and p.suffix.lower() in _RASTER_SUFFIXES
+    )
+    for stem, value_type in MEASUREMENT_LAYERS:
+        for suffix in (".tif", ".tiff", ".npy"):
+            for p in rasters:
+                if p.stem.lower() == stem and p.suffix.lower() == suffix:
+                    return p, value_type
+
+    if len(rasters) == 1:
+        return rasters[0], None
+    if rasters:
+        raise ValueError(
+            f"{input_path} holds {len(rasters)} rasters and none is a "
+            f"measurement layer ({', '.join(s for s, _ in MEASUREMENT_LAYERS)}): "
+            f"{', '.join(p.name for p in rasters)}. Pass the file to validate."
+        )
+    return None, None
+
+
+def _load_raster_file(path: Path) -> Optional[np.ndarray]:
+    """Load one ``.npy`` or GeoTIFF as a 2D array."""
+    if path.suffix.lower() == ".npy":
+        return _load_npy_array(path)
+    return _load_geotiff(path)
+
+
 def _load_raster_data(input_path: Path) -> Optional[np.ndarray]:
-    """
-    Load raster data from input path.
-
-    Accepts a single GeoTIFF, a single ``.npy`` array, or a directory containing
-    either. Prefers GeoTIFFs when both are present in a directory. The ``.npy``
-    fallback exists because the analyze stage currently writes outputs as
-    ``.npy`` arrays only; without it, every real-mode wildfire /
-    flood / storm run fails the validate stage.
-    """
-    # Single .npy file
-    if input_path.is_file() and input_path.suffix.lower() == ".npy":
-        return _load_npy_array(input_path)
-
-    # Single GeoTIFF file
-    if input_path.is_file() and input_path.suffix.lower() in [".tif", ".tiff"]:
-        return _load_geotiff(input_path)
-
-    if input_path.is_dir():
-        # Prefer GeoTIFFs when present (they carry CRS/transform metadata).
-        for ext in ["*.tif", "*.tiff", "*.TIF", "*.TIFF"]:
-            for tif_file in sorted(input_path.glob(ext)):
-                data = _load_geotiff(tif_file)
-                if data is not None:
-                    return data
-
-        # Fall back to .npy arrays from the analyze stage.
-        for ext in ["*.npy", "*.NPY"]:
-            for npy_file in sorted(input_path.glob(ext)):
-                data = _load_npy_array(npy_file)
-                if data is not None:
-                    return data
-
-    return None
+    """Load the measurement layer of ``input_path`` (see ``_resolve_measurement_layer``)."""
+    path, _ = _resolve_measurement_layer(input_path)
+    return _load_raster_file(path) if path else None
 
 
 def _load_geotiff(path: Path) -> Optional[np.ndarray]:
@@ -320,7 +352,12 @@ def _load_geotiff(path: Path) -> Optional[np.ndarray]:
 
     try:
         with rasterio.open(path) as src:
-            return src.read(1)
+            data = src.read(1)
+            # Declared nodata (cloud, outside the scene) reads as NaN so the
+            # coverage check counts it and the value check skips it.
+            if src.nodata is not None and not np.isnan(src.nodata):
+                data = np.where(data == src.nodata, np.nan, data.astype(np.float32))
+            return data
     except Exception as e:
         logger.warning(f"Failed to load {path}: {e}")
         return None
@@ -364,8 +401,8 @@ def _run_spatial_coherence_check(data: np.ndarray, check_info: Dict[str, Any]) -
         "description": check_info["description"],
         "category": check_info["category"],
         "severity": check_info["severity"],
-        "passed": passed,
-        "score": score,
+        "passed": bool(passed),
+        "score": float(score),
         "message": f"{'Spatially coherent' if passed else f'{len(result.issues)} spatial issues detected'}",
         "details": {
             "issue_count": len(result.issues),
@@ -376,13 +413,27 @@ def _run_spatial_coherence_check(data: np.ndarray, check_info: Dict[str, Any]) -
     }
 
 
-def _run_value_range_check(data: np.ndarray, check_info: Dict[str, Any]) -> Dict[str, Any]:
+def _run_value_range_check(
+    data: np.ndarray,
+    check_info: Dict[str, Any],
+    value_type_name: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Run value range check using ValuePlausibilityChecker.
-    """
-    from core.quality.sanity.values import ValuePlausibilityChecker, ValueType
 
-    # Try to infer value type from data range
+    ``value_type_name`` is the declared type of the layer (``dnbr``,
+    ``confidence``); without it the type is guessed from the data range.
+    No-data pixels are the coverage check's business and are skipped here.
+    """
+    from core.quality.sanity.values import (
+        ValuePlausibilityChecker,
+        ValuePlausibilityConfig,
+        ValueType,
+    )
+
+    if data.dtype == np.bool_:
+        data = data.astype(np.float32)
+
     valid_data = data[np.isfinite(data)]
     if len(valid_data) == 0:
         return {
@@ -399,8 +450,10 @@ def _run_value_range_check(data: np.ndarray, check_info: Dict[str, Any]) -> Dict
 
     min_val, max_val = float(np.min(valid_data)), float(np.max(valid_data))
 
-    # Infer value type based on range
-    if min_val >= 0 and max_val <= 1:
+    if value_type_name:
+        value_type = ValueType(value_type_name)
+    # Otherwise infer value type based on range
+    elif min_val >= 0 and max_val <= 1:
         value_type = ValueType.CONFIDENCE
     elif min_val >= -1 and max_val <= 1:
         value_type = ValueType.NDWI
@@ -409,11 +462,9 @@ def _run_value_range_check(data: np.ndarray, check_info: Dict[str, Any]) -> Dict
     else:
         value_type = ValueType.CUSTOM
 
-    checker = ValuePlausibilityChecker()
-    if value_type != ValueType.CUSTOM:
-        from core.quality.sanity.values import ValuePlausibilityConfig
-        checker.config.value_type = value_type
-
+    checker = ValuePlausibilityChecker(
+        ValuePlausibilityConfig(value_type=value_type, check_nan=False)
+    )
     result = checker.check(data)
 
     score = 1.0 - min(1.0, (result.critical_count * 0.3 + result.high_count * 0.15))
@@ -425,10 +476,11 @@ def _run_value_range_check(data: np.ndarray, check_info: Dict[str, Any]) -> Dict
         "description": check_info["description"],
         "category": check_info["category"],
         "severity": check_info["severity"],
-        "passed": passed,
-        "score": score,
+        "passed": bool(passed),
+        "score": float(score),
         "message": f"{'Values in valid range' if passed else f'{len(result.issues)} value issues detected'}",
         "details": {
+            "issues": [i.description for i in result.issues],
             "issue_count": len(result.issues),
             "statistics": result.statistics,
             "value_type": value_type.value,
@@ -487,13 +539,13 @@ def _run_coverage_check(data: np.ndarray, check_info: Dict[str, Any]) -> Dict[st
         "description": check_info["description"],
         "category": check_info["category"],
         "severity": check_info["severity"],
-        "passed": passed,
-        "score": score,
+        "passed": bool(passed),
+        "score": float(score),
         "message": f"{'Sufficient coverage' if passed else f'Low coverage: {coverage_pct:.1f}%'}",
         "details": {
-            "coverage_percentage": coverage_pct,
-            "nodata_percentage": nodata_pct,
-            "total_pixels": total_pixels,
+            "coverage_percentage": float(coverage_pct),
+            "nodata_percentage": float(nodata_pct),
+            "total_pixels": int(total_pixels),
             "valid_pixels": int(valid_pixels),
         },
     }

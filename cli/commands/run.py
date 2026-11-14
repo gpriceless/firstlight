@@ -89,7 +89,11 @@ class WorkflowState:
         """Save state to file."""
         self.workdir.mkdir(parents=True, exist_ok=True)
         with open(self.state_file, "w") as f:
-            json.dump(self.state, f, indent=2)
+            # Stage results can hold numpy scalars (np.bool_, np.float32).
+            json.dump(
+                self.state, f, indent=2,
+                default=lambda o: o.item() if hasattr(o, "item") else str(o),
+            )
 
     def start_stage(self, stage: str):
         """Mark a stage as started."""
