@@ -107,14 +107,16 @@ class TestSTACBandExtraction:
             "nir": "https://example.com/B08.tif",
             "swir16": "https://example.com/B11.tif",
             "swir22": "https://example.com/B12.tif",
+            "scl": "https://example.com/SCL.tif",
             "visual": "https://example.com/TCI.tif",
         }
 
         band_urls = _extract_band_urls(mock_item, "sentinel2")
 
-        assert len(band_urls) == 6
+        assert len(band_urls) == 7
         assert "blue" in band_urls
         assert "nir" in band_urls
+        assert band_urls["scl"] == "https://example.com/SCL.tif"  # cloud mask source
         assert "visual" not in band_urls  # TCI should not be in band_urls
 
     def test_extract_band_urls_partial_item(self):

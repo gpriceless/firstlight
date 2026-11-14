@@ -94,28 +94,28 @@ class TestLoadRasterData:
         assert data.shape == sample_raster_data.shape
         np.testing.assert_array_equal(data, sample_raster_data)
 
-    def test_load_npy_from_directory(self, tmp_path, sample_raster_data):
-        """A directory with only .npy outputs (analyze stage) must load."""
-        # Mirror what _analyze_wildfire writes to results/.
-        for name in ("dnbr.npy", "burn_severity.npy", "burn_extent.npy", "confidence.npy"):
-            np.save(tmp_path / name, sample_raster_data)
+    def test_wildfire_results_read_the_dnbr_layer(self, tmp_path):
+        """Wildfire results: validate reads dNBR, not the mask that sorts first."""
+        from cli.commands.validate import _resolve_measurement_layer
 
-        data = _load_raster_data(tmp_path)
-        assert data is not None
-        assert data.ndim == 2
+        dnbr = np.linspace(-0.3, 0.9, 64 * 64, dtype=np.float32).reshape(64, 64)
+        np.save(tmp_path / "burn_extent.npy", dnbr > 0.1)
+        np.save(tmp_path / "burn_severity.npy", (dnbr > 0.27).astype(np.uint8))
+        np.save(tmp_path / "confidence.npy", np.full_like(dnbr, 0.5))
+        np.save(tmp_path / "dnbr.npy", dnbr)
 
-    def test_geotiff_preferred_over_npy(self, tmp_path, sample_raster_data, temp_raster_file):
-        """When both .tif and .npy live in a directory, prefer the .tif."""
-        # temp_raster_file already wrote a .tif into tmp_path. Add a different .npy.
+        path, value_type = _resolve_measurement_layer(tmp_path)
+        assert path.name == "dnbr.npy"
+        assert value_type == "dnbr"
+        np.testing.assert_array_equal(_load_raster_data(tmp_path), dnbr)
+
+    def test_several_unnamed_rasters_are_refused(self, sample_raster_data, temp_raster_file):
+        """Two rasters and no measurement layer: refuse, do not read the first."""
         directory = temp_raster_file.parent
-        decoy = np.zeros_like(sample_raster_data)
-        np.save(directory / "decoy.npy", decoy)
+        np.save(directory / "decoy.npy", np.zeros_like(sample_raster_data))
 
-        data = _load_raster_data(directory)
-        assert data is not None
-        # Should come from the .tif (sample_raster_data), not the all-zeros .npy.
-        assert data.shape == sample_raster_data.shape
-        assert not np.array_equal(data, decoy)
+        with pytest.raises(ValueError, match="decoy.npy"):
+            _load_raster_data(directory)
 
     def test_load_3d_npy_returns_first_band(self, tmp_path):
         """3D arrays (bands, h, w) should be reduced to band 1."""
@@ -191,6 +191,39 @@ class TestValueRangeCheck:
 
         # May or may not pass, but should have statistics
         assert "statistics" in result["details"]
+
+
+class TestValueCheckOnDnbr:
+    """The value check reads dNBR as dNBR, skips no data, and is fast."""
+
+    def test_dnbr_out_of_range_fails(self):
+        data = np.full((50, 50), 0.3, dtype=np.float32)
+        data[:10] = 2.5  # outside the -2..2 a difference of two ratios allows
+        result = _run_value_range_check(data, QUALITY_CHECKS["value_range"], "dnbr")
+        assert result["details"]["value_type"] == "dnbr"
+        assert result["passed"] is False
+
+    def test_cloud_nan_is_not_a_value_failure(self):
+        data = np.random.default_rng(1).uniform(-0.3, 0.9, (50, 50)).astype(np.float32)
+        data[:25] = np.nan  # half the AOI under cloud: coverage's finding, not this one
+        result = _run_value_range_check(data, QUALITY_CHECKS["value_range"], "dnbr")
+        assert result["passed"] is True
+
+    def test_boolean_mask_does_not_crash(self):
+        mask = np.zeros((40, 40), dtype=bool)
+        mask[10:20, 10:20] = True
+        result = _run_value_range_check(mask, QUALITY_CHECKS["value_range"])
+        assert "Check failed" not in result["message"]
+
+    def test_full_scene_finishes_in_seconds(self):
+        """2.9 Mpx of continuous dNBR. The per-value loop took over 290 s."""
+        import time
+
+        data = np.random.default_rng(2).normal(0.03, 0.15, (1448, 2007)).astype(np.float32)
+        start = time.process_time()
+        _run_value_range_check(data, QUALITY_CHECKS["value_range"], "dnbr")
+        # CPU time, so a busy machine does not fail it; the old code needs minutes.
+        assert time.process_time() - start < 30
 
 
 class TestArtifactCheck:

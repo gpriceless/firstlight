@@ -80,6 +80,9 @@ def _make_sentinel2_pre_post(root: Path) -> tuple[Path, Path]:
     _write_s2_band(pre_dir / "swir22.tif", pre_swir)
     _write_s2_band(post_dir / "nir.tif", post_nir)
     _write_s2_band(post_dir / "swir22.tif", post_swir)
+    clear = np.full((SIZE, SIZE), 4, dtype=np.float32)  # SCL vegetation
+    _write_s2_band(pre_dir / "scl.tif", clear)
+    _write_s2_band(post_dir / "scl.tif", clear)
 
     return pre_dir, post_dir
 
@@ -87,11 +90,12 @@ def _make_sentinel2_pre_post(root: Path) -> tuple[Path, Path]:
 def test_load_sentinel2_pre_post_returns_grid(tmp_path: Path) -> None:
     _make_sentinel2_pre_post(tmp_path)
 
-    pre_nir, pre_swir, post_nir, post_swir, pixel_size_m, grid = (
+    pre_nir, pre_swir, post_nir, post_swir, pixel_size_m, grid, cloud_mask = (
         _load_sentinel2_pre_post(tmp_path, event_date=datetime(2026, 1, 15))
     )
 
     assert pre_nir.shape == (SIZE, SIZE)
+    assert cloud_mask.shape == (SIZE, SIZE) and not cloud_mask.any()
     assert post_swir.shape == (SIZE, SIZE)
     assert pixel_size_m == pytest.approx(PIXEL)
     assert grid is not None

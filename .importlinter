@@ -31,16 +31,6 @@ layers =
     core.analysis
     core.data
 
-[importlinter:contract:execution-below-analysis]
-name = core.execution does not import analysis, quality or reporting
-type = forbidden
-source_modules =
-    core.execution
-forbidden_modules =
-    core.analysis
-    core.quality
-    core.reporting
-
 [importlinter:contract:intent-standalone]
 name = core.intent imports nothing else in core
 type = forbidden
@@ -51,4 +41,3 @@ forbidden_modules =
     core.data
     core.quality
     core.reporting
-    core.execution

@@ -235,6 +235,29 @@ class TestAnalyzeInputSelection:
         assert "nir, swir" in message
         assert "flight run" in message
 
+    def test_tile_estimate_counts_the_declared_raster(self, tmp_path, monkeypatch):
+        from cli.commands.analyze import estimate_tiles
+
+        input_path = tmp_path / "input"
+        nir = input_path / "a_scene" / "nir.tif"
+        vv = input_path / "z_scene" / "vv.tif"
+        _write_band(nir, 0.3, size=1100)  # 9 tiles of 512
+        _write_band(vv, -18.0, size=16)  # 1 tile
+        monkeypatch.setattr(Path, "rglob", lambda self, pattern: iter([nir, vv]))
+
+        algorithm = load_algorithm("sar_threshold", {})
+        assert estimate_tiles(input_path, algorithm, "sar_threshold", 512) == 1
+
+    def test_tile_estimate_refuses_without_the_declared_raster(self, tmp_path):
+        from cli.commands.analyze import estimate_tiles
+
+        input_path = tmp_path / "input"
+        _write_band(input_path / "scene" / "nir.tif", 0.3)
+
+        algorithm = load_algorithm("sar_threshold", {})
+        with pytest.raises(FileNotFoundError):
+            estimate_tiles(input_path, algorithm, "sar_threshold", 512)
+
     def test_token_match_does_not_take_a_substring(self):
         from cli.commands.analyze import select_input_raster
 

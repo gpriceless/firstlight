@@ -176,10 +176,11 @@ class TestResumePicksCorrectPrePostScenesByEventDate:
         ):
             scene_dir = tmp_path / "sentinel2" / item_id
             scene_dir.mkdir(parents=True, exist_ok=True)
-            # `_find_..._scenes` only checks for nir.tif + swir22.tif existence;
+            # `_find_..._scenes` only checks for nir, swir22 and scl existence;
             # content doesn't matter for this assertion.
             (scene_dir / "nir.tif").write_bytes(b"")
             (scene_dir / "swir22.tif").write_bytes(b"")
+            (scene_dir / "scl.tif").write_bytes(b"")
 
         # Without an event_date (the bug): midpoint heuristic splits at
         # the second scene and the post window collapses to Apr 21 alone.

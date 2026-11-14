@@ -34,7 +34,6 @@ above; "tests only" means only the test suite imports it.
 | `core/intent/` (1.0k) | Event taxonomy and resolver. Keyword matching, not a language model (`core/intent/classifier.py:3`) | nothing in `core` | the rest of `core` | prod |
 | `core/data/` (23.9k) | Providers registry, STAC discovery (`stac_client.py`), ingestion (COG, Zarr, streaming, tiling, validation, enrichment, persistence) | nothing above it | `core.analysis`, `core.quality`, `core.reporting` | prod; `ingestion/enrichment` tests only; `broker.py` reached by nothing |
 | `core/analysis/` (10.6k) | Algorithm library (flood, wildfire, storm baselines; U-Net and ensemble flood) and the assembly graph | `core.data` | `core.quality`, `core.reporting` | library prod; `assembly` tests only |
-| `core/execution/` (3.3k) | Profiles, run state, tiling | nothing in `core` | analysis, quality, reporting | tests only since the analysis runners that imported it were deleted |
 | `core/quality/` (9.0k) | Sanity checks, uncertainty, QA report | `core.analysis` at most | `core.reporting` | prod |
 | `core/reporting/` (13.8k) | Templates, imagery renderers, maps (static, perimeters), PDF, interactive web report, census and infrastructure clients | `core.reporting.*` only | everything below it in reverse | prod via `scripts/` and `examples/`, not via the CLI |
 | `openspec/` (0.3k) | JSON schema validator for event and intent specs | none | | prod (API) |
@@ -46,13 +45,12 @@ registry by name can show as tests only; the pass follows imports, not strings.
 
 ## Boundaries
 
-All five hold today (`lint-imports`, 5 kept, 0 broken). A planted violation turned
+All four hold today (`lint-imports`, 4 kept, 0 broken). A planted violation turned
 three of them red, so the checker can fail.
 
 - core does not import the api or cli
 - api and cli do not import each other
 - core layers: reporting over quality over analysis over data
-- core.execution does not import analysis, quality or reporting
 - core.intent imports nothing else in core
 
 ## Data flow

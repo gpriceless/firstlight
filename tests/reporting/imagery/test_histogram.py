@@ -454,7 +454,11 @@ class TestEdgeCases:
 
 
 class TestPerformance:
-    """Performance benchmarks for histogram stretching."""
+    """Performance benchmarks for histogram stretching.
+
+    Timed in process CPU time, not wall time, so other work on the machine
+    does not fail them; the budgets are unchanged.
+    """
 
     @pytest.mark.slow
     def test_large_array_performance(self):
@@ -464,9 +468,9 @@ class TestPerformance:
         data = np.random.normal(100, 10, (10000, 10000)).astype(np.float32)
 
         # Benchmark stretch operation
-        start_time = time.time()
+        start_time = time.process_time()
         stretched = stretch_band(data)
-        elapsed_time = time.time() - start_time
+        elapsed_time = time.process_time() - start_time
 
         # Should complete in under 1 second
         assert elapsed_time < 1.0, f"Stretch took {elapsed_time:.2f}s (requirement: <1s)"
@@ -482,9 +486,9 @@ class TestPerformance:
         np.random.seed(42)
         data = np.random.normal(100, 10, (10000, 10000)).astype(np.float32)
 
-        start_time = time.time()
+        start_time = time.process_time()
         stretched = stretch_band(data, min_val=80, max_val=120)
-        elapsed_time = time.time() - start_time
+        elapsed_time = time.process_time() - start_time
 
         # Should be even faster since no percentile calculation
         assert elapsed_time < 1.0, f"Manual stretch took {elapsed_time:.2f}s"
@@ -495,9 +499,9 @@ class TestPerformance:
         data = np.random.normal(100, 10, (1000, 1000))
         masked_data = ma.masked_less(data, 90)
 
-        start_time = time.time()
+        start_time = time.process_time()
         stretched = stretch_band(masked_data)
-        elapsed_time = time.time() - start_time
+        elapsed_time = time.process_time() - start_time
 
         # Should be reasonably fast
         assert elapsed_time < 0.5, f"Masked stretch took {elapsed_time:.2f}s"

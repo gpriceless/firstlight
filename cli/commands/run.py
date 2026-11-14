@@ -89,7 +89,11 @@ class WorkflowState:
         """Save state to file."""
         self.workdir.mkdir(parents=True, exist_ok=True)
         with open(self.state_file, "w") as f:
-            json.dump(self.state, f, indent=2)
+            # Stage results can hold numpy scalars (np.bool_, np.float32).
+            json.dump(
+                self.state, f, indent=2,
+                default=lambda o: o.item() if hasattr(o, "item") else str(o),
+            )
 
     def start_stage(self, stage: str):
         """Mark a stage as started."""
@@ -924,29 +928,49 @@ def _find_sentinel2_pre_post_scenes(
     """Discover Sentinel-2 scenes and group them as pre-fire / post-fire.
 
     The ingest stage writes scenes to ``<input_path>/sentinel2/<item_id>/`` with
-    a ``nir.tif`` and ``swir22.tif`` per scene. Returns a dict with ``pre`` and
-    ``post`` keys, each mapping to ``{item_id, date, nir, swir}``. Raises
-    ``FileNotFoundError`` if there isn't at least one scene on each side.
+    ``nir.tif``, ``swir22.tif`` and ``scl.tif`` per scene. Returns a dict with
+    ``pre`` and ``post`` keys, each mapping to ``{item_id, date, nir, swir,
+    scl}``. Raises ``FileNotFoundError`` if there isn't at least one scene on
+    each side, or if a scene has no SCL layer to mask cloud with.
     """
     s2_root = input_path / "sentinel2"
     candidates: List[Dict[str, Any]] = []
+    no_scl: List[str] = []
     if s2_root.is_dir():
         for item_dir in sorted(s2_root.iterdir()):
             if not item_dir.is_dir():
                 continue
             nir = item_dir / "nir.tif"
             swir = item_dir / "swir22.tif"
+            scl = item_dir / "scl.tif"
             if not (nir.exists() and swir.exists()):
                 continue
             scene_date = _parse_sentinel2_item_date(item_dir.name)
             if scene_date is None:
+                continue
+            if not scl.exists():
+                no_scl.append(item_dir.name)
                 continue
             candidates.append({
                 "item_id": item_dir.name,
                 "date": scene_date,
                 "nir": nir,
                 "swir": swir,
+                "scl": scl,
             })
+
+    if no_scl and not candidates:
+        raise FileNotFoundError(
+            "Real wildfire analysis needs the Sentinel-2 SCL layer to mask "
+            f"cloud and shadow, but these scenes have none: {no_scl}. "
+            "Re-run ingest so scl.tif is downloaded; refusing to count cloud "
+            "as ground."
+        )
+    if no_scl:
+        logger.warning(
+            "Skipping Sentinel-2 scenes with no SCL layer (cannot mask cloud): %s",
+            no_scl,
+        )
 
     if not candidates:
         raise FileNotFoundError(
@@ -991,13 +1015,15 @@ def _read_sentinel2_band(
     bbox: Optional[str] = None,
     target_shape: Optional[tuple] = None,
     target_transform=None,
+    categorical: bool = False,
 ) -> np.ndarray:
     """Read a Sentinel-2 band as a float32 reflectance array.
 
     Uses ``rasterio`` with a windowed read clipped to ``bbox`` (in geographic
     coordinates) when provided. If ``target_shape`` and ``target_transform``
     are provided, the band is resampled (bilinear) onto that grid — used to
-    bring 20 m SWIR22 onto the 10 m NIR grid.
+    bring 20 m SWIR22 onto the 10 m NIR grid. ``categorical`` layers such as
+    SCL are resampled by nearest neighbour and returned in their own dtype.
     """
     import rasterio
     from rasterio.warp import transform_bounds, reproject, Resampling
@@ -1006,7 +1032,9 @@ def _read_sentinel2_band(
     with rasterio.open(raster_path) as src:
         if target_shape is not None and target_transform is not None:
             # Resample onto the supplied grid (NIR resolution + bbox).
-            dst = np.zeros(target_shape, dtype=np.float32)
+            dst = np.zeros(
+                target_shape, dtype=src.dtypes[0] if categorical else np.float32
+            )
             reproject(
                 source=rasterio.band(src, 1),
                 destination=dst,
@@ -1014,7 +1042,7 @@ def _read_sentinel2_band(
                 src_crs=src.crs,
                 dst_transform=target_transform,
                 dst_crs=src.crs,
-                resampling=Resampling.bilinear,
+                resampling=Resampling.nearest if categorical else Resampling.bilinear,
             )
             return dst
 
@@ -1050,9 +1078,10 @@ def _load_sentinel2_pre_post(
 ) -> tuple:
     """Load pre/post NIR and SWIR22 arrays from an ingested Sentinel-2 tree.
 
-    Returns ``(pre_nir, pre_swir, post_nir, post_swir, pixel_size_m, grid)``.
-    SWIR22 is resampled to the NIR grid (typically 10 m) so all four arrays
-    share the same shape. AOI clipping uses ``bbox`` (geographic
+    Returns ``(pre_nir, pre_swir, post_nir, post_swir, pixel_size_m, grid,
+    cloud_mask)``. SWIR22 and SCL are resampled to the NIR grid (typically
+    10 m) so all arrays share the same shape. ``cloud_mask`` is True where
+    either scene's SCL says no data, saturated, cloud, cirrus or cloud shadow. AOI clipping uses ``bbox`` (geographic
     min_lon,min_lat,...). ``grid`` is a serializable dict capturing the output
     CRS + affine transform so the export stage can produce properly
     georeferenced products.
@@ -1112,6 +1141,17 @@ def _load_sentinel2_pre_post(
     post_swir = _read_sentinel2_band(
         post["swir"], target_shape=target_shape, target_transform=target_transform
     )
+    cloud_mask = _scl_cloud_mask(
+        _read_sentinel2_band(
+            pre["scl"], target_shape=target_shape,
+            target_transform=target_transform, categorical=True,
+        )
+    ) | _scl_cloud_mask(
+        _read_sentinel2_band(
+            post["scl"], target_shape=target_shape,
+            target_transform=target_transform, categorical=True,
+        )
+    )
 
     # Sentinel-2 L2A surface reflectance is uint16 scaled by 10000. Convert to
     # 0..1 reflectance so the dNBR ratio is well-conditioned regardless of the
@@ -1147,7 +1187,20 @@ def _load_sentinel2_pre_post(
         _to_reflectance(post_swir),
         target_pixel_size,
         grid,
+        cloud_mask,
     )
+
+
+def _scl_cloud_mask(scl: np.ndarray) -> np.ndarray:
+    """True where an SCL class map says the surface was not seen.
+
+    Masks no data, saturated, cloud (medium and high), thin cirrus and cloud
+    shadow. Shadow is masked because it darkens NIR and reads as burn in dNBR.
+    """
+    from core.reporting.imagery.cloud_mask import CloudMask, CloudMaskConfig
+
+    masker = CloudMask(CloudMaskConfig(mask_clouds=True, mask_cirrus=True, mask_shadows=True))
+    return masker.from_scl_band(scl).mask
 
 
 def _find_sentinel2_storm_pre_post_scenes(
@@ -1383,6 +1436,7 @@ def _analyze_wildfire(
     """Run wildfire/burn severity analysis."""
     synthetic_dir = input_path / "synthetic"
     grid: Optional[Dict[str, Any]] = None
+    cloud_mask: Optional[np.ndarray] = None
 
     # Load pre/post imagery
     if (synthetic_dir / "pre_nir.npy").exists():
@@ -1396,7 +1450,7 @@ def _analyze_wildfire(
         # _load_sentinel2_pre_post raises FileNotFoundError if pre+post are not
         # both available — that matches the existing "refuse to fabricate"
         # contract and is required by the wildfire loader regression test.
-        pre_nir, pre_swir, post_nir, post_swir, pixel_size_m, grid = (
+        pre_nir, pre_swir, post_nir, post_swir, pixel_size_m, grid, cloud_mask = (
             _load_sentinel2_pre_post(
                 input_path,
                 event_date=event_date,
@@ -1411,7 +1465,15 @@ def _analyze_wildfire(
         nir_post=post_nir,
         swir_post=post_swir,
         pixel_size_m=pixel_size_m,
+        cloud_mask=cloud_mask,
     )
+    statistics = dict(result.statistics)
+    if cloud_mask is not None:
+        statistics["cloud_masked_percent"] = float(100.0 * cloud_mask.mean())
+        logger.info(
+            "Cloud and shadow masked from SCL: %.1f%% of the AOI",
+            statistics["cloud_masked_percent"],
+        )
 
     # Save outputs
     np.save(output_path / "dnbr.npy", result.dnbr_map)
@@ -1428,7 +1490,7 @@ def _analyze_wildfire(
 
     return {
         "success": True,
-        "statistics": result.statistics,
+        "statistics": statistics,
     }
 
 
@@ -1725,6 +1787,15 @@ def run_export(
     return {"formats": exported, "path": str(output_path)}
 
 
+def _severity_nodata() -> int:
+    """The burn severity value that means no valid observation."""
+    from core.analysis.library.baseline.wildfire.nbr_differenced import (
+        DifferencedNBRAlgorithm,
+    )
+
+    return DifferencedNBRAlgorithm.SEVERITY_NODATA
+
+
 def _export_geotiff(
     result_arrays: Dict[str, np.ndarray],
     output_path: Path,
@@ -1789,21 +1860,26 @@ def _export_geotiff(
                 bbox[0], bbox[1], bbox[2], bbox[3], data.shape[1], data.shape[0]
             )
 
-        # Determine dtype
+        # Determine dtype and the value that marks no observation (cloud,
+        # shadow, outside the scene) so readers do not take it as a value.
+        nodata = None
         if data.dtype == np.bool_:
             dtype = 'uint8'
             data = data.astype(np.uint8)
         elif np.issubdtype(data.dtype, np.floating):
             dtype = 'float32'
             data = data.astype(np.float32)
+            nodata = float("nan")
         else:
             dtype = str(data.dtype)
+            if name == "burn_severity":
+                nodata = _severity_nodata()
 
         with rasterio.open(
             output_file, 'w', driver='GTiff',
             height=data.shape[0], width=data.shape[1],
             count=1, dtype=dtype, crs=crs, transform=transform,
-            compress='lzw'
+            compress='lzw', nodata=nodata,
         ) as dst:
             dst.write(data, 1)
 
@@ -1982,7 +2058,10 @@ def _export_png(result_arrays: Dict[str, np.ndarray], output_path: Path) -> None
         if "extent" in name or "mask" in name:
             im = ax.imshow(data, cmap='Blues')
         elif "severity" in name:
-            im = ax.imshow(data, cmap='RdYlGn_r', vmin=0, vmax=4)
+            im = ax.imshow(
+                np.ma.masked_equal(data, _severity_nodata()),
+                cmap='RdYlGn_r', vmin=0, vmax=4,
+            )
         elif "confidence" in name:
             im = ax.imshow(data, cmap='viridis', vmin=0, vmax=1)
         elif "dnbr" in name:

@@ -23,7 +23,8 @@ raster, a severity map, GeoJSON and a report come out.
 - Sentinel-1 is retired (see "Retired" in `ARCHITECTURE.md`): real-mode flood has no input.
 - Algorithms are fixed per hazard: `sar_threshold` flood, `dnbr` wildfire,
   `wind_damage` storm. Wildfire defaults to `max_cloud` 90 because post-fire scenes are
-  cloudy; the others default to 30.
+  cloudy; the others default to 30. Wildfire masks cloud and shadow with each scene's
+  SCL layer (dNBR NaN, severity 255) and refuses a scene with no `scl.tif`.
 
 ## Carry the CRS
 
@@ -54,4 +55,4 @@ The LLM control plane and the MAIA showcase were deprecated on 2026-03-18. Neith
 
 - Tests: `python -m pytest --import-mode=importlib`, the same command the Tests workflow
   runs. Docker and e2e tests are off by default; `-m docker` or `-m e2e` runs them.
-- Boundaries: `lint-imports` must stay green (5 contracts, `.importlinter`).
+- Boundaries: `lint-imports` must stay green (4 contracts, `.importlinter`).

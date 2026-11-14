@@ -437,7 +437,7 @@ class ValuePlausibilityChecker:
                 else ValueIssueSeverity.HIGH if below_pct > 1.0
                 else ValueIssueSeverity.MEDIUM
             )
-            example_values = sorted(data[below_min])[:5]
+            example_values = np.sort(data[below_min])[:5]
             issues.append(ValueIssue(
                 check_type=ValueCheckType.RANGE,
                 severity=severity,
@@ -460,7 +460,7 @@ class ValuePlausibilityChecker:
                 else ValueIssueSeverity.HIGH if above_pct > 1.0
                 else ValueIssueSeverity.MEDIUM
             )
-            example_values = sorted(data[above_max], reverse=True)[:5]
+            example_values = np.sort(data[above_max])[::-1][:5]
             issues.append(ValueIssue(
                 check_type=ValueCheckType.RANGE,
                 severity=severity,
@@ -483,7 +483,7 @@ class ValuePlausibilityChecker:
         metrics = {}
 
         # Check unique values
-        unique_values = np.unique(data)
+        unique_values, counts = np.unique(data, return_counts=True)
         metrics["unique_count"] = len(unique_values)
 
         if len(unique_values) < self.config.min_unique_values:
@@ -496,16 +496,13 @@ class ValuePlausibilityChecker:
                     recommendation="Check if data processing reduced precision excessively",
                 ))
 
-        # Check if single value dominates
-        value_counts = {}
-        for v in unique_values:
-            count = (data == v).sum()
-            value_counts[float(v)] = count
-
-        if value_counts:
-            max_value = max(value_counts, key=value_counts.get)
-            max_count = value_counts[max_value]
-            max_pct = 100.0 * max_count / len(data)
+        # Check if single value dominates, from the counts above. Comparing
+        # the array against every unique value is quadratic on a continuous
+        # float layer and never finishes on a full scene.
+        if counts.size:
+            top = int(np.argmax(counts))
+            max_value = float(unique_values[top])
+            max_pct = 100.0 * int(counts[top]) / len(data)
             metrics["dominant_value"] = max_value
             metrics["dominant_pct"] = max_pct
 
