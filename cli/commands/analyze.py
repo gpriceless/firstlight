@@ -120,26 +120,30 @@ def get_memory_available_mb() -> int:
         return 8192
 
 
-def estimate_tiles(input_path: Path, tile_size: int = 512) -> int:
-    """Estimate number of tiles based on input data size."""
-    # Try to read actual raster dimensions
-    try:
-        import rasterio
+def estimate_tiles(
+    input_path: Path,
+    algorithm: Any,
+    algorithm_name: str,
+    tile_size: int = 512,
+) -> int:
+    """Count the tiles of the raster the algorithm will read.
 
-        raster_files = list(input_path.rglob("*.tif"))
-        if raster_files:
-            with rasterio.open(raster_files[0]) as src:
-                width, height = src.width, src.height
-                tiles_x = (width + tile_size - 1) // tile_size
-                tiles_y = (height + tile_size - 1) // tile_size
-                return tiles_x * tiles_y
-    except ImportError:
-        pass
-    except Exception as e:
-        logger.debug(f"Could not estimate tiles: {e}")
+    The raster is the one ``select_input_raster`` picks, the same one
+    ``run_analysis`` reads, so the count matches the work. A work dir with no
+    raster at all gives the old rough figure of 100; one whose rasters do not
+    include the declared input is refused there.
+    """
+    raster_files = list(input_path.rglob("*.tif"))
+    if not raster_files:
+        return 100
 
-    # Fallback estimate
-    return 100
+    import rasterio
+
+    raster = select_input_raster(raster_files, algorithm, algorithm_name)
+    with rasterio.open(raster) as src:
+        tiles_x = (src.width + tile_size - 1) // tile_size
+        tiles_y = (src.height + tile_size - 1) // tile_size
+    return tiles_x * tiles_y
 
 
 @click.command("analyze")
@@ -275,8 +279,14 @@ def analyze(
 
     click.echo(f"  Profile: {profile} ({profile_config['memory_mb']}MB, {profile_config['max_workers']} workers)")
 
-    # Estimate tiles
-    total_tiles = estimate_tiles(input_path, tile_size)
+    # Initialize algorithm
+    algo_instance = load_algorithm(algorithm, algo_params)
+
+    # Estimate tiles on the raster the algorithm declares
+    try:
+        total_tiles = estimate_tiles(input_path, algo_instance, algorithm, tile_size)
+    except (ValueError, FileNotFoundError) as e:
+        raise click.UsageError(str(e))
     click.echo(f"  Estimated tiles: {total_tiles}")
 
     # Parse tile range
@@ -298,9 +308,6 @@ def analyze(
     # Create output directory
     output_path = Path(output_path)
     output_path.mkdir(parents=True, exist_ok=True)
-
-    # Initialize algorithm
-    algo_instance = load_algorithm(algorithm, algo_params)
 
     # Check if algorithm supports tiled processing
     supports_tiled = algo_info.get("supports_tiled", False)
