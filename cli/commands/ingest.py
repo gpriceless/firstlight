@@ -2,7 +2,7 @@
 Ingest Command - Download and normalize data to analysis-ready format.
 
 Usage:
-    flight ingest --area miami.geojson --source sentinel2 --output ./data/
+    flight discover --area miami.geojson --event flood --output discovery.json
     flight ingest --input discovery.json --output ./data/ --resume
 """
 
@@ -305,7 +305,8 @@ def download_bands(
     "-a",
     "area_path",
     type=click.Path(exists=True, path_type=Path),
-    help="Path to GeoJSON file defining the area of interest.",
+    help="Not supported: ingest needs discovered items. Run 'flight discover "
+    "--area' first and pass its output with --input.",
 )
 @click.option(
     "--input",
@@ -392,15 +393,12 @@ def ingest(
     """
     Download and normalize satellite data to analysis-ready format.
 
-    Downloads data from configured sources or from a discovery results file.
-    Supports resumable downloads and automatic normalization to cloud-native
-    formats (COG, Zarr, NetCDF).
+    Downloads the items in a discovery results file. Supports resumable
+    downloads and automatic normalization to cloud-native formats (COG, Zarr,
+    NetCDF).
 
     \b
     Examples:
-        # Ingest Sentinel-2 data for an area
-        flight ingest --area miami.geojson --source sentinel2 --output ./data/
-
         # Ingest from discovery results
         flight ingest --input discovery.json --output ./data/ --format zarr
 
@@ -425,8 +423,15 @@ def ingest(
 
     reject_retired_sources(sources)
 
+    if area_path and not input_path:
+        raise click.UsageError(
+            "ingest does not search for data, so --area alone has no items to "
+            "download. Run 'flight discover --area AREA --event EVENT --output "
+            "discovery.json', then 'flight ingest --input discovery.json'."
+        )
+
     # Load items to ingest
-    items = load_ingest_items(area_path, input_path, sources)
+    items = load_ingest_items(input_path, sources)
 
     if not items:
         click.echo("No items to ingest. Run 'flight discover' first or specify --area and --source.")
@@ -506,11 +511,14 @@ def ingest(
 
 
 def load_ingest_items(
-    area_path: Optional[Path],
     input_path: Optional[Path],
     sources: tuple,
 ) -> List[Dict[str, Any]]:
-    """Load items to ingest from various sources."""
+    """Load discovered items to ingest, optionally filtered by source.
+
+    Only a discovery file yields items. Nothing here invents an item for data
+    that was never found.
+    """
     items = []
 
     # Load from discovery results file
@@ -526,16 +534,6 @@ def load_ingest_items(
     if sources:
         source_lower = [s.lower() for s in sources]
         items = [i for i in items if i.get("source", "").lower() in source_lower]
-
-    # If no items from file, generate from area + source
-    if not items and area_path and sources:
-        # Generate placeholder items based on sources
-        for source in sources:
-            items.append({
-                "id": f"{source}_latest",
-                "source": source,
-                "url": None,  # Will be resolved during processing
-            })
 
     return items
 

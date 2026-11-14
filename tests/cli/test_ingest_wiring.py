@@ -344,3 +344,34 @@ def test_normalize_item_no_convert_attribute_typo(ingest_module):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+def test_area_alone_is_refused_not_given_placeholder_ids(tmp_path):
+    """--area without discovered items stops and says why; no '<source>_latest' ids."""
+    from click.testing import CliRunner
+
+    from cli.commands.ingest import ingest
+
+    area = tmp_path / "aoi.geojson"
+    area.write_text(json.dumps({
+        "type": "Polygon",
+        "coordinates": [[[-80.5, 25.9], [-80.3, 25.9], [-80.3, 26.1], [-80.5, 25.9]]],
+    }))
+    out = tmp_path / "data"
+
+    result = CliRunner().invoke(
+        ingest,
+        ["--area", str(area), "--source", "sentinel2", "--output", str(out)],
+        obj={},
+    )
+
+    assert result.exit_code != 0
+    assert "flight discover" in result.output
+    assert not (out / "sentinel2" / "sentinel2_latest").exists()
+    assert "sentinel2_latest" not in result.output
+
+
+def test_load_ingest_items_never_invents_items():
+    from cli.commands.ingest import load_ingest_items
+
+    assert load_ingest_items(None, ("sentinel2",)) == []

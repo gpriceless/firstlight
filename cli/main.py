@@ -162,7 +162,7 @@ class FlightGroup(click.Group):
             "flight discover --area miami.geojson --start 2024-09-15 --end 2024-09-20 --event flood",
             "",
             "# Download and prepare data",
-            "flight ingest --area miami.geojson --source sentinel1 --output ./data/",
+            "flight ingest --input discovery.json --output ./data/",
             "",
             "# Run analysis with specific algorithm",
             "flight analyze --input ./data/ --algorithm sar_threshold --output ./results/",
