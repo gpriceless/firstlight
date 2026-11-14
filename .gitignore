@@ -134,6 +134,8 @@ data/
 *.tiff
 *.geotiff
 !examples/**/*.geojson
+# Small real rasters that tests read
+!tests/fixtures/**/*.tif
 
 # Generated documentation
 docs/_build/

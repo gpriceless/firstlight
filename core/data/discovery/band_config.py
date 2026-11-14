@@ -18,6 +18,13 @@ SENTINEL2_BANDS = {
 
 SENTINEL2_CANONICAL_ORDER = ["blue", "green", "red", "nir", "swir16", "swir22"]
 
+# Sentinel-2 L2A quality layers. Downloaded beside the bands but kept out of
+# the spectral stack: SCL is a class map (cloud, shadow, water...), not a
+# reflectance, and must never be resampled bilinearly.
+SENTINEL2_QA_LAYERS = {
+    "scl": "scl",         # Scene Classification Layer, 20m
+}
+
 # Landsat 8/9 band configuration
 LANDSAT_BANDS = {
     "blue": "blue",
@@ -45,6 +52,14 @@ def get_band_config(source: str) -> Dict[str, str]:
         "sentinel2": SENTINEL2_BANDS,
         "landsat": LANDSAT_BANDS,
         "sentinel1": SENTINEL1_BANDS,
+    }
+    return configs.get(source, {})
+
+
+def get_qa_layers(source: str) -> Dict[str, str]:
+    """Get the quality layers (not spectral bands) to download for a sensor."""
+    configs = {
+        "sentinel2": SENTINEL2_QA_LAYERS,
     }
     return configs.get(source, {})
 

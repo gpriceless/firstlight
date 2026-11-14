@@ -94,6 +94,9 @@ class DifferencedNBRAlgorithm:
     """
 
     # Severity class names
+    # Severity value for pixels with no valid observation (cloud, shadow, no data).
+    SEVERITY_NODATA = 255
+
     SEVERITY_CLASSES = {
         0: "unburned",
         1: "enhanced_regrowth",
@@ -199,8 +202,9 @@ class DifferencedNBRAlgorithm:
         nbr_pre = self._calculate_nbr(nir_pre, swir_pre, valid_mask)
         nbr_post = self._calculate_nbr(nir_post, swir_post, valid_mask)
 
-        # Calculate dNBR
-        dnbr = np.zeros_like(nir_pre, dtype=np.float32)
+        # Calculate dNBR. Masked pixels (cloud, shadow, no data) stay NaN so
+        # they read as no data downstream instead of as unburned ground.
+        dnbr = np.full(nir_pre.shape, np.nan, dtype=np.float32)
         dnbr[valid_mask] = nbr_pre[valid_mask] - nbr_post[valid_mask]
 
         # Classify severity
@@ -295,9 +299,10 @@ class DifferencedNBRAlgorithm:
             valid_mask: Valid data mask
 
         Returns:
-            Severity classification (0-5)
+            Severity classification (0-5), SEVERITY_NODATA where not valid
         """
-        severity = np.zeros_like(dnbr, dtype=np.uint8)
+        severity = np.full(dnbr.shape, self.SEVERITY_NODATA, dtype=np.uint8)
+        severity[valid_mask] = 0
 
         # Enhanced regrowth (negative dNBR - more vegetation post-fire)
         severity[(dnbr < self.config.unburned_threshold) & valid_mask] = 1

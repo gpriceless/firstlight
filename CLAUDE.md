@@ -23,7 +23,8 @@ raster, a severity map, GeoJSON and a report come out.
 - Sentinel-1 is retired (see "Retired" in `ARCHITECTURE.md`): real-mode flood has no input.
 - Algorithms are fixed per hazard: `sar_threshold` flood, `dnbr` wildfire,
   `wind_damage` storm. Wildfire defaults to `max_cloud` 90 because post-fire scenes are
-  cloudy; the others default to 30.
+  cloudy; the others default to 30. Wildfire masks cloud and shadow with each scene's
+  SCL layer (dNBR NaN, severity 255) and refuses a scene with no `scl.tif`.
 
 ## Carry the CRS
 

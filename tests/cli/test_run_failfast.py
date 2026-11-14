@@ -384,7 +384,7 @@ def _write_s2_scene(
     nir_array,
     swir_array,
 ):
-    """Write a tiny S2-style scene directory with nir.tif and swir22.tif."""
+    """Write a tiny S2-style scene directory with nir.tif, swir22.tif and scl.tif."""
     rasterio = pytest.importorskip("rasterio")
     import numpy as np
     from rasterio.transform import from_origin
@@ -423,6 +423,20 @@ def _write_s2_scene(
         transform=swir_transform,
     ) as dst:
         dst.write(swir_array, 1)
+
+    # 20 m SCL, all vegetation (class 4): the scene is clear.
+    with rasterio.open(
+        scene_dir / "scl.tif",
+        "w",
+        driver="GTiff",
+        height=swir_height,
+        width=swir_width,
+        count=1,
+        dtype="uint8",
+        crs="EPSG:32617",
+        transform=swir_transform,
+    ) as dst:
+        dst.write(np.full(swir_array.shape, 4, dtype=np.uint8), 1)
 
 
 class TestWildfireRealModeLoader:

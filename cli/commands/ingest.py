@@ -664,11 +664,18 @@ def process_item(
             f"in {total_time:.1f}s"
         )
 
-        # Create band stack (placeholder - Task 1.7.3 will implement this)
+        # Stack the spectral bands only. Quality layers such as SCL are class
+        # maps and stay as their own files beside the stack.
+        from core.data.discovery.band_config import get_qa_layers
+
+        qa_names = set(get_qa_layers(source))
+        spectral_paths = {
+            name: path for name, path in band_paths.items() if name not in qa_names
+        }
         stack_path = item_dir / f"{item_id}_stack.vrt"
         try:
             from core.data.ingestion.band_stack import create_band_stack
-            stack_result = create_band_stack(band_paths, stack_path)
+            stack_result = create_band_stack(spectral_paths, stack_path)
             logger.info(f"Created VRT stack: {stack_result.path}")
 
             # Validate the stack (unless validation skipped)

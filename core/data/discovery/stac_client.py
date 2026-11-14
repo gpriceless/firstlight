@@ -10,7 +10,11 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
 import logging
 
-from core.data.discovery.band_config import get_band_config, get_canonical_order
+from core.data.discovery.band_config import (
+    get_band_config,
+    get_canonical_order,
+    get_qa_layers,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -410,8 +414,8 @@ def _pick_downloadable_href(asset: Any) -> str:
 
 
 def _extract_band_urls(item: STACItem, source: str) -> Dict[str, str]:
-    """Extract individual band URLs from STAC item assets."""
-    band_config = get_band_config(source)
+    """Extract band and quality-layer URLs from STAC item assets."""
+    band_config = {**get_band_config(source), **get_qa_layers(source)}
     band_urls = {}
 
     for band_name, asset_key in band_config.items():
