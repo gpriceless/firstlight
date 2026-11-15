@@ -302,7 +302,7 @@ def download_bands(
                     )
                     time.sleep(wait_time)  # Exponential backoff
                     continue
-                logger.error(f"Failed to download band {band_name} after {max_retries} attempts: {e}")
+                logger.error(f"Failed to download band {band_name} after {attempt + 1} attempt(s): {e}")
                 return BandDownloadResult(
                     band_name=band_name,
                     url=url,

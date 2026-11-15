@@ -42,6 +42,13 @@ Seeded on 2026-11-10 from the February agent memory file, cut to what still hold
 
 ## Entries
 
+### 2026-11 The nearest scene was all cloud
+- Bug: wildfire took the scenes nearest the window midpoint. For Max Road that was
+  11 May, 0% of the box clear, so the burn map was all no data.
+- Lesson: rank scenes by what they show of the box (SCL clear share), then by date.
+  Scene-wide `eo:cloud_cover` ranks them wrong: 31 May is 58.9% for the tile, 15.1%
+  over the box.
+
 ### 2026-11 Coverage passed on cloud
 - Bug: dNBR filled every pixel, so a pre-fire scene 29% under cloud and shadow showed
   0% no data and the coverage check passed. The algorithm took a `cloud_mask` that no

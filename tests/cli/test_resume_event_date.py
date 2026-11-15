@@ -164,9 +164,17 @@ class TestResumePicksCorrectPrePostScenesByEventDate:
     `_find_sentinel2_pre_post_scenes` so a 3-scene case (one post-event)
     picks the latest-pre + earliest-post, not the midpoint pair."""
 
-    def test_three_scene_resume_picks_pre_post_around_event_date(self, tmp_path):
+    def test_three_scene_resume_picks_pre_post_around_event_date(
+        self, tmp_path, monkeypatch
+    ):
         pytest.importorskip("rasterio")
+        import cli.commands.run as run_mod
         from cli.commands.run import _find_sentinel2_pre_post_scenes
+
+        # This test is about grouping by event date. With every scene equally
+        # clear, the pick falls back to the scenes nearest the event; clear
+        # share ranking on real SCL is tested in test_wildfire_cloud_mask.py.
+        monkeypatch.setattr(run_mod, "_scl_clear_share", lambda path, bbox=None: 1.0)
 
         # Recreate the Max Road Miramar scene set: Apr 04, Apr 21, May 11.
         for item_id in (

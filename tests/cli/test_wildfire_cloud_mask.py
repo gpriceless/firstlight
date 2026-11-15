@@ -4,7 +4,8 @@ The fixture is a real 1 km block cut from two Earth Search Sentinel-2 L2A
 scenes over the Max Road fire box (tile 17RNJ): pre S2C 2026-05-09 and post
 S2A 2026-05-31, bands B08 (10 m), B12 (20 m) and SCL (20 m), unmodified.
 In this block SCL marks 48.3% of the pre scene and 31.8% of the post scene as
-cloud or shadow. Cloud pixels are bright in NIR (class 9 median 0.78) and
+cloud or shadow. A third scene, S2A 2026-05-11, is the same block and is 100%
+cloud: the one a nearest-date pick chose as post-fire for a 10 May fire. Cloud pixels are bright in NIR (class 9 median 0.78) and
 shadow pixels dark (class 3 median 0.10), as they should be.
 
 Before the mask, dNBR had no no-data pixels here and every cloud counted as
@@ -32,6 +33,7 @@ from cli.commands.run import (
 
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "s2_cloud"
 PRE = "S2C_17RNJ_20260509_0_L2A"
+CLOUDED = "S2A_17RNJ_20260511_0_L2A"
 POST = "S2A_17RNJ_20260531_0_L2A"
 EVENT = datetime(2026, 5, 20)
 # SCL classes that mean the ground was not seen: no data, saturated, shadow,
@@ -101,7 +103,7 @@ def test_without_the_mask_cloud_counts_as_ground(tmp_path):
 
 def test_scene_without_scl_is_refused(tmp_path):
     root = _tree(tmp_path)
-    for sid in (PRE, POST):
+    for sid in (PRE, CLOUDED, POST):
         (root / "sentinel2" / sid / "scl.tif").unlink()
 
     with pytest.raises(FileNotFoundError, match="SCL"):
@@ -130,3 +132,43 @@ def test_exported_geotiffs_carry_no_data(tmp_path):
         assert src.read(1, masked=True).mask.mean() == pytest.approx(0.5752)
     with rasterio.open(products / "burn_severity.tif") as src:
         assert src.nodata == 255
+
+
+def test_a_fully_clouded_scene_loses_to_a_clearer_one(tmp_path):
+    """Fire on 10 May: 11 May is nearest but all cloud, so 31 May is the post scene."""
+    scenes = _find_sentinel2_pre_post_scenes(_tree(tmp_path), event_date=datetime(2026, 5, 10))
+    assert scenes["pre"]["item_id"] == PRE
+    assert scenes["post"]["item_id"] == POST
+    assert scenes["post"]["clear_share"] == pytest.approx(1 - 0.318)
+    assert scenes["pre"]["clear_share"] == pytest.approx(1 - 0.4828)
+
+
+def test_a_clouded_pre_scene_loses_too(tmp_path):
+    """Event on 20 May: 11 May is the latest pre scene but 9 May is clearer."""
+    scenes = _find_sentinel2_pre_post_scenes(_tree(tmp_path), event_date=EVENT)
+    assert scenes["pre"]["item_id"] == PRE
+
+
+def _block_lonlat():
+    from rasterio.warp import transform_bounds
+
+    with rasterio.open(FIXTURE / POST / "scl.tif") as src:
+        return transform_bounds(src.crs, "EPSG:4326", *src.bounds)
+
+
+def test_clear_share_counts_box_outside_the_scene_as_not_seen():
+    from cli.commands.run import _scl_clear_share
+
+    west, south, east, north = _block_lonlat()
+    inside = f"{west},{south},{east},{north}"
+    # Twice as wide: the east half lies beyond the cut and has no data.
+    wider = f"{west},{south},{east + (east - west)},{north}"
+
+    whole = _scl_clear_share(FIXTURE / POST / "scl.tif")
+    boxed = _scl_clear_share(FIXTURE / POST / "scl.tif", inside)
+    assert whole == pytest.approx(1 - 0.318)
+    # The lon/lat box around a UTM block is slightly larger than the block,
+    # and its corners beyond the cut count as not seen.
+    assert whole - 0.05 < boxed <= whole
+    assert _scl_clear_share(FIXTURE / POST / "scl.tif", wider) == pytest.approx(boxed / 2, abs=0.02)
+    assert _scl_clear_share(FIXTURE / CLOUDED / "scl.tif", inside) == 0.0

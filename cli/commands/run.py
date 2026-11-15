@@ -921,17 +921,49 @@ def _parse_sentinel2_item_date(item_id: str) -> Optional[datetime]:
         return None
 
 
+def _scl_clear_share(scl_path: Path, bbox: Optional[str] = None) -> float:
+    """Share of the area of interest that a scene's SCL layer says was seen.
+
+    Reads SCL over ``bbox`` (geographic min_lon,min_lat,max_lon,max_lat) with a
+    boundless window, so any part of the box the scene does not cover counts as
+    no data, not as clear. With no bbox the whole raster is the area.
+    """
+    import rasterio
+    from rasterio.warp import transform_bounds
+    from rasterio.windows import from_bounds
+
+    with rasterio.open(scl_path) as src:
+        window = None
+        if bbox:
+            parts = [float(x.strip()) for x in bbox.split(",")]
+            if len(parts) == 4:
+                bounds = transform_bounds("EPSG:4326", src.crs, *parts, densify_pts=21)
+                window = from_bounds(*bounds, transform=src.transform)
+                window = window.round_offsets().round_lengths()
+        if window is None:
+            scl = src.read(1)
+        else:
+            scl = src.read(1, window=window, boundless=True, fill_value=0)
+    if scl.size == 0:
+        return 0.0
+    return float((~_scl_cloud_mask(scl)).mean())
+
+
 def _find_sentinel2_pre_post_scenes(
     input_path: Path,
     event_date: Optional[datetime] = None,
+    bbox: Optional[str] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """Discover Sentinel-2 scenes and group them as pre-fire / post-fire.
 
     The ingest stage writes scenes to ``<input_path>/sentinel2/<item_id>/`` with
     ``nir.tif``, ``swir22.tif`` and ``scl.tif`` per scene. Returns a dict with
     ``pre`` and ``post`` keys, each mapping to ``{item_id, date, nir, swir,
-    scl}``. Raises ``FileNotFoundError`` if there isn't at least one scene on
-    each side, or if a scene has no SCL layer to mask cloud with.
+    scl, clear_share}``. On each side the scene with the largest clear share
+    of the area of interest wins (``bbox``, or the whole raster); a tie goes
+    to the scene nearest the event. Raises ``FileNotFoundError`` if there
+    isn't at least one scene on each side, or if a scene has no SCL layer to
+    mask cloud with.
     """
     s2_root = input_path / "sentinel2"
     candidates: List[Dict[str, Any]] = []
@@ -1003,10 +1035,17 @@ def _find_sentinel2_pre_post_scenes(
             + ". Refusing to fabricate synthetic data in real mode."
         )
 
-    # Pick the latest pre-fire scene and the earliest post-fire scene — those
-    # bracket the event most tightly and minimise spurious dNBR signal.
-    pre_choice = pre[-1]
-    post_choice = post[0]
+    # A scene that is all cloud over the box measures nothing, however close
+    # to the event it is. Rank by clear share over the area of interest, then
+    # by nearness to the event (latest pre, earliest post).
+    for scene in pre + post:
+        scene["clear_share"] = _scl_clear_share(scene["scl"], bbox)
+        logger.info(
+            "Sentinel-2 %s (%s): %.1f%% of the area clear",
+            scene["item_id"], scene["date"].date(), 100 * scene["clear_share"],
+        )
+    pre_choice = max(enumerate(pre), key=lambda e: (e[1]["clear_share"], e[0]))[1]
+    post_choice = max(enumerate(post), key=lambda e: (e[1]["clear_share"], -e[0]))[1]
     return {"pre": pre_choice, "post": post_choice}
 
 
@@ -1090,7 +1129,9 @@ def _load_sentinel2_pre_post(
     from rasterio.warp import transform_bounds
     from rasterio.windows import from_bounds
 
-    scenes = _find_sentinel2_pre_post_scenes(input_path, event_date=event_date)
+    scenes = _find_sentinel2_pre_post_scenes(
+        input_path, event_date=event_date, bbox=bbox
+    )
     pre = scenes["pre"]
     post = scenes["post"]
 
@@ -1177,6 +1218,8 @@ def _load_sentinel2_pre_post(
         extra={
             "pre_item_id": pre["item_id"],
             "post_item_id": post["item_id"],
+            "pre_clear_share": round(pre["clear_share"], 4),
+            "post_clear_share": round(post["clear_share"], 4),
         },
     )
 
