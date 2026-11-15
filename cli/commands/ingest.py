@@ -178,15 +178,44 @@ def download_with_progress(url: str, dest_path: Path, expected_size: Optional[in
         return False
 
 
+# Little-endian and big-endian TIFF, and the same for BigTIFF.
+_TIFF_MAGIC = (b"II*\x00", b"MM\x00*", b"II+\x00", b"MM\x00+")
+
+
+class NotATiffError(RuntimeError):
+    """A band URL answered with something that is not a GeoTIFF."""
+
+
 def _download_band_file(url: str, output_path: Path) -> None:
-    """Download a single band file using HTTP streaming."""
+    """Download a single band file using HTTP streaming.
+
+    Refuses a response that is not a TIFF (a login page, an error page) instead
+    of saving it under the band's name, and names where the request ended up.
+    Nothing is written to ``output_path`` unless the body starts as a TIFF.
+    """
     import requests
 
     response = requests.get(url, stream=True, timeout=300)
     response.raise_for_status()
 
+    chunks = response.iter_content(chunk_size=8192)
+    first = b""
+    for chunk in chunks:
+        first += chunk
+        if len(first) >= 4:
+            break
+    if not first.startswith(_TIFF_MAGIC):
+        content_type = response.headers.get("Content-Type", "unknown")
+        final_url = getattr(response, "url", None) or url
+        response.close()
+        raise NotATiffError(
+            f"{url} did not return a TIFF: got {content_type} from {final_url}"
+            + (" (redirected)" if final_url != url else "")
+        )
+
     with open(output_path, 'wb') as f:
-        for chunk in response.iter_content(chunk_size=8192):
+        f.write(first)
+        for chunk in chunks:
             f.write(chunk)
 
 
@@ -265,7 +294,7 @@ def download_bands(
                     retries=attempt,
                 )
             except Exception as e:
-                if attempt < max_retries - 1:
+                if attempt < max_retries - 1 and not isinstance(e, NotATiffError):
                     wait_time = 2 ** attempt
                     logger.warning(
                         f"Download failed for band {band_name}: {e}. "
