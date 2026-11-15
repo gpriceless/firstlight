@@ -111,8 +111,9 @@ of it is on `main` and nothing here should be rebuilt without a new spec.
   GRD assets sit on a requester-pays bucket and are uncalibrated. A real flood path
   needs a spec: an analysis-ready S1 RTC source, or an optical water index on
   Sentinel-2.
-- Landsat stays: it is read through the public landsatlook HTTPS mirror, not the
-  requester-pays bucket (see `stac_client`).
+- Landsat stays in discovery, but ingest fails: `stac_client` rewrites the
+  requester-pays `s3://usgs-landsat/...` hrefs to the landsatlook HTTPS mirror, and on
+  2026-11-15 that mirror answered with the USGS login page instead of the file.
 
 An agent memory file written in February still described both as in progress. It is
 kept verbatim in `history/left-in-the-dust.md` under "Old agent memory".

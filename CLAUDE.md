@@ -18,8 +18,10 @@ raster, a severity map, GeoJSON and a report come out.
 
 - Discovery is Earth Search STAC (`core/data/discovery/stac_client.py`); imagery is
   Sentinel-2 L2A COGs on AWS.
-- Landsat assets come back as `s3://usgs-landsat/...` on a requester-pays bucket.
-  `stac_client` rewrites them to the landsatlook HTTPS mirror. Keep that rewrite.
+- Landsat assets are `s3://usgs-landsat/...` (requester-pays). The landsatlook mirror
+  `stac_client` rewrites them to now serves a login page: Landsat ingest is broken.
+- Earth Search Sentinel-2 L2A pixels already have the 04.00 offset removed: DN/10000 is
+  reflectance. Do not also apply the `raster:bands` offset of -0.1.
 - Sentinel-1 is retired (see "Retired" in `ARCHITECTURE.md`): real-mode flood has no input.
 - Algorithms are fixed per hazard: `sar_threshold` flood, `dnbr` wildfire,
   `wind_damage` storm. Wildfire defaults to `max_cloud` 90 because post-fire scenes are

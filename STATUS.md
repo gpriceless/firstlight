@@ -10,3 +10,5 @@ verified either way.
 | `flight ingest --area` | refused with a pointer to `flight discover` | `tests/cli/test_ingest_wiring.py::test_area_alone_is_refused_not_given_placeholder_ids` |
 | `flight analyze` tile estimate | counts the declared input raster | `tests/cli/test_analyze_wiring.py::TestAnalyzeInputSelection::test_tile_estimate_counts_the_declared_raster` |
 | Scene choice by AOI cloud | missing: the midpoint split can pick a scene that is 100% cloud over the box | Max Road run with 4/19 to 5/31 picked post 11 May, 100% masked |
+| Landsat ingest | broken: landsatlook redirects to the USGS login page and ingest saves that HTML as `blue.tif` | `LC08_L2SP_015042_20260425_02_T1` SR_B2 via landsatlook: HTTP 200, text/html, ers.cr.usgs.gov/login |
+| Sentinel-2 reflectance scale | DN/10000 is right for Earth Search L2A | `S2A_17RNJ_20260531_0_L2A`: baseline 05.12, `boa_offset_applied` true; water NIR p5 64 DN, 13.8% of the scene below 1000 DN |
