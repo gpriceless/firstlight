@@ -13,6 +13,8 @@ raster, a severity map, GeoJSON and a report come out.
   records. Do not quote anything from it as output.
 - Reports, maps and before and after imagery come from `scripts/` and `examples/` through
   `core/reporting`, not from `flight run`.
+- The LLM control plane and MAIA showcase are retired and off `main`. Do not revive them
+  without a spec; see "Retired" in `ARCHITECTURE.md`.
 
 ## Data
 
@@ -38,23 +40,20 @@ Every product keeps the grid it was computed on.
 - If `grid.json` is missing or its shape disagrees, export falls back to a bbox
   placeholder in EPSG:4326 and logs a warning. Treat that warning as a bug, not a result.
 - Never write a raster without its CRS and transform, and never assume degrees.
-- An AOI is an area: Polygon or MultiPolygon. `api/models/requests.py` still accepts any
-  GeoJSON type; the Polygon-only check lived in the retired control plane.
+- An AOI is an area: `SpatialSpec` refuses anything but Polygon and MultiPolygon.
 
 ## Real or fake
 
 - Discover failure stops the run. Never write stand-in item ids for data that is not there.
-- `--synthetic` generates arrays. Synthetic output is for exercising code paths only; it
-  never goes in a README, figure, report or claim. Analyzers once fabricated severity
-  statistics; check any number against the rasters that made it.
-
-## Retired, do not revive without a spec
-
-The LLM control plane and the MAIA showcase were deprecated on 2026-03-18. Neither is on
-`main`. See "Retired" in `ARCHITECTURE.md`.
+- Pick an input by what its consumer needs (the declared band or layer, the clear share of
+  the box), or refuse and name it. Sort order and nearest date picked wrong six times.
+- `--synthetic` output exercises code paths only, never a README, figure, report or claim.
+  Analyzers once fabricated severity statistics; check a number against its rasters.
 
 ## Working here
 
 - Tests: `python -m pytest --import-mode=importlib`, the same command the Tests workflow
   runs. Docker and e2e tests are off by default; `-m docker` or `-m e2e` runs them.
+- Test against a small real raster (`tests/fixtures/`) and assert the value that matters. A
+  mocked rasterio, `isinstance(exit_code, int)`, or a no-data count nothing writes cannot fail.
 - Boundaries: `lint-imports` must stay green (4 contracts, `.importlinter`).
