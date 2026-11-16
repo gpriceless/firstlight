@@ -368,7 +368,7 @@ class TestRealAnalysisInputValidation:
             def execute(self, *a, **k):
                 raise AssertionError("algorithm.execute called without real data")
 
-        with pytest.raises(FileNotFoundError, match="pre/post NIR and SWIR"):
+        with pytest.raises(FileNotFoundError, match="pre/post NIR \\+ SWIR22"):
             _analyze_wildfire(
                 algorithm=_Algo(),
                 input_path=tmp_path,
@@ -518,7 +518,7 @@ class TestWildfireRealModeLoader:
         out_dir = tmp_path / "out"
         out_dir.mkdir()
 
-        with pytest.raises(FileNotFoundError, match="both pre-fire and post-fire"):
+        with pytest.raises(FileNotFoundError, match="wildfire.*both pre-event and post-event"):
             _analyze_wildfire(
                 algorithm=_Algo(),
                 input_path=tmp_path,
@@ -536,8 +536,9 @@ def _write_s2_storm_scene(
     nir_array,
     blue_array=None,
 ):
-    """Write a tiny S2 storm-style scene directory with red/nir (+ optional blue)."""
+    """Write a tiny S2 storm-style scene directory with red/nir (+ optional blue) and scl."""
     rasterio = pytest.importorskip("rasterio")
+    import numpy as np
     from rasterio.transform import from_origin
 
     scene_dir = base / "sentinel2" / item_id
@@ -558,6 +559,20 @@ def _write_s2_storm_scene(
             transform=transform,
         ) as dst:
             dst.write(arr, 1)
+
+    # 10 m SCL, all vegetation (class 4): the scene is clear.
+    with rasterio.open(
+        scene_dir / "scl.tif",
+        "w",
+        driver="GTiff",
+        height=nir_array.shape[0],
+        width=nir_array.shape[1],
+        count=1,
+        dtype="uint8",
+        crs="EPSG:32617",
+        transform=transform,
+    ) as dst:
+        dst.write(np.full(nir_array.shape, 4, dtype=np.uint8), 1)
 
     if blue_array is not None:
         height, width = blue_array.shape
@@ -698,7 +713,7 @@ class TestStormRealModeLoader:
         out_dir = tmp_path / "out"
         out_dir.mkdir()
 
-        with pytest.raises(FileNotFoundError, match="both pre-event and post-event"):
+        with pytest.raises(FileNotFoundError, match="storm.*both pre-event and post-event"):
             _analyze_storm(
                 algorithm=_Algo(),
                 input_path=tmp_path,

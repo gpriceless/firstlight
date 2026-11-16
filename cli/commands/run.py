@@ -389,7 +389,7 @@ def run(
                 output_path=output_path / "data",
                 profile_config=profile_config,
                 data_mode=data_mode,
-                bbox=bbox,
+                bbox=analyze_bbox,
                 event_type=event_type,
             )
             ingested_count = ingest_result.get("count", 0)
@@ -569,6 +569,11 @@ def run_ingest(
             # Fail hard if ingest fails - never silently fall back to synthetic
             from cli.commands.ingest import process_item
 
+            box = None
+            if bbox:
+                parts = [float(x) for x in bbox.split(",")]
+                if len(parts) == 4:
+                    box = parts
             ingested = 0
             failed = []
             for item in items:
@@ -580,6 +585,7 @@ def run_ingest(
                         normalize=True,
                         target_crs=None,
                         target_resolution=None,
+                        bbox=box,
                     )
                     if success:
                         ingested += 1
