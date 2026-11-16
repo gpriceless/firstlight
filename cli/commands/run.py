@@ -13,7 +13,7 @@ import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 
 import click
 import numpy as np
@@ -953,47 +953,53 @@ def _find_sentinel2_pre_post_scenes(
     input_path: Path,
     event_date: Optional[datetime] = None,
     bbox: Optional[str] = None,
+    bands: Tuple[str, ...] = ("nir", "swir22"),
+    optional: Tuple[str, ...] = (),
+    hazard: str = "wildfire",
 ) -> Dict[str, Dict[str, Any]]:
-    """Discover Sentinel-2 scenes and group them as pre-fire / post-fire.
+    """Discover Sentinel-2 scenes and pick one before and one after the event.
 
     The ingest stage writes scenes to ``<input_path>/sentinel2/<item_id>/`` with
-    ``nir.tif``, ``swir22.tif`` and ``scl.tif`` per scene. Returns a dict with
-    ``pre`` and ``post`` keys, each mapping to ``{item_id, date, nir, swir,
-    scl, clear_share}``. On each side the scene with the largest clear share
-    of the area of interest wins (``bbox``, or the whole raster); a tie goes
-    to the scene nearest the event. Raises ``FileNotFoundError`` if there
-    isn't at least one scene on each side, or if a scene has no SCL layer to
-    mask cloud with.
+    one ``<band>.tif`` per band and ``scl.tif``. A scene is a candidate when it
+    has every band in ``bands`` and an SCL layer. Returns a dict with ``pre``
+    and ``post`` keys, each mapping to ``{item_id, date, scl, clear_share}``
+    plus one path per band (``None`` for a missing ``optional`` band). On each
+    side the scene with the largest clear share of the area of interest wins
+    (``bbox``, or the whole raster); a tie goes to the scene nearest the event.
+    Raises ``FileNotFoundError`` if there isn't at least one scene on each
+    side, or if no scene has an SCL layer to mask cloud with.
     """
     s2_root = input_path / "sentinel2"
+    band_list = " + ".join(b.upper() for b in bands)
     candidates: List[Dict[str, Any]] = []
     no_scl: List[str] = []
     if s2_root.is_dir():
         for item_dir in sorted(s2_root.iterdir()):
             if not item_dir.is_dir():
                 continue
-            nir = item_dir / "nir.tif"
-            swir = item_dir / "swir22.tif"
-            scl = item_dir / "scl.tif"
-            if not (nir.exists() and swir.exists()):
+            paths = {b: item_dir / f"{b}.tif" for b in bands}
+            if not all(path.exists() for path in paths.values()):
                 continue
             scene_date = _parse_sentinel2_item_date(item_dir.name)
             if scene_date is None:
                 continue
+            scl = item_dir / "scl.tif"
             if not scl.exists():
                 no_scl.append(item_dir.name)
                 continue
+            for b in optional:
+                path = item_dir / f"{b}.tif"
+                paths[b] = path if path.exists() else None
             candidates.append({
                 "item_id": item_dir.name,
                 "date": scene_date,
-                "nir": nir,
-                "swir": swir,
                 "scl": scl,
+                **paths,
             })
 
     if no_scl and not candidates:
         raise FileNotFoundError(
-            "Real wildfire analysis needs the Sentinel-2 SCL layer to mask "
+            f"Real {hazard} analysis needs the Sentinel-2 SCL layer to mask "
             f"cloud and shadow, but these scenes have none: {no_scl}. "
             "Re-run ingest so scl.tif is downloaded; refusing to count cloud "
             "as ground."
@@ -1006,7 +1012,7 @@ def _find_sentinel2_pre_post_scenes(
 
     if not candidates:
         raise FileNotFoundError(
-            "Real wildfire analysis requires pre/post NIR and SWIR rasters, "
+            f"Real {hazard} analysis requires pre/post {band_list} rasters, "
             f"but none were found in {input_path}. Refusing to fabricate "
             "synthetic data in real mode."
         )
@@ -1028,8 +1034,8 @@ def _find_sentinel2_pre_post_scenes(
 
     if not pre or not post:
         raise FileNotFoundError(
-            "Real wildfire analysis requires both pre-fire and post-fire "
-            f"Sentinel-2 scenes (NIR + SWIR22) under {input_path}/sentinel2/, "
+            f"Real {hazard} analysis requires both pre-event and post-event "
+            f"Sentinel-2 scenes ({band_list}) under {input_path}/sentinel2/, "
             f"but only {len(candidates)} scene(s) were found"
             + (f" relative to event date {event_date.date()}" if event_date else "")
             + ". Refusing to fabricate synthetic data in real mode."
@@ -1174,13 +1180,13 @@ def _load_sentinel2_pre_post(
         pre["nir"], target_shape=target_shape, target_transform=target_transform
     )
     pre_swir = _read_sentinel2_band(
-        pre["swir"], target_shape=target_shape, target_transform=target_transform
+        pre["swir22"], target_shape=target_shape, target_transform=target_transform
     )
     post_nir = _read_sentinel2_band(
         post["nir"], target_shape=target_shape, target_transform=target_transform
     )
     post_swir = _read_sentinel2_band(
-        post["swir"], target_shape=target_shape, target_transform=target_transform
+        post["swir22"], target_shape=target_shape, target_transform=target_transform
     )
     cloud_mask = _scl_cloud_mask(
         _read_sentinel2_band(
@@ -1246,74 +1252,6 @@ def _scl_cloud_mask(scl: np.ndarray) -> np.ndarray:
     return masker.from_scl_band(scl).mask
 
 
-def _find_sentinel2_storm_pre_post_scenes(
-    input_path: Path,
-    event_date: Optional[datetime] = None,
-) -> Dict[str, Dict[str, Any]]:
-    """Discover Sentinel-2 scenes for storm analysis and group as pre/post.
-
-    Storm change detection needs at least a red + NIR pair per scene; blue is
-    used opportunistically for EVI. Scenes are expected under
-    ``<input_path>/sentinel2/<item_id>/`` with ``red.tif``, ``nir.tif`` and
-    (optionally) ``blue.tif``. Returns ``{"pre": {...}, "post": {...}}`` where
-    each side has ``item_id``, ``date``, ``red``, ``nir`` and a possibly-``None``
-    ``blue`` path. Raises ``FileNotFoundError`` if a pre/post pair cannot be
-    formed.
-    """
-    s2_root = input_path / "sentinel2"
-    candidates: List[Dict[str, Any]] = []
-    if s2_root.is_dir():
-        for item_dir in sorted(s2_root.iterdir()):
-            if not item_dir.is_dir():
-                continue
-            red = item_dir / "red.tif"
-            nir = item_dir / "nir.tif"
-            if not (red.exists() and nir.exists()):
-                continue
-            scene_date = _parse_sentinel2_item_date(item_dir.name)
-            if scene_date is None:
-                continue
-            blue = item_dir / "blue.tif"
-            candidates.append({
-                "item_id": item_dir.name,
-                "date": scene_date,
-                "red": red,
-                "nir": nir,
-                "blue": blue if blue.exists() else None,
-            })
-
-    if not candidates:
-        raise FileNotFoundError(
-            "Real storm analysis requires pre/post red + NIR rasters, "
-            f"but none were found in {input_path}. Refusing to fabricate "
-            "synthetic data in real mode."
-        )
-
-    candidates.sort(key=lambda s: s["date"])
-    if event_date is None:
-        midpoint_idx = len(candidates) // 2
-        split_date = candidates[midpoint_idx]["date"]
-        pre = [s for s in candidates if s["date"] < split_date]
-        post = [s for s in candidates if s["date"] >= split_date]
-        if not pre and len(candidates) >= 2:
-            pre = candidates[:1]
-            post = candidates[1:]
-    else:
-        pre = [s for s in candidates if s["date"] < event_date]
-        post = [s for s in candidates if s["date"] >= event_date]
-
-    if not pre or not post:
-        raise FileNotFoundError(
-            "Real storm analysis requires both pre-event and post-event "
-            f"Sentinel-2 scenes (red + NIR) under {input_path}/sentinel2/, "
-            f"but only {len(candidates)} scene(s) were found"
-            + (f" relative to event date {event_date.date()}" if event_date else "")
-            + ". Refusing to fabricate synthetic data in real mode."
-        )
-
-    return {"pre": pre[-1], "post": post[0]}
-
-
 def _load_sentinel2_storm_pre_post(
     input_path: Path,
     event_date: Optional[datetime] = None,
@@ -1332,7 +1270,10 @@ def _load_sentinel2_storm_pre_post(
     from rasterio.warp import transform_bounds
     from rasterio.windows import from_bounds
 
-    scenes = _find_sentinel2_storm_pre_post_scenes(input_path, event_date=event_date)
+    scenes = _find_sentinel2_pre_post_scenes(
+        input_path, event_date=event_date, bbox=bbox,
+        bands=("red", "nir"), optional=("blue",), hazard="storm",
+    )
     pre = scenes["pre"]
     post = scenes["post"]
 
@@ -1406,6 +1347,8 @@ def _load_sentinel2_storm_pre_post(
         extra={
             "pre_item_id": pre["item_id"],
             "post_item_id": post["item_id"],
+            "pre_clear_share": round(pre["clear_share"], 4),
+            "post_clear_share": round(post["clear_share"], 4),
         },
     )
 
