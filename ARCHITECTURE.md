@@ -59,8 +59,11 @@ The one path that runs on real data, `flight run --bbox ... --event ...`:
 
 1. discover: `core.data.discovery.stac_client.discover_data` queries Earth Search STAC.
    On error the run stops; it never writes stand-in item ids.
-2. ingest: downloads COG bands into the work dir. Real mode fails hard on error;
-   `--synthetic` generates arrays instead (`cli/commands/run.py:649`).
+2. ingest: reads each COG band over the box only, by HTTP range requests, into the
+   work dir; a source that cannot be range-read is downloaded whole. Real mode fails
+   hard on error; `--synthetic` generates arrays instead.
+   Both hazards on Sentinel-2 pick each side's scene by clear share of the box in SCL
+   (`_find_sentinel2_pre_post_scenes`).
 3. analyze: picks the per-hazard algorithm (`sar_threshold`, `dnbr`, `wind_damage`),
    reads pre and post Sentinel-2 scenes, runs it, writes rasters and statistics.
 4. validate: `core.quality.sanity` checks on the outputs.

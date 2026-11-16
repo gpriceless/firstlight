@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, List, Dict, Any, Callable, Sequence
 
 import click
 
@@ -219,6 +219,65 @@ def _download_band_file(url: str, output_path: Path) -> None:
             f.write(chunk)
 
 
+# Pixels kept beyond the box on each side, so resampling at the edge of the
+# box still has neighbours.
+_WINDOW_PAD_PX = 2
+
+
+def _read_band_window(url: str, output_path: Path, bbox: Sequence[float]) -> None:
+    """Save only the part of a remote GeoTIFF that covers ``bbox``.
+
+    ``bbox`` is geographic (min_lon, min_lat, max_lon, max_lat). GDAL fetches
+    the header and the tiles under the window with HTTP range requests, so a
+    cloud-optimised GeoTIFF costs the box, not the tile. The file keeps the
+    source CRS, grid and nodata. Raises ``rasterio.errors.RasterioIOError`` if
+    the URL is not a raster GDAL can range-read, and ``ValueError`` if the box
+    misses the raster.
+    """
+    import rasterio
+    from rasterio.warp import transform_bounds
+    from rasterio.windows import Window, WindowError, from_bounds
+
+    env = {
+        "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR",
+        "GDAL_HTTP_MAX_RETRY": "3",
+        "GDAL_HTTP_RETRY_DELAY": "2",
+    }
+    with rasterio.Env(**env), rasterio.open(url) as src:
+        bounds = transform_bounds("EPSG:4326", src.crs, *bbox, densify_pts=21)
+        win = from_bounds(*bounds, transform=src.transform)
+        win = Window(
+            win.col_off - _WINDOW_PAD_PX, win.row_off - _WINDOW_PAD_PX,
+            win.width + 2 * _WINDOW_PAD_PX, win.height + 2 * _WINDOW_PAD_PX,
+        ).round_offsets(op="floor").round_lengths(op="ceil")
+        try:
+            win = win.intersection(Window(0, 0, src.width, src.height))
+        except WindowError:
+            raise ValueError(f"box {list(bbox)} does not overlap {url}")
+        if win.width < 1 or win.height < 1:
+            raise ValueError(f"box {list(bbox)} does not overlap {url}")
+        data = src.read(window=win)
+        profile = src.profile.copy()
+
+    profile.update(
+        driver="GTiff",
+        width=data.shape[2],
+        height=data.shape[1],
+        transform=rasterio.windows.transform(win, src.transform),
+        compress="deflate",
+        tiled=data.shape[1] >= 256 and data.shape[2] >= 256,
+    )
+    if not profile["tiled"]:
+        profile.pop("blockxsize", None)
+        profile.pop("blockysize", None)
+    else:
+        profile.update(blockxsize=256, blockysize=256)
+    part = output_path.with_suffix(".part.tif")
+    with rasterio.open(part, "w", **profile) as dst:
+        dst.write(data)
+    part.replace(output_path)
+
+
 def download_bands(
     band_urls: Dict[str, str],
     output_dir: Path,
@@ -226,6 +285,7 @@ def download_bands(
     parallel_downloads: int = 4,
     max_retries: int = 3,
     progress_callback: Optional[Callable] = None,
+    bbox: Optional[Sequence[float]] = None,
 ) -> Dict[str, BandDownloadResult]:
     """
     Download multiple band files for a single scene.
@@ -237,6 +297,9 @@ def download_bands(
         parallel_downloads: Number of concurrent downloads
         max_retries: Retry attempts per band
         progress_callback: Called with (band_name, status, progress)
+        bbox: Geographic box (min_lon, min_lat, max_lon, max_lat). When given,
+            each band is range-read to the box instead of downloaded whole; a
+            source that cannot be range-read is downloaded whole.
 
     Returns:
         Mapping of band name to download result
@@ -273,7 +336,19 @@ def download_bands(
         for attempt in range(max_retries):
             try:
                 logger.info(f"Downloading band {band_name} (attempt {attempt + 1}/{max_retries})")
-                _download_band_file(url, band_path)
+                if bbox is not None:
+                    from rasterio.errors import RasterioIOError
+
+                    try:
+                        _read_band_window(url, band_path, bbox)
+                    except RasterioIOError as e:
+                        logger.warning(
+                            f"Band {band_name} cannot be range-read ({e}); "
+                            "downloading the whole file"
+                        )
+                        _download_band_file(url, band_path)
+                else:
+                    _download_band_file(url, band_path)
                 elapsed = time.time() - start_time
 
                 if progress_callback:
@@ -294,7 +369,7 @@ def download_bands(
                     retries=attempt,
                 )
             except Exception as e:
-                if attempt < max_retries - 1 and not isinstance(e, NotATiffError):
+                if attempt < max_retries - 1 and not isinstance(e, (NotATiffError, ValueError)):
                     wait_time = 2 ** attempt
                     logger.warning(
                         f"Download failed for band {band_name}: {e}. "
@@ -651,9 +726,12 @@ def process_item(
     target_crs: Optional[str],
     target_resolution: Optional[float],
     skip_validation: bool = False,
+    bbox: Optional[Sequence[float]] = None,
 ) -> bool:
     """
     Process a single data item: download and optionally normalize.
+
+    With ``bbox`` (geographic), bands are read only over the box.
     """
     item_id = item.get("id", "unknown")
     source = item.get("source", "unknown")
@@ -667,7 +745,7 @@ def process_item(
     # Multi-band download path
     if band_urls:
         logger.info(f"Downloading {len(band_urls)} bands for {item_id}")
-        band_results = download_bands(band_urls, item_dir, item_id)
+        band_results = download_bands(band_urls, item_dir, item_id, bbox=bbox)
 
         # Check for failures
         failed_bands = [r for r in band_results.values() if not r.success]
