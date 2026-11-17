@@ -127,7 +127,7 @@ class TestRunCommandFailFast:
                 obj={},
             )
 
-        assert isinstance(result.exit_code, int)
+        assert result.exit_code == 0, result.output
 
 
 class TestRunDiscoverMaxCloudDefault:
