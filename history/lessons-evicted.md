@@ -78,3 +78,16 @@ was a single incident.
 ### 2026-02 Use pytest directly
 - `run_tests.py` collected differently and tripped `jsonschema` import errors. It is
   deleted; `python -m pytest --import-mode=importlib` is the command CI runs.
+
+### A fixed chooser had a twin
+- Wildfire scene choice was fixed to rank by clear share; storm kept its own copy of
+  the old nearest-date pick for a day. Before closing a fix to a picker, grep for its
+  siblings (`_find_*_scenes`) and route them through the fixed one, then delete them.
+- Promoted to `CLAUDE.md` on its second occurrence, below.
+
+### Storm counted cloud as damage
+- Storm took the SCL clear-share chooser from wildfire but not its cloud mask, so cloud
+  dropped NDVI and read as vegetation loss. Max Road: 864.6 ha of damage became
+  295.5 ha once 39.1% of the box was masked, and validate went from a 1.00 pass to a
+  0.87 fail on coverage, because masked confidence had been 0 rather than no data.
+- Second fix made to one hazard's path but not its twin; promoted to `CLAUDE.md`.
