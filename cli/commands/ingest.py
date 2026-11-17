@@ -866,7 +866,10 @@ def normalize_item(
     """
     try:
         # Find input files
-        input_files = list(item_dir.glob("*.tif")) + list(item_dir.glob("*.TIF"))
+        input_files = [
+            f for f in list(item_dir.glob("*.tif")) + list(item_dir.glob("*.TIF"))
+            if not f.name.endswith((".normalising.tif", ".reproj.tif"))
+        ]
 
         if not input_files:
             logger.debug("No raster files to normalize")
@@ -884,9 +887,11 @@ def normalize_item(
             logger.error(error_msg)
             raise RuntimeError(error_msg) from e
 
-        # Perform normalization for each file
+        # Each band is rewritten in place, so a run keeps one file per band
+        # and analysis reads the normalised one. A sidecar copy beside the
+        # source doubled disk and nothing read it.
         for input_file in input_files:
-            output_file = input_file.with_suffix(f".{output_format}")
+            output_file = input_file.with_name(f"{input_file.stem}.normalising.tif")
 
             if output_format == "cog":
                 logger.info(f"Converting {input_file.name} to COG format")
@@ -909,6 +914,7 @@ def normalize_item(
                             reproj_path.unlink()
                 else:
                     converter.convert_file(input_file, output_file, overwrite=True)
+                output_file.replace(input_file)
             else:
                 logger.warning(f"Output format '{output_format}' not fully implemented, skipping conversion")
 
