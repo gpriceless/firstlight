@@ -438,6 +438,12 @@ def run(
                     click.echo(f"    Flood area: {stats['flood_area_ha']:.1f} hectares")
                 if "burned_area_ha" in stats:
                     click.echo(f"    Burned area: {stats['burned_area_ha']:.1f} hectares")
+                if "damage_area_ha" in stats:
+                    click.echo(f"    Damage area: {stats['damage_area_ha']:.1f} hectares")
+                if "cloud_masked_percent" in stats:
+                    click.echo(
+                        f"    Cloud and shadow masked: {stats['cloud_masked_percent']:.1f}% of the box"
+                    )
         else:
             click.echo(f"\n[3/5] Analyze: skipped (already completed)")
 
@@ -1194,17 +1200,7 @@ def _load_sentinel2_pre_post(
     post_swir = _read_sentinel2_band(
         post["swir22"], target_shape=target_shape, target_transform=target_transform
     )
-    cloud_mask = _scl_cloud_mask(
-        _read_sentinel2_band(
-            pre["scl"], target_shape=target_shape,
-            target_transform=target_transform, categorical=True,
-        )
-    ) | _scl_cloud_mask(
-        _read_sentinel2_band(
-            post["scl"], target_shape=target_shape,
-            target_transform=target_transform, categorical=True,
-        )
-    )
+    cloud_mask = _pre_post_cloud_mask(pre, post, target_shape, target_transform)
 
     # Sentinel-2 L2A surface reflectance is uint16 scaled by 10000. Convert to
     # 0..1 reflectance so the dNBR ratio is well-conditioned regardless of the
@@ -1246,6 +1242,22 @@ def _load_sentinel2_pre_post(
     )
 
 
+def _pre_post_cloud_mask(
+    pre: Dict[str, Any], post: Dict[str, Any], target_shape: tuple, target_transform,
+) -> np.ndarray:
+    """True where either scene's SCL says the surface was not seen."""
+    masks = [
+        _scl_cloud_mask(
+            _read_sentinel2_band(
+                scene["scl"], target_shape=target_shape,
+                target_transform=target_transform, categorical=True,
+            )
+        )
+        for scene in (pre, post)
+    ]
+    return masks[0] | masks[1]
+
+
 def _scl_cloud_mask(scl: np.ndarray) -> np.ndarray:
     """True where an SCL class map says the surface was not seen.
 
@@ -1265,9 +1277,12 @@ def _load_sentinel2_storm_pre_post(
 ) -> tuple:
     """Load pre/post red + NIR (+ optional blue) arrays for storm analysis.
 
-    Returns ``(bands, pixel_size_m, grid)`` where ``bands`` is a dict with
-    keys ``red_pre, red_post, nir_pre, nir_post`` (all float32 reflectance)
-    plus ``blue_pre, blue_post`` (each either an array or ``None``). All
+    Returns ``(bands, pixel_size_m, grid, cloud_mask)`` where ``bands`` is a
+    dict with keys ``red_pre, red_post, nir_pre, nir_post`` (all float32
+    reflectance) plus ``blue_pre, blue_post`` (each either an array or
+    ``None``). ``cloud_mask`` is True where either scene's SCL says no data,
+    saturated, cloud, cirrus or cloud shadow: cloud brightens red and drops
+    NDVI, which reads as vegetation loss. All
     arrays share the NIR (10 m) grid; AOI clipping uses ``bbox`` in geographic
     coordinates. ``grid`` is the same georeferencing sidecar used by the
     wildfire path so the export stage can produce proper GeoTIFFs.
@@ -1358,7 +1373,9 @@ def _load_sentinel2_storm_pre_post(
         },
     )
 
-    return bands, target_pixel_size, grid
+    cloud_mask = _pre_post_cloud_mask(pre, post, target_shape, target_transform)
+
+    return bands, target_pixel_size, grid, cloud_mask
 
 
 def _grid_info_from_rasterio(
@@ -1498,6 +1515,7 @@ def _analyze_storm(
     """Run storm damage analysis on real or synthetic data."""
     synthetic_dir = input_path / "synthetic"
     grid: Optional[Dict[str, Any]] = None
+    cloud_mask: Optional[np.ndarray] = None
     algo_class = type(algorithm).__name__
 
     if (synthetic_dir / "pre_optical.npy").exists():
@@ -1524,16 +1542,17 @@ def _analyze_storm(
             )
     else:
         # Real mode: load Sentinel-2 red + NIR (+ optional blue) per scene.
-        bands, pixel_size_m, grid = _load_sentinel2_storm_pre_post(
+        bands, pixel_size_m, grid, cloud_mask = _load_sentinel2_storm_pre_post(
             input_path, event_date=event_date, bbox=bbox,
         )
 
         if algo_class == "StructuralDamageAssessment":
             # Structural damage assesses a single optical band; red is the most
-            # informative for built-up areas under Sentinel-2 10 m bands.
+            # informative for built-up areas under Sentinel-2 10 m bands. It
+            # takes no cloud mask but treats NaN as no data.
             result = algorithm.execute(
-                optical_pre=bands["red_pre"],
-                optical_post=bands["red_post"],
+                optical_pre=np.where(cloud_mask, np.nan, bands["red_pre"]),
+                optical_post=np.where(cloud_mask, np.nan, bands["red_post"]),
                 pixel_size_m=pixel_size_m,
             )
         else:
@@ -1542,6 +1561,7 @@ def _analyze_storm(
                 "nir_pre": bands["nir_pre"],
                 "red_post": bands["red_post"],
                 "nir_post": bands["nir_post"],
+                "cloud_mask": cloud_mask,
                 "pixel_size_m": pixel_size_m,
             }
             if bands["blue_pre"] is not None and bands["blue_post"] is not None:
@@ -1565,9 +1585,22 @@ def _analyze_storm(
     if confidence is None:
         confidence = getattr(result, "confidence_map", None)
 
+    if confidence is not None and cloud_mask is not None:
+        # Unseen is no data, not zero confidence: validate's coverage check
+        # counts NaN, so a box under cloud cannot pass as fully observed.
+        confidence = np.where(cloud_mask, np.nan, np.asarray(confidence, dtype=np.float32))
+
     np.save(output_path / "damage_extent.npy", np.asarray(damage))
     if confidence is not None:
         np.save(output_path / "confidence.npy", np.asarray(confidence))
+
+    statistics = dict(result.statistics)
+    if cloud_mask is not None:
+        statistics["cloud_masked_percent"] = float(100.0 * cloud_mask.mean())
+        logger.info(
+            "Cloud and shadow masked from SCL: %.1f%% of the AOI",
+            statistics["cloud_masked_percent"],
+        )
 
     if grid is not None:
         with open(output_path / "grid.json", "w") as f:
@@ -1575,7 +1608,7 @@ def _analyze_storm(
 
     return {
         "success": True,
-        "statistics": result.statistics,
+        "statistics": statistics,
     }
 
 
