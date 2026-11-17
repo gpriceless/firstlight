@@ -518,19 +518,15 @@ def discover_data(
 
             # Convert to result dictionaries
             for item in items:
-                # Estimate size based on sensor
-                size_estimate = {
-                    "sentinel2": 800_000_000,
-                    "landsat": 300_000_000,
-                }.get(source, 500_000_000)
-
                 results.append({
                     "id": item.id,
                     "source": source,
                     "datetime": item.datetime.isoformat(),
                     "cloud_cover": item.cloud_cover,
                     "resolution_m": 10.0 if source == "sentinel2" else 30.0,
-                    "size_bytes": size_estimate,
+                    # Unknown: Earth Search assets carry no file:size, and
+                    # ingest reads only the part of each band the box needs.
+                    "size_bytes": None,
                     # Backward compatibility: primary band or fallback to visual
                     "url": _get_primary_url(item, source),
                     # NEW: Individual band URLs
