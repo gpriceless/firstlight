@@ -314,9 +314,9 @@ class TestIngestCommand:
             ],
         )
 
-        # May fail if command not fully implemented
-        # Just verify it doesn't crash unexpectedly
-        assert isinstance(result.exit_code, int)
+        # Ingest does not search: an area alone is a usage error.
+        assert result.exit_code == 2, result.output
+        assert "flight discover" in result.output
 
     def test_ingest_resume(self, runner, sample_geojson, temp_dir):
         """Test ingest with resume capability."""
@@ -334,11 +334,12 @@ class TestIngestCommand:
             ],
         )
 
-        # Should handle resume flag
-        assert isinstance(result.exit_code, int)
+        # Ingest does not search: an area alone is a usage error.
+        assert result.exit_code == 2, result.output
+        assert "flight discover" in result.output
 
     def test_ingest_validation(self, runner, sample_geojson, temp_dir):
-        """Test ingest with validation enabled."""
+        """Ingest has no --validate flag; validation is on unless --skip-validation."""
         from cli.main import app
 
         result = runner.invoke(
@@ -352,8 +353,9 @@ class TestIngestCommand:
             ],
         )
 
-        # Should handle validation flag
-        assert isinstance(result.exit_code, int)
+        # Validation is on by default; the flag that exists turns it off.
+        assert result.exit_code == 2, result.output
+        assert "No such option: --validate" in result.output
 
 
 # =============================================================================
@@ -391,7 +393,9 @@ class TestAnalyzeCommand:
             ],
         )
 
-        assert isinstance(result.exit_code, int)
+        assert result.exit_code == 1, result.output
+        assert isinstance(result.exception, FileNotFoundError)
+        assert "No input raster files" in str(result.exception)
 
     def test_analyze_tile_range(self, runner, temp_dir):
         """Test analysis on specific tile range."""
@@ -411,7 +415,9 @@ class TestAnalyzeCommand:
             ],
         )
 
-        assert isinstance(result.exit_code, int)
+        assert result.exit_code == 1, result.output
+        assert isinstance(result.exception, FileNotFoundError)
+        assert "No input raster files" in str(result.exception)
 
     def test_analyze_with_profile(self, runner, temp_dir):
         """Test analysis with execution profile."""
@@ -431,7 +437,9 @@ class TestAnalyzeCommand:
             ],
         )
 
-        assert isinstance(result.exit_code, int)
+        assert result.exit_code == 1, result.output
+        assert isinstance(result.exception, FileNotFoundError)
+        assert "No input raster files" in str(result.exception)
 
 
 # =============================================================================
@@ -509,8 +517,8 @@ class TestStateManagement:
             ["status", "--workdir", str(workdir)],
         )
 
-        # May show "no workflow" or actual status
-        assert isinstance(result.exit_code, int)
+        assert result.exit_code == 1, result.output
+        assert "No workflow state found" in result.output
 
     def test_resume_command(self, runner, temp_dir):
         """Test resume command."""
@@ -524,8 +532,8 @@ class TestStateManagement:
             ["resume", "--workdir", str(workdir)],
         )
 
-        # May show "nothing to resume" or actual resume
-        assert isinstance(result.exit_code, int)
+        assert result.exit_code == 1, result.output
+        assert "No workflow state found" in result.output
 
 
 # =============================================================================
@@ -731,18 +739,30 @@ class TestCLIIntegration:
         """Test simulated full workflow through CLI."""
         from cli.main import app
 
-        # Step 1: Discover
-        result = runner.invoke(
-            app,
-            [
-                "discover",
-                "--area", str(sample_geojson),
-                "--start", "2024-09-15",
-                "--end", "2024-09-20",
-                "--event", "flood",
-                "--format", "json",
-            ],
-        )
+        found = [{
+            "id": "S2A_MSIL2A_20240915",
+            "source": "sentinel2",
+            "datetime": "2024-09-15T15:50:00",
+            "cloud_cover": 5.0,
+            "resolution_m": 10.0,
+            "size_bytes": None,
+            "url": "https://example.invalid/B08.tif",
+            "priority": "primary",
+        }]
+        with patch(
+            "core.data.discovery.stac_client.discover_data", return_value=found
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "discover",
+                    "--area", str(sample_geojson),
+                    "--start", "2024-09-15",
+                    "--end", "2024-09-20",
+                    "--event", "flood",
+                    "--format", "json",
+                ],
+            )
 
-        # Just verify command runs
-        assert isinstance(result.exit_code, int)
+        assert result.exit_code == 0, result.output
+        assert "S2A_MSIL2A_20240915" in result.output

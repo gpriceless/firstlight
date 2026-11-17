@@ -68,3 +68,52 @@ def test_storm_refuses_scenes_without_scl(tmp_path):
         _find_sentinel2_pre_post_scenes(
             root, event_date=datetime(2026, 5, 10), **STORM_BANDS
         )
+
+
+def _cloud_10m() -> "np.ndarray":
+    """Union of not-seen SCL pixels in the chosen pair, read from the files."""
+    import numpy as np
+
+    masks = []
+    for sid in (PRE, POST):
+        with rasterio.open(FIXTURE / sid / "scl.tif") as src:
+            masks.append(np.isin(src.read(1), [0, 1, 3, 8, 9, 10]))
+    union = masks[0] | masks[1]
+    return np.repeat(np.repeat(union, 2, axis=0), 2, axis=1)
+
+
+def test_storm_damage_map_does_not_count_cloud(tmp_path):
+    import numpy as np
+
+    data_dir = _tree(tmp_path / "data")
+    results = tmp_path / "results"
+    results.mkdir()
+
+    out = _analyze_storm(
+        load_algorithm("wind_damage", None), data_dir, results,
+        raster_files=[], npy_files=[], event_date=datetime(2026, 5, 10),
+    )
+
+    damage = np.load(results / "damage_extent.npy")
+    cloud = _cloud_10m()
+    assert not damage[cloud].any()
+    confidence = np.load(results / "confidence.npy")
+    np.testing.assert_array_equal(np.isnan(confidence), cloud)
+    assert out["statistics"]["cloud_masked_percent"] == pytest.approx(57.52)
+    assert out["statistics"]["valid_pixels"] == int((~cloud).sum())
+
+
+def test_without_the_mask_storm_counts_cloud_as_damage(tmp_path):
+    """Positive control: the same pair unmasked calls cloud pixels damaged."""
+    import numpy as np
+
+    from cli.commands.run import _load_sentinel2_storm_pre_post
+
+    bands, px, _grid, _mask = _load_sentinel2_storm_pre_post(
+        _tree(tmp_path), event_date=datetime(2026, 5, 10)
+    )
+    result = load_algorithm("wind_damage", None).execute(
+        red_pre=bands["red_pre"], nir_pre=bands["nir_pre"],
+        red_post=bands["red_post"], nir_post=bands["nir_post"], pixel_size_m=px,
+    )
+    assert result.damage_extent[_cloud_10m()].sum() > 0
