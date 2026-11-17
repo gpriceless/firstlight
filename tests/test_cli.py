@@ -355,7 +355,8 @@ class TestIngestCommand:
 
         # Validation is on by default; the flag that exists turns it off.
         assert result.exit_code == 2, result.output
-        assert "No such option: --validate" in result.output
+        assert "No such option" in result.output
+        assert "--validate" in result.output
 
 
 # =============================================================================
