@@ -134,7 +134,7 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-firstlight}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-firstlight_dev}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB:-first_light}
     volumes:
       - postgres-data:/var/lib/postgresql/data
