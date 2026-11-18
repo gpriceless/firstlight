@@ -41,7 +41,7 @@ services:
       - API_PORT=8000
       - API_WORKERS=4
       - LOG_LEVEL=info
-      - DATABASE_URL=postgresql://firstlight:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/firstlight
+      - DATABASE_URL=postgresql://firstlight:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/firstlight
       - REDIS_URL=redis://redis:6379/0
       - PYTHONPATH=/app
     depends_on:
@@ -95,7 +95,7 @@ services:
     environment:
       POSTGRES_DB: firstlight
       POSTGRES_USER: firstlight
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - pgdata:/var/lib/postgresql/data
