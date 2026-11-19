@@ -16,9 +16,11 @@ Usage:
     pytest -m quality            # Run quality control tests
 """
 
-import pytest
+import os
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -37,10 +39,21 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "intent: Intent resolution tests")
     config.addinivalue_line("markers", "provider: Data provider tests")
     config.addinivalue_line("markers", "quality: Quality control tests")
+    config.addinivalue_line(
+        "markers",
+        "benchmark: a time budget. Skipped locally, where other work on the machine "
+        "fails it; run in CI, or with -m benchmark.",
+    )
 
 
 def pytest_collection_modifyitems(config, items):
     """Auto-apply markers based on test file names and test names."""
+    # A time budget is noise on a shared machine: a red local run should mean
+    # broken code, not a busy box. CI runners set CI.
+    run_benchmarks = bool(os.environ.get("CI")) or "benchmark" in (config.option.markexpr or "")
+    skip_benchmark = pytest.mark.skip(
+        reason="time budget; runs in CI or with -m benchmark"
+    )
     for item in items:
         # Mark based on file name
         if "flood" in item.fspath.basename:
@@ -70,6 +83,9 @@ def pytest_collection_modifyitems(config, items):
         # Mark slow tests
         if "large" in test_name or "stress" in test_name or "performance" in test_name:
             item.add_marker(pytest.mark.slow)
+
+        if item.get_closest_marker("benchmark") and not run_benchmarks:
+            item.add_marker(skip_benchmark)
 
 
 @pytest.fixture

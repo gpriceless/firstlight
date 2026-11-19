@@ -378,6 +378,7 @@ class TestCloudMaskingIntegration:
 class TestPerformanceBenchmarks:
     """Performance benchmark tests to ensure < 5 second target."""
 
+    @pytest.mark.benchmark
     def test_optical_rendering_performance(self):
         """Test optical rendering meets performance target."""
         # Create 1000x1000 scene (approximately 100 km² at 10m resolution)
@@ -400,6 +401,7 @@ class TestPerformanceBenchmarks:
         # Verify result is valid
         assert result.rgb_array.shape == (1000, 1000, 3)
 
+    @pytest.mark.benchmark
     def test_sar_processing_performance(self):
         """Test SAR processing meets performance target."""
         # Create 1000x1000 SAR scene
@@ -420,6 +422,7 @@ class TestPerformanceBenchmarks:
         # Verify result is valid
         assert result.rgb_array.shape == (1000, 1000, 3)
 
+    @pytest.mark.benchmark
     def test_cloud_masking_performance(self):
         """Test cloud masking meets performance target."""
         scl = np.random.randint(0, 12, size=(1000, 1000), dtype=np.uint8)

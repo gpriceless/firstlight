@@ -1635,6 +1635,7 @@ class TestSyntheticDataGenerator:
 class TestPerformanceBaseline:
     """Establish performance baselines for algorithms."""
 
+    @pytest.mark.benchmark
     def test_threshold_sar_performance(self, synthetic_sar_data):
         """Test ThresholdSAR completes in reasonable time."""
         import time
@@ -1649,6 +1650,7 @@ class TestPerformanceBaseline:
         # Should complete quickly for 100x100 image
         assert elapsed < 1.0, f"ThresholdSAR took too long: {elapsed:.2f}s"
 
+    @pytest.mark.benchmark
     def test_larger_image_performance(self):
         """Test performance with larger image."""
         import time
