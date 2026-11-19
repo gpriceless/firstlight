@@ -128,6 +128,61 @@ class TestRunCommandFailFast:
             )
 
         assert result.exit_code == 0, result.output
+        sar = tmp_path / "out" / "data" / "synthetic" / "sar_vv.npy"
+        assert sar.exists(), result.output
+
+    def test_synthetic_ingest_failure_exits_nonzero(self, tmp_path):
+        """A failed ingest stops the run in synthetic mode too."""
+        pytest.importorskip("click")
+        from click.testing import CliRunner
+
+        from cli.commands.run import run as run_cmd
+
+        def fake_discover(**_kwargs):
+            output_path = _kwargs["output_path"]
+            _write_discovery(output_path, count=1)
+            return {"count": 1, "file": str(output_path / "discovery.json")}
+
+        with patch("cli.commands.run.run_discover", side_effect=fake_discover), \
+             patch(
+                 "cli.commands.run._generate_synthetic_ingest_data",
+                 side_effect=ValueError("could not broadcast"),
+             ), \
+             patch("cli.commands.run.run_analyze") as mock_analyze:
+            result = CliRunner().invoke(
+                run_cmd,
+                [
+                    "--bbox", "-80.5,25.5,-80.0,26.0",
+                    "--event", "flood",
+                    "--output", str(tmp_path / "out"),
+                    "--synthetic",
+                ],
+                obj={},
+            )
+
+        assert result.exit_code == 1, result.output
+        mock_analyze.assert_not_called()
+        assert "Pipeline Complete" not in result.output
+
+
+@pytest.mark.parametrize("event", ["flood", "wildfire", "storm"])
+def test_synthetic_ingest_writes_full_size_arrays(tmp_path, event):
+    import numpy as np
+
+    from cli.commands.run import DATA_MODE_SYNTHETIC, run_ingest
+
+    _write_discovery(tmp_path, count=1)
+    run_ingest(
+        discovery_file=tmp_path / "discovery.json",
+        output_path=tmp_path / "data",
+        profile_config={},
+        data_mode=DATA_MODE_SYNTHETIC,
+        event_type=event,
+    )
+    arrays = sorted((tmp_path / "data" / "synthetic").glob("*.npy"))
+    assert len(arrays) >= 2
+    for a in arrays:
+        assert np.load(a).shape == (512, 512), a.name
 
 
 class TestRunDiscoverMaxCloudDefault:
