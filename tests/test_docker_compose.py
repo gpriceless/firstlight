@@ -14,6 +14,7 @@ Usage:
     pytest tests/test_docker_compose.py -v -m "not slow"  # Skip container starts
 """
 
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -24,6 +25,10 @@ import yaml
 
 # Project root
 PROJECT_ROOT = Path(__file__).parent.parent
+
+# The compose files refuse to start without a Postgres password. Checking that
+# they parse needs one to interpolate; this is not a credential.
+CONFIG_ENV = {**os.environ, "POSTGRES_PASSWORD": "compose-config-check"}
 
 
 def docker_compose_available() -> bool:
@@ -334,6 +339,7 @@ class TestComposeConfigValidation:
             capture_output=True,
             text=True,
             timeout=30,
+            env=CONFIG_ENV,
         )
         assert result.returncode == 0, (
             f"docker-compose config failed:\n{result.stderr}"
@@ -352,6 +358,7 @@ class TestComposeConfigValidation:
             capture_output=True,
             text=True,
             timeout=30,
+            env=CONFIG_ENV,
         )
         assert result.returncode == 0, (
             f"docker-compose.dev.yml config failed:\n{result.stderr}"

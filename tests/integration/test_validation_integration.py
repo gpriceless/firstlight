@@ -277,6 +277,7 @@ class TestValidationWithRealPatterns:
 class TestValidationPerformance:
     """Tests for validation performance with various image sizes."""
 
+    @pytest.mark.benchmark
     def test_small_image_performance(self, tmp_path):
         """Test validation of small image is fast."""
         import time

@@ -25,6 +25,13 @@ from core.reporting.imagery.histogram import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _seeded_random():
+    """Fixed draws: the percentile bounds below are tight enough that some
+    unseeded samples fall outside them."""
+    np.random.seed(42)
+
+
 class TestCalculateStretchBounds:
     """Tests for calculate_stretch_bounds function."""
 
@@ -460,6 +467,7 @@ class TestPerformance:
     does not fail them; the budgets are unchanged.
     """
 
+    @pytest.mark.benchmark
     @pytest.mark.slow
     def test_large_array_performance(self):
         """Test performance on 10000x10000 array (AC-6 requirement: <1 second)."""
@@ -480,6 +488,7 @@ class TestPerformance:
         assert stretched.min() >= 0.0
         assert stretched.max() <= 1.0
 
+    @pytest.mark.benchmark
     @pytest.mark.slow
     def test_manual_override_performance(self):
         """Test that manual override doesn't degrade performance."""
@@ -493,6 +502,7 @@ class TestPerformance:
         # Should be even faster since no percentile calculation
         assert elapsed_time < 1.0, f"Manual stretch took {elapsed_time:.2f}s"
 
+    @pytest.mark.benchmark
     def test_masked_array_performance(self):
         """Test performance with masked arrays."""
         np.random.seed(42)
