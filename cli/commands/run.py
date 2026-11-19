@@ -395,12 +395,10 @@ def run(
             ingested_count = ingest_result.get("count", 0)
             total = ingest_result.get("total", ingested_count)
             if data_mode == DATA_MODE_REAL and ingested_count == 0:
-                err = ingest_result.get("error") or (
-                    f"0 of {total} items ingested successfully"
-                )
                 raise RuntimeError(
                     f"Ingest produced 0 items in real mode — aborting before "
-                    f"analyze to avoid fabricated results. Detail: {err}"
+                    f"analyze to avoid fabricated results. Detail: 0 of {total} "
+                    f"items ingested successfully"
                 )
             state.complete_stage("ingest", ingest_result)
             click.echo(f"    Ingested {ingested_count} items")
@@ -633,14 +631,10 @@ def run_ingest(
         return {"count": count, "path": str(output_path)}
 
     except Exception as e:
-        # In real mode, a failure here means we have no data — propagate so the
-        # pipeline aborts before the analyze stage. In synthetic mode, the
-        # legacy behavior of returning an empty result is preserved.
-        if data_mode == DATA_MODE_REAL:
-            logger.error(f"Ingest failed: {e}")
-            raise
-        logger.warning(f"Ingest failed: {e}")
-        return {"count": 0, "path": str(output_path), "error": str(e)}
+        # A failed ingest means there is no data to analyze, in either mode.
+        # Propagate so the run stops and exits nonzero.
+        logger.error(f"Ingest failed: {e}")
+        raise
 
 
 def _generate_synthetic_ingest_data(
@@ -679,8 +673,10 @@ def _generate_synthetic_ingest_data(
         # Generate SAR backscatter data (dB scale: land ~-10dB, water ~-20dB)
         sar_data = np.random.normal(-10, 2.5, (size, size)).astype(np.float32)
         # Add flood patterns
-        sar_data[:, int(size*0.7):] = np.random.normal(-20, 2, (size, int(size*0.3)))
-        sar_data[int(size*0.4):int(size*0.6), int(size*0.2):int(size*0.8)] = np.random.normal(-18, 1.5, (int(size*0.2), int(size*0.6)))
+        river = (slice(None), slice(int(size*0.7), None))
+        sar_data[river] = np.random.normal(-20, 2, sar_data[river].shape)
+        lake = (slice(int(size*0.4), int(size*0.6)), slice(int(size*0.2), int(size*0.8)))
+        sar_data[lake] = np.random.normal(-18, 1.5, sar_data[lake].shape)
         np.save(synthetic_dir / "sar_vv.npy", sar_data)
 
         # Generate optical bands for NDWI
