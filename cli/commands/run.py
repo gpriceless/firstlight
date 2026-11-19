@@ -929,32 +929,19 @@ def _parse_sentinel2_item_date(item_id: str) -> Optional[datetime]:
         return None
 
 
-def _scl_clear_share(scl_path: Path, bbox: Optional[str] = None) -> float:
-    """Share of the area of interest that a scene's SCL layer says was seen.
+def _scl_clear_share(scl, bbox: Optional[str] = None) -> float:
+    """Share of the area of interest that a scene's SCL layers say was seen.
 
-    Reads SCL over ``bbox`` (geographic min_lon,min_lat,max_lon,max_lat) with a
-    boundless window, so any part of the box the scene does not cover counts as
-    no data, not as clear. With no bbox the whole raster is the area.
+    ``scl`` is one SCL path or the paths of every tile of a same-day scene.
+    They are mosaicked over ``bbox`` (geographic min_lon,min_lat,max_lon,max_lat),
+    so any part of the box no tile covers counts as no data, not as clear. With
+    no bbox the first raster's extent is the area.
     """
-    import rasterio
-    from rasterio.warp import transform_bounds
-    from rasterio.windows import from_bounds
-
-    with rasterio.open(scl_path) as src:
-        window = None
-        if bbox:
-            parts = [float(x.strip()) for x in bbox.split(",")]
-            if len(parts) == 4:
-                bounds = transform_bounds("EPSG:4326", src.crs, *parts, densify_pts=21)
-                window = from_bounds(*bounds, transform=src.transform)
-                window = window.round_offsets().round_lengths()
-        if window is None:
-            scl = src.read(1)
-        else:
-            scl = src.read(1, window=window, boundless=True, fill_value=0)
-    if scl.size == 0:
+    paths = [scl] if isinstance(scl, (str, Path)) else list(scl)
+    scl_arr = _read_mosaic(paths, _aoi_grid(paths[0], bbox), categorical=True)
+    if scl_arr.size == 0:
         return 0.0
-    return float((~_scl_cloud_mask(scl)).mean())
+    return float((~_scl_cloud_mask(scl_arr)).mean())
 
 
 def _find_sentinel2_pre_post_scenes(
@@ -970,8 +957,10 @@ def _find_sentinel2_pre_post_scenes(
     The ingest stage writes scenes to ``<input_path>/sentinel2/<item_id>/`` with
     one ``<band>.tif`` per band and ``scl.tif``. A scene is a candidate when it
     has every band in ``bands`` and an SCL layer. Returns a dict with ``pre``
-    and ``post`` keys, each mapping to ``{item_id, date, scl, clear_share}``
-    plus one path per band (``None`` for a missing ``optional`` band). On each
+    and ``post`` keys, each mapping to ``{item_id, date, tiles, scl,
+    clear_share}`` plus one path list per band (``None`` for an ``optional``
+    band some tile lacks). Tiles from the same day are one scene, with every
+    path a list over its tiles, so a box across a tile edge is mosaicked. On each
     side the scene with the largest clear share of the area of interest wins
     (``bbox``, or the whole raster); a tie goes to the scene nearest the event.
     Raises ``FileNotFoundError`` if there isn't at least one scene on each
@@ -1004,6 +993,26 @@ def _find_sentinel2_pre_post_scenes(
                 "scl": scl,
                 **paths,
             })
+
+    # Tiles of one day are one scene: a box across a tile edge is mosaicked.
+    by_date: Dict[datetime, List[Dict[str, Any]]] = {}
+    for tile in candidates:
+        by_date.setdefault(tile["date"], []).append(tile)
+    candidates = [
+        {
+            "item_id": "+".join(t["item_id"] for t in tiles),
+            "date": day,
+            "tiles": [t["item_id"] for t in tiles],
+            "scl": [t["scl"] for t in tiles],
+            **{b: [t[b] for t in tiles] for b in bands},
+            # An optional band is used only if every tile has it.
+            **{
+                b: [t[b] for t in tiles] if all(t[b] for t in tiles) else None
+                for b in optional
+            },
+        }
+        for day, tiles in by_date.items()
+    ]
 
     if no_scl and not candidates:
         raise FileNotFoundError(
@@ -1063,65 +1072,109 @@ def _find_sentinel2_pre_post_scenes(
     return {"pre": pre_choice, "post": post_choice}
 
 
-def _read_sentinel2_band(
-    raster_path: Path,
-    bbox: Optional[str] = None,
-    target_shape: Optional[tuple] = None,
-    target_transform=None,
-    categorical: bool = False,
-) -> np.ndarray:
-    """Read a Sentinel-2 band as a float32 reflectance array.
+def _aoi_grid(reference: Path, bbox: Optional[str] = None) -> Dict[str, Any]:
+    """The analysis grid: ``reference``'s CRS and pixel alignment over ``bbox``.
 
-    Uses ``rasterio`` with a windowed read clipped to ``bbox`` (in geographic
-    coordinates) when provided. If ``target_shape`` and ``target_transform``
-    are provided, the band is resampled (bilinear) onto that grid — used to
-    bring 20 m SWIR22 onto the 10 m NIR grid. ``categorical`` layers such as
-    SCL are resampled by nearest neighbour and returned in their own dtype.
+    The grid covers the whole box even where ``reference`` does not, so other
+    tiles can fill it. With no usable bbox it is ``reference``'s own extent.
     """
     import rasterio
-    from rasterio.warp import transform_bounds, reproject, Resampling
+    from rasterio.warp import transform_bounds
     from rasterio.windows import from_bounds
 
-    with rasterio.open(raster_path) as src:
-        if target_shape is not None and target_transform is not None:
-            # Resample onto the supplied grid (NIR resolution + bbox).
-            dst = np.zeros(
-                target_shape, dtype=src.dtypes[0] if categorical else np.float32
+    with rasterio.open(reference) as src:
+        grid = {
+            "crs": src.crs,
+            "transform": src.transform,
+            "shape": (src.height, src.width),
+            "pixel_size": float(abs(src.transform.a)),
+        }
+        parts = [float(x) for x in bbox.split(",")] if bbox else []
+        if len(parts) == 4:
+            bounds = transform_bounds("EPSG:4326", src.crs, *parts, densify_pts=21)
+            window = from_bounds(*bounds, transform=src.transform)
+            window = window.round_offsets().round_lengths()
+            grid["transform"] = src.window_transform(window)
+            grid["shape"] = (int(window.height), int(window.width))
+        elif bbox:
+            logger.warning(f"Ignoring bbox {bbox!r}: need min_lon,min_lat,max_lon,max_lat")
+    return grid
+
+
+def _analysis_grid(*scenes: Dict[str, Any], bbox: Optional[str] = None) -> Dict[str, Any]:
+    """Grid on the NIR tile holding most of the box, so the fewest pixels are warped."""
+    import rasterio
+
+    def pixels(path: Path) -> int:
+        with rasterio.open(path) as src:
+            return src.width * src.height
+
+    nir = [path for scene in scenes for path in scene["nir"]]
+    return _aoi_grid(max(nir, key=pixels), bbox)
+
+
+def _read_mosaic(
+    paths: List[Path], grid: Dict[str, Any], categorical: bool = False,
+) -> np.ndarray:
+    """Read one band from each tile onto ``grid`` and merge them.
+
+    Reflectance is resampled bilinearly into float32 with NaN where no tile has
+    data (source value 0 is Sentinel-2 no data). Categorical layers such as SCL
+    are resampled by nearest neighbour in their own dtype, 0 where uncovered,
+    which SCL reads as no data. A pixel takes the first tile that has it away
+    from that tile's edge, where bilinear has neighbours on every side; a tile's
+    edge pixels are used only where no other tile covers.
+    """
+    import rasterio
+    from rasterio.warp import reproject, Resampling
+
+    fill = 0 if categorical else np.nan
+    warped = []
+    for path in paths:
+        with rasterio.open(path) as src:
+            tile = np.full(
+                grid["shape"], fill, dtype=src.dtypes[0] if categorical else np.float32
             )
             reproject(
                 source=rasterio.band(src, 1),
-                destination=dst,
+                destination=tile,
                 src_transform=src.transform,
                 src_crs=src.crs,
-                dst_transform=target_transform,
-                dst_crs=src.crs,
+                src_nodata=src.nodata if src.nodata is not None else 0,
+                dst_transform=grid["transform"],
+                dst_crs=grid["crs"],
+                dst_nodata=fill,
                 resampling=Resampling.nearest if categorical else Resampling.bilinear,
             )
-            return dst
+            inner = np.zeros((src.height, src.width), dtype=np.uint8)
+            inner[1:-1, 1:-1] = 1
+            interior = np.zeros(grid["shape"], dtype=np.uint8)
+            reproject(
+                source=inner,
+                destination=interior,
+                src_transform=src.transform,
+                src_crs=src.crs,
+                dst_transform=grid["transform"],
+                dst_crs=grid["crs"],
+                resampling=Resampling.nearest,
+            )
+        warped.append((tile, interior.astype(bool)))
 
-        if bbox:
-            parts = [float(x.strip()) for x in bbox.split(",")]
-            if len(parts) == 4:
-                min_lon, min_lat, max_lon, max_lat = parts
-                try:
-                    raster_bounds = transform_bounds(
-                        "EPSG:4326", src.crs,
-                        min_lon, min_lat, max_lon, max_lat,
-                        densify_pts=21,
-                    )
-                    window = from_bounds(*raster_bounds, transform=src.transform)
-                    window = window.intersection(
-                        rasterio.windows.Window(0, 0, src.width, src.height)
-                    )
-                    data = src.read(1, window=window).astype(np.float32)
-                    return data
-                except Exception as e:
-                    logger.warning(
-                        f"Could not clip {raster_path.name} to bbox ({e}); "
-                        "reading full raster."
-                    )
+    out = np.full(grid["shape"], fill, dtype=warped[0][0].dtype)
+    for edges_too in (False, True):
+        for tile, interior in warped:
+            empty = (out == 0) if categorical else np.isnan(out)
+            take = empty if edges_too else empty & interior
+            out[take] = tile[take]
+    return out
 
-        return src.read(1).astype(np.float32)
+
+def _to_reflectance(arr: np.ndarray) -> np.ndarray:
+    """Sentinel-2 L2A DN to 0..1 reflectance; arrays already in 0..1 pass through."""
+    seen = arr[np.isfinite(arr)]
+    if seen.size and seen.max() > 1.5:
+        return (arr / 10000.0).astype(np.float32)
+    return arr.astype(np.float32)
 
 
 def _load_sentinel2_pre_post(
@@ -1132,92 +1185,45 @@ def _load_sentinel2_pre_post(
     """Load pre/post NIR and SWIR22 arrays from an ingested Sentinel-2 tree.
 
     Returns ``(pre_nir, pre_swir, post_nir, post_swir, pixel_size_m, grid,
-    cloud_mask)``. SWIR22 and SCL are resampled to the NIR grid (typically
-    10 m) so all arrays share the same shape. ``cloud_mask`` is True where
-    either scene's SCL says no data, saturated, cloud, cirrus or cloud shadow. AOI clipping uses ``bbox`` (geographic
-    min_lon,min_lat,...). ``grid`` is a serializable dict capturing the output
-    CRS + affine transform so the export stage can produce properly
-    georeferenced products.
+    cloud_mask)``. Every band is mosaicked over the box from all tiles of its
+    day onto one NIR grid (see ``_analysis_grid``), so SWIR22 and SCL share the
+    NIR shape. ``cloud_mask`` is True where either scene's SCL says no data,
+    saturated, cloud, cirrus or cloud shadow, which includes any part of the
+    box no tile covers. ``grid`` is a serializable dict of the output CRS and
+    affine transform so the export stage can produce georeferenced products.
     """
-    import rasterio
-    from rasterio.warp import transform_bounds
-    from rasterio.windows import from_bounds
-
     scenes = _find_sentinel2_pre_post_scenes(
         input_path, event_date=event_date, bbox=bbox
     )
     pre = scenes["pre"]
     post = scenes["post"]
+    aoi = _analysis_grid(pre, post, bbox=bbox)
 
-    # Establish the target grid using the pre-fire NIR raster (10 m for S2).
-    with rasterio.open(pre["nir"]) as nir_src:
-        target_crs = nir_src.crs
-        target_pixel_size = float(abs(nir_src.transform.a))
-        if bbox:
-            parts = [float(x.strip()) for x in bbox.split(",")]
-            if len(parts) == 4:
-                try:
-                    raster_bounds = transform_bounds(
-                        "EPSG:4326", target_crs,
-                        parts[0], parts[1], parts[2], parts[3],
-                        densify_pts=21,
-                    )
-                    window = from_bounds(*raster_bounds, transform=nir_src.transform)
-                    window = window.intersection(
-                        rasterio.windows.Window(0, 0, nir_src.width, nir_src.height)
-                    )
-                    target_transform = nir_src.window_transform(window)
-                    target_height = int(window.height)
-                    target_width = int(window.width)
-                except Exception as e:
-                    logger.warning(
-                        f"Could not derive AOI window from bbox ({e}); using full tile."
-                    )
-                    target_transform = nir_src.transform
-                    target_height, target_width = nir_src.height, nir_src.width
-            else:
-                target_transform = nir_src.transform
-                target_height, target_width = nir_src.height, nir_src.width
-        else:
-            target_transform = nir_src.transform
-            target_height, target_width = nir_src.height, nir_src.width
+    def _read(paths: List[Path]) -> np.ndarray:
+        return _to_reflectance(_read_mosaic(paths, aoi))
 
-    target_shape = (target_height, target_width)
-
-    pre_nir = _read_sentinel2_band(
-        pre["nir"], target_shape=target_shape, target_transform=target_transform
-    )
-    pre_swir = _read_sentinel2_band(
-        pre["swir22"], target_shape=target_shape, target_transform=target_transform
-    )
-    post_nir = _read_sentinel2_band(
-        post["nir"], target_shape=target_shape, target_transform=target_transform
-    )
-    post_swir = _read_sentinel2_band(
-        post["swir22"], target_shape=target_shape, target_transform=target_transform
-    )
-    cloud_mask = _pre_post_cloud_mask(pre, post, target_shape, target_transform)
-
-    # Sentinel-2 L2A surface reflectance is uint16 scaled by 10000. Convert to
-    # 0..1 reflectance so the dNBR ratio is well-conditioned regardless of the
-    # source dtype.
-    def _to_reflectance(arr: np.ndarray) -> np.ndarray:
-        if arr.size and np.nanmax(arr) > 1.5:
-            return (arr / 10000.0).astype(np.float32)
-        return arr.astype(np.float32)
+    pre_nir, pre_swir = _read(pre["nir"]), _read(pre["swir22"])
+    post_nir, post_swir = _read(post["nir"]), _read(post["swir22"])
+    cloud_mask = _pre_post_cloud_mask(pre, post, aoi)
 
     logger.info(
         "Wildfire real-mode loader: pre=%s (%s) post=%s (%s) shape=%s pixel=%sm",
         pre["item_id"], pre["date"].date(),
         post["item_id"], post["date"].date(),
-        target_shape, target_pixel_size,
+        aoi["shape"], aoi["pixel_size"],
+    )
+    return (
+        pre_nir, pre_swir, post_nir, post_swir,
+        aoi["pixel_size"], _scene_grid_info(aoi, pre, post), cloud_mask,
     )
 
-    grid = _grid_info_from_rasterio(
-        crs=target_crs,
-        transform=target_transform,
-        shape=target_shape,
-        pixel_size_m=target_pixel_size,
+
+def _scene_grid_info(aoi: Dict[str, Any], pre: Dict[str, Any], post: Dict[str, Any]):
+    return _grid_info_from_rasterio(
+        crs=aoi["crs"],
+        transform=aoi["transform"],
+        shape=aoi["shape"],
+        pixel_size_m=aoi["pixel_size"],
         source="sentinel2",
         extra={
             "pre_item_id": pre["item_id"],
@@ -1227,28 +1233,13 @@ def _load_sentinel2_pre_post(
         },
     )
 
-    return (
-        _to_reflectance(pre_nir),
-        _to_reflectance(pre_swir),
-        _to_reflectance(post_nir),
-        _to_reflectance(post_swir),
-        target_pixel_size,
-        grid,
-        cloud_mask,
-    )
-
 
 def _pre_post_cloud_mask(
-    pre: Dict[str, Any], post: Dict[str, Any], target_shape: tuple, target_transform,
+    pre: Dict[str, Any], post: Dict[str, Any], aoi: Dict[str, Any],
 ) -> np.ndarray:
     """True where either scene's SCL says the surface was not seen."""
     masks = [
-        _scl_cloud_mask(
-            _read_sentinel2_band(
-                scene["scl"], target_shape=target_shape,
-                target_transform=target_transform, categorical=True,
-            )
-        )
+        _scl_cloud_mask(_read_mosaic(scene["scl"], aoi, categorical=True))
         for scene in (pre, post)
     ]
     return masks[0] | masks[1]
@@ -1278,100 +1269,39 @@ def _load_sentinel2_storm_pre_post(
     reflectance) plus ``blue_pre, blue_post`` (each either an array or
     ``None``). ``cloud_mask`` is True where either scene's SCL says no data,
     saturated, cloud, cirrus or cloud shadow: cloud brightens red and drops
-    NDVI, which reads as vegetation loss. All
-    arrays share the NIR (10 m) grid; AOI clipping uses ``bbox`` in geographic
-    coordinates. ``grid`` is the same georeferencing sidecar used by the
-    wildfire path so the export stage can produce proper GeoTIFFs.
+    NDVI, which reads as vegetation loss. Every band is mosaicked over the box
+    from all tiles of its day onto one NIR grid, as for wildfire.
     """
-    import rasterio
-    from rasterio.warp import transform_bounds
-    from rasterio.windows import from_bounds
-
     scenes = _find_sentinel2_pre_post_scenes(
         input_path, event_date=event_date, bbox=bbox,
         bands=("red", "nir"), optional=("blue",), hazard="storm",
     )
     pre = scenes["pre"]
     post = scenes["post"]
+    aoi = _analysis_grid(pre, post, bbox=bbox)
 
-    with rasterio.open(pre["nir"]) as nir_src:
-        target_crs = nir_src.crs
-        target_pixel_size = float(abs(nir_src.transform.a))
-        if bbox:
-            parts = [float(x.strip()) for x in bbox.split(",")]
-            if len(parts) == 4:
-                try:
-                    raster_bounds = transform_bounds(
-                        "EPSG:4326", target_crs,
-                        parts[0], parts[1], parts[2], parts[3],
-                        densify_pts=21,
-                    )
-                    window = from_bounds(*raster_bounds, transform=nir_src.transform)
-                    window = window.intersection(
-                        rasterio.windows.Window(0, 0, nir_src.width, nir_src.height)
-                    )
-                    target_transform = nir_src.window_transform(window)
-                    target_height = int(window.height)
-                    target_width = int(window.width)
-                except Exception as e:
-                    logger.warning(
-                        f"Could not derive AOI window from bbox ({e}); using full tile."
-                    )
-                    target_transform = nir_src.transform
-                    target_height, target_width = nir_src.height, nir_src.width
-            else:
-                target_transform = nir_src.transform
-                target_height, target_width = nir_src.height, nir_src.width
-        else:
-            target_transform = nir_src.transform
-            target_height, target_width = nir_src.height, nir_src.width
-
-    target_shape = (target_height, target_width)
-
-    def _read(path: Path) -> np.ndarray:
-        return _read_sentinel2_band(
-            path, target_shape=target_shape, target_transform=target_transform,
-        )
-
-    def _to_reflectance(arr: np.ndarray) -> np.ndarray:
-        if arr.size and np.nanmax(arr) > 1.5:
-            return (arr / 10000.0).astype(np.float32)
-        return arr.astype(np.float32)
+    def _read(paths: Optional[List[Path]]) -> Optional[np.ndarray]:
+        return _to_reflectance(_read_mosaic(paths, aoi)) if paths else None
 
     bands: Dict[str, Optional[np.ndarray]] = {
-        "red_pre": _to_reflectance(_read(pre["red"])),
-        "red_post": _to_reflectance(_read(post["red"])),
-        "nir_pre": _to_reflectance(_read(pre["nir"])),
-        "nir_post": _to_reflectance(_read(post["nir"])),
-        "blue_pre": _to_reflectance(_read(pre["blue"])) if pre["blue"] else None,
-        "blue_post": _to_reflectance(_read(post["blue"])) if post["blue"] else None,
+        "red_pre": _read(pre["red"]),
+        "red_post": _read(post["red"]),
+        "nir_pre": _read(pre["nir"]),
+        "nir_post": _read(post["nir"]),
+        "blue_pre": _read(pre["blue"]),
+        "blue_post": _read(post["blue"]),
     }
 
     logger.info(
         "Storm real-mode loader: pre=%s (%s) post=%s (%s) shape=%s pixel=%sm blue=%s",
         pre["item_id"], pre["date"].date(),
         post["item_id"], post["date"].date(),
-        target_shape, target_pixel_size,
+        aoi["shape"], aoi["pixel_size"],
         bool(bands["blue_pre"] is not None and bands["blue_post"] is not None),
     )
 
-    grid = _grid_info_from_rasterio(
-        crs=target_crs,
-        transform=target_transform,
-        shape=target_shape,
-        pixel_size_m=target_pixel_size,
-        source="sentinel2",
-        extra={
-            "pre_item_id": pre["item_id"],
-            "post_item_id": post["item_id"],
-            "pre_clear_share": round(pre["clear_share"], 4),
-            "post_clear_share": round(post["clear_share"], 4),
-        },
-    )
-
-    cloud_mask = _pre_post_cloud_mask(pre, post, target_shape, target_transform)
-
-    return bands, target_pixel_size, grid, cloud_mask
+    cloud_mask = _pre_post_cloud_mask(pre, post, aoi)
+    return bands, aoi["pixel_size"], _scene_grid_info(aoi, pre, post), cloud_mask
 
 
 def _grid_info_from_rasterio(

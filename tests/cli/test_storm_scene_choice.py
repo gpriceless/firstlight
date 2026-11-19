@@ -39,7 +39,7 @@ def test_storm_skips_the_clouded_scene_nearest_the_event(tmp_path):
     assert scenes["pre"]["item_id"] == PRE
     assert scenes["post"]["item_id"] == POST
     assert scenes["post"]["clear_share"] == pytest.approx(1 - 0.318)
-    assert scenes["post"]["red"].name == "red.tif"
+    assert scenes["post"]["red"][0].name == "red.tif"
     assert scenes["post"]["blue"] is None
 
 
