@@ -132,3 +132,21 @@ def test_part_of_the_box_no_tile_covers_is_masked(tmp_path):
     east = np.isnan(bands["nir_post"])
     assert east.any()
     assert cloud[east].all()
+
+
+def test_part_of_the_box_with_no_pre_scene_is_said_in_words(tmp_path):
+    from cli.commands.run import _no_data_lines, _no_data_statistics
+
+    root = _split_tree(tmp_path)
+    shutil.rmtree(root / "sentinel2" / PRE.replace("17RNJ", "17RNK"))
+
+    _, _, grid, _ = _load_sentinel2_storm_pre_post(
+        root, event_date=EVENT, bbox=_box_inside_block()
+    )
+
+    stats = _no_data_statistics(grid)
+    assert stats["post_no_data_percent"] == 0
+    assert 20 < stats["pre_no_data_percent"] < 50
+    [line] = _no_data_lines(stats, "storm")
+    assert line.startswith(f"No pre-storm data over {stats['pre_no_data_percent']:.1f}% of the box")
+    assert "2026-05-09" in line

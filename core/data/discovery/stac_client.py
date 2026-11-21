@@ -194,7 +194,7 @@ class STACClient:
         bbox: List[float],
         start_date: str,
         end_date: str,
-        max_cloud_cover: float = 20.0,
+        max_cloud_cover: Optional[float] = 20.0,
         max_items: int = 50,
     ) -> List[STACItem]:
         """
@@ -460,6 +460,33 @@ def _get_primary_url(item: STACItem, source: str) -> str:
     return ""
 
 
+def _with_same_day_tiles(
+    client: "STACClient", items: List[STACItem], bbox: List[float]
+) -> List[STACItem]:
+    """Add every Sentinel-2 tile over the box from each day already kept.
+
+    Cloud cover is a whole-tile figure, so the filter can keep one tile of a
+    day and drop its neighbour even when the box is clear in both. Analysis
+    mosaics a day's tiles into one scene and ranks scenes by the clear share
+    of the box itself, so a day is taken whole or not at all.
+    """
+    seen = {item.id for item in items}
+    extra: List[STACItem] = []
+    for day in sorted({item.datetime.date().isoformat() for item in items}):
+        for item in client.search_sentinel2(
+            bbox=bbox, start_date=day, end_date=day, max_cloud_cover=None
+        ):
+            if item.id not in seen and item.datetime.date().isoformat() == day:
+                seen.add(item.id)
+                extra.append(item)
+    if extra:
+        logger.info(
+            "Added %d same-day Sentinel-2 tile(s) over the cloud limit: %s",
+            len(extra), [item.id for item in extra],
+        )
+    return items + extra
+
+
 def discover_data(
     bbox: List[float],
     start_date: str,
@@ -506,6 +533,7 @@ def discover_data(
                     end_date=end_date,
                     max_cloud_cover=max_cloud_cover,
                 )
+                items = _with_same_day_tiles(client, items, bbox)
             elif source == "landsat":
                 items = client.search_landsat(
                     bbox=bbox,
