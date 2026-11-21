@@ -33,3 +33,38 @@ def test_sentinel2_item_size_is_unknown_not_guessed():
 
     assert len(results) == 1
     assert results[0]["size_bytes"] is None
+
+
+def _tile(tile: str, day: int, cloud: float) -> STACItem:
+    return STACItem(
+        id=f"S2B_{tile}_202209{day:02d}_0_L2A",
+        collection="sentinel-2-l2a",
+        datetime=datetime(2022, 9, day, 16, 15),
+        bbox=[], geometry={}, cloud_cover=cloud,
+        assets={"nir": "https://example.invalid/B08.tif"}, properties={},
+    )
+
+
+def test_a_kept_day_brings_its_tiles_over_the_cloud_limit():
+    # Fort Myers, 25 Sep 2022: Earth Search holds 17RLK at 29.8% cloud and
+    # 17RMK at 36.8%. A 30% limit kept one tile of the day and lost the box's
+    # east part. 17RMK on 27 Sep (100%) is on a day with no kept tile.
+    kept = [_tile("17RLK", 25, 29.8)]
+    by_day = {"2022-09-25": [_tile("17RLK", 25, 29.8), _tile("17RMK", 25, 36.8)]}
+
+    def search(bbox, start_date, end_date, max_cloud_cover, **_):
+        if max_cloud_cover is None:
+            return by_day.get(start_date, [])
+        return kept
+
+    with patch.object(stac_client, "STACClient") as client_cls:
+        client_cls.return_value.search_sentinel2.side_effect = search
+        results = discover_data(
+            bbox=[-82.2, 26.3, -81.7, 26.8],
+            start_date="2022-09-15", end_date="2022-10-12", event_type="storm",
+            max_cloud_cover=30,
+        )
+
+    assert sorted(r["id"] for r in results) == [
+        "S2B_17RLK_20220925_0_L2A", "S2B_17RMK_20220925_0_L2A",
+    ]

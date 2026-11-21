@@ -175,6 +175,7 @@ class TestResumePicksCorrectPrePostScenesByEventDate:
         # clear, the pick falls back to the scenes nearest the event; clear
         # share ranking on real SCL is tested in test_wildfire_cloud_mask.py.
         monkeypatch.setattr(run_mod, "_scl_clear_share", lambda path, bbox=None: 1.0)
+        monkeypatch.setattr(run_mod, "_scl_no_data_share", lambda path, bbox=None: 0.0)
 
         # Recreate the Max Road Miramar scene set: Apr 04, Apr 21, May 11.
         for item_id in (

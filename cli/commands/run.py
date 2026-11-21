@@ -442,6 +442,8 @@ def run(
                     click.echo(
                         f"    Cloud and shadow masked: {stats['cloud_masked_percent']:.1f}% of the box"
                     )
+                for line in _no_data_lines(stats, event_type):
+                    click.echo(f"    {line}")
         else:
             click.echo(f"\n[3/5] Analyze: skipped (already completed)")
 
@@ -937,11 +939,27 @@ def _scl_clear_share(scl, bbox: Optional[str] = None) -> float:
     so any part of the box no tile covers counts as no data, not as clear. With
     no bbox the first raster's extent is the area.
     """
-    paths = [scl] if isinstance(scl, (str, Path)) else list(scl)
-    scl_arr = _read_mosaic(paths, _aoi_grid(paths[0], bbox), categorical=True)
+    scl_arr = _scl_over_box(scl, bbox)
     if scl_arr.size == 0:
         return 0.0
     return float((~_scl_cloud_mask(scl_arr)).mean())
+
+
+def _scl_no_data_share(scl, bbox: Optional[str] = None) -> float:
+    """Share of the area of interest where a scene has no pixels at all.
+
+    SCL class 0 is no data, and the mosaic writes 0 where no tile of the day
+    covers the box, so this is the part of the box the scene never saw.
+    """
+    scl_arr = _scl_over_box(scl, bbox)
+    if scl_arr.size == 0:
+        return 1.0
+    return float((scl_arr == 0).mean())
+
+
+def _scl_over_box(scl, bbox: Optional[str] = None) -> np.ndarray:
+    paths = [scl] if isinstance(scl, (str, Path)) else list(scl)
+    return _read_mosaic(paths, _aoi_grid(paths[0], bbox), categorical=True)
 
 
 def _find_sentinel2_pre_post_scenes(
@@ -1069,6 +1087,14 @@ def _find_sentinel2_pre_post_scenes(
         )
     pre_choice = max(enumerate(pre), key=lambda e: (e[1]["clear_share"], e[0]))[1]
     post_choice = max(enumerate(post), key=lambda e: (e[1]["clear_share"], -e[0]))[1]
+    for side, scene in (("pre", pre_choice), ("post", post_choice)):
+        scene["no_data_share"] = _scl_no_data_share(scene["scl"], bbox)
+        if round(100 * scene["no_data_share"], 1) > 0:
+            logger.warning(
+                "The %s-event scene %s (%s) has no data over %.1f%% of the area",
+                side, scene["item_id"], scene["date"].date(),
+                100 * scene["no_data_share"],
+            )
     return {"pre": pre_choice, "post": post_choice}
 
 
@@ -1230,6 +1256,10 @@ def _scene_grid_info(aoi: Dict[str, Any], pre: Dict[str, Any], post: Dict[str, A
             "post_item_id": post["item_id"],
             "pre_clear_share": round(pre["clear_share"], 4),
             "post_clear_share": round(post["clear_share"], 4),
+            "pre_date": pre["date"].date().isoformat(),
+            "post_date": post["date"].date().isoformat(),
+            "pre_no_data_share": round(pre["no_data_share"], 4),
+            "post_no_data_share": round(post["no_data_share"], 4),
         },
     )
 
@@ -1243,6 +1273,32 @@ def _pre_post_cloud_mask(
         for scene in (pre, post)
     ]
     return masks[0] | masks[1]
+
+
+def _no_data_statistics(grid: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Per side, the scene date and the share of the box it has no pixels for."""
+    stats: Dict[str, Any] = {}
+    for side in ("pre", "post"):
+        share = (grid or {}).get(f"{side}_no_data_share")
+        if share is not None:
+            stats[f"{side}_date"] = grid[f"{side}_date"]
+            stats[f"{side}_no_data_percent"] = round(100.0 * share, 1)
+    return stats
+
+
+def _no_data_lines(stats: Dict[str, Any], event_type: str) -> List[str]:
+    """Plain sentences naming the part of the box a side has no scene for."""
+    noun = {"wildfire": "fire"}.get(event_type.lower(), event_type.lower())
+    lines = []
+    for side in ("pre", "post"):
+        percent = stats.get(f"{side}_no_data_percent")
+        if percent:
+            lines.append(
+                f"No {side}-{noun} data over {percent:.1f}% of the box: the "
+                f"{stats[f'{side}_date']} scene has no pixels there, so that "
+                "part is masked, not measured."
+            )
+    return lines
 
 
 def _scl_cloud_mask(scl: np.ndarray) -> np.ndarray:
@@ -1409,6 +1465,7 @@ def _analyze_wildfire(
             "Cloud and shadow masked from SCL: %.1f%% of the AOI",
             statistics["cloud_masked_percent"],
         )
+    statistics.update(_no_data_statistics(grid))
 
     # Save outputs
     np.save(output_path / "dnbr.npy", result.dnbr_map)
@@ -1527,6 +1584,7 @@ def _analyze_storm(
             "Cloud and shadow masked from SCL: %.1f%% of the AOI",
             statistics["cloud_masked_percent"],
         )
+    statistics.update(_no_data_statistics(grid))
 
     if grid is not None:
         with open(output_path / "grid.json", "w") as f:
