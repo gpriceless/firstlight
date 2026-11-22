@@ -487,6 +487,36 @@ def _with_same_day_tiles(
     return items + extra
 
 
+class DiscoveryResults(list):
+    """Discovery results that also say what happened to each source.
+
+    ``sources`` maps a source name to ``{"status", "count", "error"}``, where
+    status is ``"found"``, ``"empty"`` (the search answered with nothing) or
+    ``"failed"`` (the search raised, so the source was never really asked).
+    """
+
+    def __init__(self, items=(), sources: Optional[Dict[str, Dict[str, Any]]] = None):
+        super().__init__(items)
+        self.sources: Dict[str, Dict[str, Any]] = dict(sources or {})
+
+
+def describe_sources(sources: Dict[str, Dict[str, Any]]) -> List[str]:
+    """Plain sentences about each source, failed ones first."""
+    lines = []
+    for name, info in sources.items():
+        if info.get("status") == "failed":
+            lines.append(
+                f"{name} was not searched: the search failed ({info.get('error')}). "
+                f"Nothing from {name} is in this result."
+            )
+    for name, info in sources.items():
+        if info.get("status") == "empty":
+            lines.append(f"{name} was searched and has no scenes for this box and window.")
+        elif info.get("status") == "found":
+            lines.append(f"{name} was searched and returned {info.get('count')} scene(s).")
+    return lines
+
+
 def discover_data(
     bbox: List[float],
     start_date: str,
@@ -509,10 +539,17 @@ def discover_data(
         catalog: STAC catalog to use
 
     Returns:
-        List of discovery results as dictionaries
+        DiscoveryResults: the result dictionaries, with ``sources`` saying
+        which sources answered, which answered with nothing and which failed.
+
+    Raises:
+        The first source's error when every source failed, so a caller can
+        retry or stop rather than read an empty list as "no scenes".
     """
     client = STACClient(catalog=catalog)
     results = []
+    report: Dict[str, Dict[str, Any]] = {}
+    errors: List[Exception] = []
 
     # Event-specific data sources
     event_sources = {
@@ -545,8 +582,9 @@ def discover_data(
                 continue
 
             # Convert to result dictionaries
+            found = []
             for item in items:
-                results.append({
+                found.append({
                     "id": item.id,
                     "source": source,
                     "datetime": item.datetime.isoformat(),
@@ -567,12 +605,23 @@ def discover_data(
                     "bbox": item.bbox,
                     "assets": item.assets,
                 })
+            results.extend(found)
+            report[source] = {
+                "status": "found" if found else "empty",
+                "count": len(found),
+                "error": None,
+            }
 
         except Exception as e:
             logger.warning(f"Error searching {source}: {e}")
+            report[source] = {"status": "failed", "count": 0, "error": str(e)}
+            errors.append(e)
             continue
+
+    if errors and len(errors) == len(report):
+        raise errors[0]
 
     # Sort by date
     results.sort(key=lambda x: x.get("datetime", ""))
 
-    return results
+    return DiscoveryResults(results, sources=report)

@@ -307,6 +307,7 @@ def discover(
 
     # Summary
     click.echo(f"\nFound {len(results)} datasets")
+    echo_source_report(results)
     if output_path:
         click.echo(f"Results saved to: {output_path}")
 
@@ -353,6 +354,7 @@ def perform_discovery(
     )
 
     logger.info(f"Found {len(results)} datasets via STAC")
+    source_report = dict(getattr(results, "sources", {}) or {})
 
     # Filter by source if specified
     if sources:
@@ -366,7 +368,17 @@ def perform_discovery(
 
     results.sort(key=sort_key)
 
-    return results
+    from core.data.discovery.stac_client import DiscoveryResults
+
+    return DiscoveryResults(results, sources=source_report)
+
+
+def echo_source_report(results) -> None:
+    """Say in words which sources answered, which had nothing and which failed."""
+    from core.data.discovery.stac_client import describe_sources
+
+    for line in describe_sources(getattr(results, "sources", {}) or {}):
+        click.echo(f"    {line}")
 
 
 def _discover_with_retry(
