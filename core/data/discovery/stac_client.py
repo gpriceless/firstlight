@@ -5,7 +5,7 @@ This module provides a straightforward interface to STAC catalogs,
 bypassing the complex DataBroker architecture for direct data access.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
 import logging
@@ -31,6 +31,8 @@ class STACItem:
     cloud_cover: Optional[float]
     assets: Dict[str, str]  # asset_key -> URL
     properties: Dict[str, Any]
+    # asset_key -> (scale, offset) from the asset's own raster:bands
+    asset_scaling: Dict[str, Tuple[float, float]] = field(default_factory=dict)
 
     @classmethod
     def from_pystac(cls, item) -> "STACItem":
@@ -52,10 +54,16 @@ class STACItem:
         # Element84's Landsat C2L2 collection only sets s3:// as the primary
         # href (`requests`/`httpx` cannot speak s3://).
         assets = {}
+        asset_scaling = {}
         for key, asset in item.assets.items():
             href = _pick_downloadable_href(asset)
             if href:
                 assets[key] = href
+            bands = (getattr(asset, "extra_fields", None) or {}).get("raster:bands") or []
+            if len(bands) == 1 and "scale" in bands[0]:
+                asset_scaling[key] = (
+                    float(bands[0]["scale"]), float(bands[0].get("offset", 0.0))
+                )
 
         return cls(
             id=item.id,
@@ -66,6 +74,7 @@ class STACItem:
             cloud_cover=cloud_cover,
             assets=assets,
             properties=dict(item.properties),
+            asset_scaling=asset_scaling,
         )
 
 
@@ -425,6 +434,27 @@ def _extract_band_urls(item: STACItem, source: str) -> Dict[str, str]:
     return band_urls
 
 
+def _reflectance_scaling(item: STACItem, source: str) -> Optional[Dict[str, float]]:
+    """Scale and offset that turn the item's band values into reflectance.
+
+    Read from the band assets' own ``raster:bands``. Earth Search Sentinel-2
+    L2A declares offset -0.1 but sets ``earthsearch:boa_offset_applied``: the
+    pixels already have it removed, so DN * scale is reflectance and the
+    offset is not applied again. None when the bands disagree or say nothing.
+    """
+    scalings = {
+        item.asset_scaling[key]
+        for key in get_band_config(source).values()
+        if key in item.asset_scaling
+    }
+    if len(scalings) != 1:
+        return None
+    scale, offset = scalings.pop()
+    if item.properties.get("earthsearch:boa_offset_applied"):
+        offset = 0.0
+    return {"scale": scale, "offset": offset}
+
+
 def _get_missing_bands(item: STACItem, source: str) -> List[str]:
     """Get list of expected bands that are missing from the item."""
     band_config = get_band_config(source)
@@ -601,6 +631,7 @@ def discover_data(
                     "visualization_url": item.assets.get("visual", ""),
                     # NEW: Expected but missing bands
                     "missing_bands": _get_missing_bands(item, source),
+                    "reflectance_scaling": _reflectance_scaling(item, source),
                     "priority": "primary" if source == "sentinel2" else "secondary",
                     "bbox": item.bbox,
                     "assets": item.assets,

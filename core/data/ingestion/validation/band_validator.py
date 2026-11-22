@@ -83,6 +83,7 @@ class BandValidator:
         dataset: Any,
         expected_bands: Dict[str, List[str]],
         required_bands: Optional[List[str]] = None,
+        reflectance_scaling: Optional[Dict[str, float]] = None,
     ) -> Dict[str, BandValidationResult]:
         """
         Validate all bands in the dataset.
@@ -91,6 +92,8 @@ class BandValidator:
             dataset: Open rasterio dataset
             expected_bands: Mapping of generic band names to possible sensor band names
             required_bands: List of required band names (generic)
+            reflectance_scaling: ``{"scale", "offset"}`` from the item's own
+                metadata; when given, the range check is made in reflectance
 
         Returns:
             Dictionary mapping band names to validation results
@@ -126,12 +129,14 @@ class BandValidator:
         # Validate bands (optionally in parallel)
         if self.config.performance.parallel_bands and len(bands_to_validate) > 1:
             results.update(
-                self._validate_bands_parallel(dataset, bands_to_validate)
+                self._validate_bands_parallel(
+                    dataset, bands_to_validate, reflectance_scaling
+                )
             )
         else:
             for generic_name, band_index, is_required in bands_to_validate:
                 result = self._validate_single_band(
-                    dataset, generic_name, band_index, is_required
+                    dataset, generic_name, band_index, is_required, reflectance_scaling
                 )
                 results[generic_name] = result
 
@@ -219,6 +224,7 @@ class BandValidator:
         band_name: str,
         band_index: int,
         is_required: bool,
+        reflectance_scaling: Optional[Dict[str, float]] = None,
     ) -> BandValidationResult:
         """
         Validate a single band.
@@ -265,7 +271,10 @@ class BandValidator:
                 )
 
             # Check value range
-            self._check_value_range(band_name, stats, dataset.dtypes[band_index - 1], result)
+            self._check_value_range(
+                band_name, stats, dataset.dtypes[band_index - 1], result,
+                reflectance_scaling,
+            )
 
         except Exception as e:
             result.is_valid = False
@@ -442,32 +451,54 @@ class BandValidator:
         stats: BandStatistics,
         dtype: str,
         result: BandValidationResult,
+        reflectance_scaling: Optional[Dict[str, float]] = None,
     ) -> None:
-        """Check if values are within expected range."""
-        dtype_str = str(dtype).lower()
+        """Check the band's mean is in range, in reflectance when the item says how.
 
-        if "uint16" in dtype_str or "int16" in dtype_str:
-            expected_range = self.config.optical.value_range_uint16
-        elif "float" in dtype_str:
+        The mean, not the maximum: a clear Sentinel-2 L2A scene has single
+        pixels above reflectance 1 (glints, roofs) and cloud tops reach about
+        1.7, so a maximum check warned on real data. A wrong unit or scale
+        moves the whole band, and the mean with it.
+
+        With ``reflectance_scaling`` the values become reflectance
+        (DN * scale + offset) and are held to the float range. Without it the
+        range for the band's dtype applies to the raw values.
+        """
+        if np.isnan(stats.mean):
+            return
+
+        dtype_str = str(dtype).lower()
+        if reflectance_scaling:
+            value = stats.mean * reflectance_scaling["scale"] + reflectance_scaling["offset"]
             expected_range = self.config.optical.value_range_float32
+            unit = "reflectance"
+        elif "uint16" in dtype_str or "int16" in dtype_str:
+            value = stats.mean
+            expected_range = self.config.optical.value_range_uint16
+            unit = "value"
+        elif "float" in dtype_str:
+            value = stats.mean
+            expected_range = self.config.optical.value_range_float32
+            unit = "value"
         else:
             return  # Unknown dtype, skip range check
 
-        # Check if min/max are within range
-        if not np.isnan(stats.min_val) and not np.isnan(stats.max_val):
-            if stats.min_val < expected_range[0]:
-                result.warnings.append(
-                    f"Band '{band_name}' has values below expected range (min={stats.min_val})"
-                )
-            if stats.max_val > expected_range[1]:
-                result.warnings.append(
-                    f"Band '{band_name}' has values above expected range (max={stats.max_val})"
-                )
+        if value < expected_range[0]:
+            result.warnings.append(
+                f"Band '{band_name}' has mean {unit} {value:.4g} below expected range "
+                f"{expected_range[0]} to {expected_range[1]}: wrong unit or scale?"
+            )
+        elif value > expected_range[1]:
+            result.warnings.append(
+                f"Band '{band_name}' has mean {unit} {value:.4g} above expected range "
+                f"{expected_range[0]} to {expected_range[1]}: wrong unit or scale?"
+            )
 
     def _validate_bands_parallel(
         self,
         dataset: Any,
         bands_to_validate: List[Tuple[str, int, bool]],
+        reflectance_scaling: Optional[Dict[str, float]] = None,
     ) -> Dict[str, BandValidationResult]:
         """Validate multiple bands in parallel."""
         results = {}
@@ -480,7 +511,7 @@ class BandValidator:
 
         for generic_name, band_index, is_required in bands_to_validate:
             result = self._validate_single_band(
-                dataset, generic_name, band_index, is_required
+                dataset, generic_name, band_index, is_required, reflectance_scaling
             )
             results[generic_name] = result
 
@@ -490,6 +521,7 @@ class BandValidator:
         self,
         dataset: Any,
         band_index: int,
+        reflectance_scaling: Optional[Dict[str, float]] = None,
     ) -> BandValidationResult:
         """
         Validate content of a specific band.
@@ -499,6 +531,7 @@ class BandValidator:
         Args:
             dataset: Open rasterio dataset
             band_index: 1-indexed band number
+            reflectance_scaling: ``{"scale", "offset"}`` for the range check
 
         Returns:
             BandValidationResult
@@ -508,4 +541,5 @@ class BandValidator:
             band_name=f"band_{band_index}",
             band_index=band_index,
             is_required=True,
+            reflectance_scaling=reflectance_scaling,
         )
