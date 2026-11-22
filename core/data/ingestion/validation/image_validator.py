@@ -561,6 +561,7 @@ class ImageValidator:
             dataset=dataset,
             expected_bands=expected_bands,
             required_bands=self.config.required_optical_bands,
+            reflectance_scaling=(data_source_spec or {}).get("reflectance_scaling"),
         )
 
         for band_name, band_result in band_results.items():

@@ -22,8 +22,8 @@ class OpticalThresholds:
         std_dev_min: Minimum standard deviation (bands below this are flagged as blank)
         non_zero_ratio_min: Minimum ratio of non-zero pixels (0.0 to 1.0)
         nodata_ratio_max: Maximum ratio of NoData pixels (0.0 to 1.0)
-        value_range_uint16: Valid value range for UInt16 data
-        value_range_float32: Valid value range for Float32 data
+        value_range_uint16: Valid range for the mean of a UInt16 band with no declared scale
+        value_range_float32: Valid range for the mean of a Float32 band, and for reflectance
         resolution_tolerance: Tolerance for resolution matching (as fraction, e.g., 0.1 = 10%)
     """
 

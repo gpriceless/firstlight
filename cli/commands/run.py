@@ -377,6 +377,10 @@ def run(
             )
             state.complete_stage("discover", discover_result)
             click.echo(f"    Found {discover_result.get('count', 0)} datasets")
+            from core.data.discovery.stac_client import describe_sources
+
+            for line in describe_sources(discover_result.get("sources") or {}):
+                click.echo(f"    {line}")
         else:
             click.echo(f"\n[1/5] Discover: skipped (already completed)")
 
@@ -489,6 +493,7 @@ def run(
         click.echo(f"{'=' * 60}")
         click.echo(f"\n  Elapsed time: {elapsed:.1f}s")
         click.echo(f"  Output directory: {output_path}")
+        _echo_failed_sources(output_path / "discovery.json")
         click.echo(f"\n  Products:")
         products_dir = output_path / "products"
         if products_dir.exists():
@@ -522,6 +527,19 @@ def parse_date(date_str: str) -> datetime:
     raise click.BadParameter(f"Cannot parse date: {date_str}")
 
 
+def _echo_failed_sources(discovery_file: Path) -> None:
+    """Repeat, at the end of a run, any source whose search failed."""
+    from core.data.discovery.stac_client import describe_sources
+
+    try:
+        sources = json.loads(discovery_file.read_text()).get("sources") or {}
+    except (OSError, ValueError):
+        return
+    failed = {k: v for k, v in sources.items() if v.get("status") == "failed"}
+    for line in describe_sources(failed):
+        click.echo(f"  Warning: {line}")
+
+
 def run_discover(
     area_path: Optional[Path],
     bbox: Optional[str],
@@ -544,12 +562,15 @@ def run_discover(
         max_cloud=max_cloud,
         config={},
     )
+    sources = dict(getattr(results, "sources", {}) or {})
 
     discovery_file = output_path / "discovery.json"
     with open(discovery_file, "w") as f:
-        json.dump({"count": len(results), "results": results}, f, indent=2)
+        json.dump(
+            {"count": len(results), "sources": sources, "results": results}, f, indent=2
+        )
 
-    return {"count": len(results), "file": str(discovery_file)}
+    return {"count": len(results), "file": str(discovery_file), "sources": sources}
 
 
 def run_ingest(

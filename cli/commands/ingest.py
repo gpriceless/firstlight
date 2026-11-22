@@ -694,7 +694,10 @@ def _validate_downloaded_image(download_path: Path, item: Dict[str, Any]) -> boo
         # Build data source spec from item metadata
         data_source_spec = None
         if "source" in item:
-            data_source_spec = {"sensor": item["source"]}
+            data_source_spec = {
+                "sensor": item["source"],
+                "reflectance_scaling": item.get("reflectance_scaling"),
+            }
 
         result = validator.validate(
             raster_path=download_path,
