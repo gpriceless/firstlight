@@ -1,7 +1,7 @@
 # Image Validation Configuration
 # ================================
 # This file configures production image validation for the FirstLight platform.
-# See docs/PRODUCTION_IMAGE_VALIDATION_REQUIREMENTS.md for full specification.
+# The checks run in core/data/ingestion/validation/ (band_validator.py, sar_validator.py).
 
 validation:
   # Master switch - set to false to disable all validation
@@ -24,9 +24,16 @@ validation:
       - red_edge
 
     # Validation thresholds
+    #
+    # A band is judged in the unit its metadata declares. When the item gives
+    # a scale (Sentinel-2 L2A raster:bands), values become reflectance first.
+    # A float band with no scale is taken as reflectance already. Only an
+    # integer band with no scale is judged in raw digital numbers (DN).
     thresholds:
-      # Minimum standard deviation for band to be considered non-blank
-      std_dev_min: 1.0
+      # Blank check: a band whose standard deviation is below the floor for
+      # its unit fails validation.
+      std_dev_min: 1.0                 # DN, integer band with no scale
+      std_dev_min_reflectance: 0.0001  # reflectance; one Sentinel-2 L2A step
 
       # Minimum ratio of non-zero pixels (0.0-1.0)
       non_zero_ratio_min: 0.05
@@ -34,9 +41,11 @@ validation:
       # Maximum NoData ratio (warning only if exceeded)
       nodata_ratio_max: 0.95
 
-      # Valid value ranges by data type
-      value_range_uint16: [0, 10000]
-      value_range_float32: [0.0, 1.0]
+      # Range check on the band MEAN, not on each pixel: cloud tops and glints
+      # put single pixels above reflectance 1 on clear scenes, while a wrong
+      # unit or scale moves the whole band. Outside the range is a warning.
+      value_range_uint16: [0, 10000]   # mean DN, integer band with no scale
+      value_range_float32: [0.0, 1.0]  # mean reflectance, scaled or float band
 
       # Resolution tolerance for expected vs actual resolution (0.1 = 10%)
       resolution_tolerance: 0.1
