@@ -19,7 +19,10 @@ class OpticalThresholds:
     Thresholds for optical imagery validation.
 
     Attributes:
-        std_dev_min: Minimum standard deviation (bands below this are flagged as blank)
+        std_dev_min: Minimum standard deviation of an integer band with no declared
+            scale, in digital numbers (below it the band is flagged as blank)
+        std_dev_min_reflectance: The same floor in reflectance, for a band with a
+            declared scale or a float band (0.0001 is one Sentinel-2 L2A step)
         non_zero_ratio_min: Minimum ratio of non-zero pixels (0.0 to 1.0)
         nodata_ratio_max: Maximum ratio of NoData pixels (0.0 to 1.0)
         value_range_uint16: Valid range for the mean of a UInt16 band with no declared scale
@@ -28,6 +31,7 @@ class OpticalThresholds:
     """
 
     std_dev_min: float = 1.0
+    std_dev_min_reflectance: float = 0.0001
     non_zero_ratio_min: float = 0.05
     nodata_ratio_max: float = 0.95
     value_range_uint16: tuple = (0, 10000)
@@ -323,6 +327,7 @@ class ValidationConfig:
                 "optional_bands": self.optional_optical_bands,
                 "thresholds": {
                     "std_dev_min": self.optical.std_dev_min,
+                    "std_dev_min_reflectance": self.optical.std_dev_min_reflectance,
                     "non_zero_ratio_min": self.optical.non_zero_ratio_min,
                     "nodata_ratio_max": self.optical.nodata_ratio_max,
                     "value_range_uint16": list(self.optical.value_range_uint16),

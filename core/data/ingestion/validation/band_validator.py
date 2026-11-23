@@ -251,11 +251,10 @@ class BandValidator:
             result.statistics = stats
 
             # Check if band is blank
-            if stats.std_dev < self.config.optical.std_dev_min:
-                result.is_valid = False
-                result.errors.append(
-                    f"Band '{band_name}' appears blank (std_dev={stats.std_dev:.4f} < {self.config.optical.std_dev_min})"
-                )
+            self._check_blank(
+                band_name, stats, dataset.dtypes[band_index - 1], result,
+                reflectance_scaling,
+            )
 
             # Check non-zero ratio
             if stats.non_zero_ratio < self.config.optical.non_zero_ratio_min:
@@ -444,6 +443,46 @@ class BandValidator:
             valid_pixel_count=valid_count,
             total_pixel_count=total_pixels,
         )
+
+    def _check_blank(
+        self,
+        band_name: str,
+        stats: BandStatistics,
+        dtype: str,
+        result: BandValidationResult,
+        reflectance_scaling: Optional[Dict[str, float]] = None,
+    ) -> None:
+        """Flag a band as blank when its spread is below the floor for its unit.
+
+        A band with a declared scale is judged in reflectance (std * scale). A
+        float band with no declared scale is taken as reflectance already, the
+        same reading the range check makes. Only an integer band with no scale
+        is judged in digital numbers. A real float reflectance band has a
+        standard deviation of a few hundredths, so a digital-number floor of 1
+        called every one of them blank.
+        """
+        if np.isnan(stats.std_dev):
+            return
+
+        if reflectance_scaling:
+            spread = stats.std_dev * abs(reflectance_scaling["scale"])
+            floor = self.config.optical.std_dev_min_reflectance
+            unit = "reflectance"
+        elif "float" in str(dtype).lower():
+            spread = stats.std_dev
+            floor = self.config.optical.std_dev_min_reflectance
+            unit = "reflectance"
+        else:
+            spread = stats.std_dev
+            floor = self.config.optical.std_dev_min
+            unit = "DN"
+
+        if spread < floor:
+            result.is_valid = False
+            result.errors.append(
+                f"Band '{band_name}' appears blank "
+                f"(std_dev={spread:.4g} {unit} < {floor:g})"
+            )
 
     def _check_value_range(
         self,
