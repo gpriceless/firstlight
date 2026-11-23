@@ -78,3 +78,14 @@ def test_integer_band_with_no_scale_is_judged_in_dn(tmp_path):
 
     assert len(blank) == 1
     assert "DN" in blank[0]
+
+
+def test_shipped_config_loads_both_blank_floors():
+    # load_config skips a file that fails to parse, so a bad key would
+    # quietly fall back to the defaults.
+    config = ValidationConfig.from_yaml(
+        str(Path(__file__).parent.parent / "config" / "ingestion.yaml")
+    )
+
+    assert config.optical.std_dev_min == 1.0
+    assert config.optical.std_dev_min_reflectance == 0.0001
