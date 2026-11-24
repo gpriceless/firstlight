@@ -92,6 +92,7 @@ from core.data.ingestion.validation.config import (
     SARThresholds,
     ScreenshotConfig,
     ValidationConfig,
+    ValidationConfigError,
     load_config,
 )
 from core.data.ingestion.validation.image_validator import (
@@ -151,6 +152,7 @@ __all__ = [
     "ValidationTimeoutError",
     # Config
     "ValidationConfig",
+    "ValidationConfigError",
     "OpticalThresholds",
     "SARThresholds",
     "ScreenshotConfig",
