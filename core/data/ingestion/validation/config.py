@@ -5,12 +5,23 @@ Provides dataclasses and utilities for configuring the image validation
 pipeline, including thresholds, screenshot settings, and behavior options.
 """
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
+
+logger = logging.getLogger(__name__)
+
+# The shipped thresholds, found from this file so they load wherever the
+# process starts (config.py -> validation -> ingestion -> data -> core -> repo).
+SHIPPED_CONFIG_PATH = Path(__file__).resolve().parents[4] / "config" / "ingestion.yaml"
+
+
+class ValidationConfigError(ValueError):
+    """A validation config file is present but cannot be read or parsed."""
 
 
 @dataclass
@@ -375,13 +386,13 @@ def load_config(
     use_environment: bool = True,
 ) -> ValidationConfig:
     """
-    Load validation configuration with fallbacks.
+    Load validation configuration.
 
-    Attempts to load configuration in order:
-    1. From specified YAML path (if provided)
-    2. From default config paths
-    3. From environment variables
-    4. Fall back to defaults
+    The first file found wins: the explicit ``yaml_path``, then
+    ``~/.firstlight/config/ingestion.yaml``, then ``/etc/firstlight/ingestion.yaml``,
+    then the shipped ``config/ingestion.yaml`` beside the package. Built-in
+    defaults apply only when none of them exists. Environment overrides go
+    on top.
 
     Args:
         yaml_path: Optional explicit path to YAML config
@@ -389,33 +400,42 @@ def load_config(
 
     Returns:
         ValidationConfig instance
+
+    Raises:
+        FileNotFoundError: ``yaml_path`` was given and does not exist.
+        ValidationConfigError: a config file exists but cannot be read or
+            parsed. The run stops rather than fall back to defaults.
     """
-    config = None
-
-    # Try explicit path first
     if yaml_path:
-        try:
-            config = ValidationConfig.from_yaml(yaml_path)
-        except FileNotFoundError:
-            pass
-
-    # Try default paths
-    if config is None:
-        default_paths = [
-            Path("config/ingestion.yaml"),
+        path = Path(yaml_path).expanduser()
+        if not path.exists():
+            raise FileNotFoundError(f"Validation config not found: {path}")
+        candidates = [path]
+    else:
+        candidates = [
             Path("~/.firstlight/config/ingestion.yaml").expanduser(),
             Path("/etc/firstlight/ingestion.yaml"),
+            SHIPPED_CONFIG_PATH,
         ]
-        for path in default_paths:
-            if path.exists():
-                try:
-                    config = ValidationConfig.from_yaml(str(path))
-                    break
-                except Exception:
-                    continue
 
-    # Use defaults if no config found
+    config = None
+    for path in candidates:
+        if not path.exists():
+            continue
+        try:
+            config = ValidationConfig.from_yaml(str(path))
+        except Exception as e:
+            raise ValidationConfigError(
+                f"Validation config {path} could not be loaded: {e}"
+            ) from e
+        logger.info(f"Validation config loaded from {path}")
+        break
+
     if config is None:
+        logger.warning(
+            "No validation config file found (looked in "
+            f"{', '.join(str(p) for p in candidates)}); using built-in defaults"
+        )
         config = ValidationConfig()
 
     # Apply environment overrides

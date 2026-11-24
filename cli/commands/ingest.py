@@ -20,6 +20,7 @@ from typing import Optional, List, Dict, Any, Callable, Sequence
 import click
 
 from core.data.ingestion.streaming import StreamingIngester
+from core.data.ingestion.validation.config import ValidationConfigError
 from core.data.ingestion.validation.image_validator import ImageValidator
 
 logger = logging.getLogger("flight.ingest")
@@ -715,6 +716,9 @@ def _validate_downloaded_image(download_path: Path, item: Dict[str, Any]) -> boo
         logger.info(f"Image validation passed for {download_path.name}")
         return True
 
+    except ValidationConfigError:
+        # A broken config file is not a bad image: stop the run.
+        raise
     except Exception as e:
         logger.warning(f"Image validation failed with exception: {e}")
         # Allow processing to continue if validation module has issues
