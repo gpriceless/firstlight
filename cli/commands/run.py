@@ -595,6 +595,14 @@ def run_ingest(
             # Real mode: Use the actual ingest logic to download satellite data
             # Fail hard if ingest fails - never silently fall back to synthetic
             from cli.commands.ingest import process_item
+            from core.data.ingestion.validation.config import (
+                ValidationConfigError,
+                load_config,
+            )
+
+            # Read the validation config before any download, so a broken
+            # file stops the run at no cost.
+            load_config()
 
             box = None
             if bbox:
@@ -618,6 +626,8 @@ def run_ingest(
                         ingested += 1
                     else:
                         failed.append(item.get('id', 'unknown'))
+                except ValidationConfigError:
+                    raise
                 except Exception as e:
                     logger.error(f"Failed to ingest {item.get('id')}: {e}")
                     failed.append(item.get('id', 'unknown'))

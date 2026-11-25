@@ -20,7 +20,7 @@ from typing import Optional, List, Dict, Any, Callable, Sequence
 import click
 
 from core.data.ingestion.streaming import StreamingIngester
-from core.data.ingestion.validation.config import ValidationConfigError
+from core.data.ingestion.validation.config import ValidationConfigError, load_config
 from core.data.ingestion.validation.image_validator import ImageValidator
 
 logger = logging.getLogger("flight.ingest")
@@ -554,6 +554,14 @@ def ingest(
         if resolution:
             click.echo(f"    Target resolution: {resolution}m")
 
+    # Read the validation config before any download, so a broken file
+    # costs nothing.
+    if not skip_validation:
+        try:
+            load_config()
+        except (ValidationConfigError, FileNotFoundError) as e:
+            raise click.ClickException(str(e)) from e
+
     # Check for resume point
     if resume:
         resume_id = tracker.get_resume_point()
@@ -601,6 +609,10 @@ def ingest(
             click.echo("\n\nInterrupted. Use --resume to continue later.")
             tracker.save_state()
             sys.exit(130)
+
+        except ValidationConfigError as e:
+            tracker.save_state()
+            raise click.ClickException(str(e)) from e
 
         except Exception as e:
             tracker.mark_failed(item_id, str(e))
