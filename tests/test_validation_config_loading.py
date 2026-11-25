@@ -67,3 +67,45 @@ def test_ingest_validation_does_not_swallow_config_error(tmp_path, monkeypatch, 
 
     with pytest.raises(ValidationConfigError, match=str(broken)):
         ingest._validate_downloaded_image(tmp_path / "scene.tif", {"id": "x"})
+
+
+def test_broken_config_stops_run_ingest_before_any_download(tmp_path, monkeypatch, no_user_config):
+    import json
+
+    from cli.commands import ingest, run
+
+    broken = tmp_path / "ingestion.yaml"
+    broken.write_text("validation: [\n")
+    monkeypatch.setattr(config_module, "SHIPPED_CONFIG_PATH", broken)
+    downloads = []
+    monkeypatch.setattr(ingest, "process_item", lambda **kw: downloads.append(kw) or True)
+    discovery = tmp_path / "discovery.json"
+    discovery.write_text(json.dumps({"results": [{"id": "a"}, {"id": "b"}]}))
+
+    with pytest.raises(ValidationConfigError, match=str(broken)):
+        run.run_ingest(discovery, tmp_path / "data", {}, data_mode=run.DATA_MODE_REAL)
+    assert downloads == []
+
+
+def test_broken_config_stops_ingest_command_before_any_download(tmp_path, monkeypatch, no_user_config):
+    import json
+
+    from click.testing import CliRunner
+
+    from cli.commands import ingest
+
+    broken = tmp_path / "ingestion.yaml"
+    broken.write_text("validation: [\n")
+    monkeypatch.setattr(config_module, "SHIPPED_CONFIG_PATH", broken)
+    downloads = []
+    monkeypatch.setattr(ingest, "process_item", lambda **kw: downloads.append(kw) or True)
+    discovery = tmp_path / "discovery.json"
+    discovery.write_text(json.dumps({"results": [{"id": "a", "source": "sentinel2"}]}))
+
+    result = CliRunner().invoke(
+        ingest.ingest, ["--input", str(discovery), "--output", str(tmp_path / "data")]
+    )
+
+    assert result.exit_code == 1
+    assert str(broken) in result.output
+    assert downloads == []
