@@ -341,9 +341,11 @@ class ImageValidator:
             is_valid=True,
         )
 
+        step = "file load"
         try:
             # VRT-specific pre-validation
             if raster_path.suffix.lower() == '.vrt':
+                step = "VRT source check"
                 sources_valid, missing = self._validate_vrt_sources(raster_path)
                 if not sources_valid:
                     result.is_valid = False
@@ -353,6 +355,7 @@ class ImageValidator:
                     return result
 
             # Step 1: Load and validate file can be opened
+            step = "file load"
             dataset, metadata = self._load_and_extract_metadata(raster_path, result)
             result.metadata = metadata
 
@@ -361,6 +364,7 @@ class ImageValidator:
                 return result
 
             # Step 2: Validate metadata (CRS, bounds)
+            step = "metadata check"
             self._validate_metadata(metadata, expected_bounds, result)
 
             # Step 3: Determine if SAR or optical
@@ -368,11 +372,14 @@ class ImageValidator:
 
             # Step 4: Validate bands
             if is_sar:
+                step = "SAR band check"
                 self._validate_sar_bands(dataset, data_source_spec, result)
             else:
+                step = "optical band check"
                 self._validate_optical_bands(dataset, data_source_spec, result)
 
             # Step 5: Generate screenshot if enabled
+            step = "screenshot"
             if self.config.screenshots.enabled:
                 if not self.config.screenshots.on_failure_only or not result.is_valid:
                     self._capture_screenshot(raster_path, result)
@@ -391,8 +398,9 @@ class ImageValidator:
 
         except Exception as e:
             result.is_valid = False
-            result.errors.append(f"Unexpected error: {str(e)}")
-            logger.exception(f"Unexpected validation error for {raster_path}")
+            # A check that crashed did not pass: fail the image and say which.
+            result.errors.append(f"{step} crashed: {type(e).__name__}: {e}")
+            logger.exception(f"Validation {step} crashed for {raster_path}")
 
         finally:
             result.validation_duration_seconds = time.time() - start_time
