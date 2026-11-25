@@ -720,9 +720,13 @@ def _validate_downloaded_image(download_path: Path, item: Dict[str, Any]) -> boo
         # A broken config file is not a bad image: stop the run.
         raise
     except Exception as e:
-        logger.warning(f"Image validation failed with exception: {e}")
-        # Allow processing to continue if validation module has issues
-        return True
+        # A check that crashed did not pass. Fail the scene, as a scene that
+        # fails its checks is failed, and name the validator.
+        logger.error(
+            f"ImageValidator crashed on {download_path.name}: "
+            f"{type(e).__name__}: {e}"
+        )
+        return False
 
 
 def process_item(
