@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 # The shipped thresholds, found from this file so they load wherever the
 # process starts (config.py -> validation -> ingestion -> data -> core -> repo).
 SHIPPED_CONFIG_PATH = Path(__file__).resolve().parents[4] / "config" / "ingestion.yaml"
+USER_CONFIG_PATH = "~/.firstlight/config/ingestion.yaml"
+SYSTEM_CONFIG_PATH = Path("/etc/firstlight/ingestion.yaml")
 
 
 class ValidationConfigError(ValueError):
@@ -394,6 +396,11 @@ def load_config(
     defaults apply only when none of them exists. Environment overrides go
     on top.
 
+    Files are not merged: the winning file is the whole config, and a key
+    it leaves out takes the built-in default, not the shipped value. So a
+    user file that sets one threshold should start as a copy of the shipped
+    one.
+
     Args:
         yaml_path: Optional explicit path to YAML config
         use_environment: Whether to apply environment variable overrides
@@ -413,8 +420,8 @@ def load_config(
         candidates = [path]
     else:
         candidates = [
-            Path("~/.firstlight/config/ingestion.yaml").expanduser(),
-            Path("/etc/firstlight/ingestion.yaml"),
+            Path(USER_CONFIG_PATH).expanduser(),
+            SYSTEM_CONFIG_PATH,
             SHIPPED_CONFIG_PATH,
         ]
 
