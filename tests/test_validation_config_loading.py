@@ -109,3 +109,34 @@ def test_broken_config_stops_ingest_command_before_any_download(tmp_path, monkey
     assert result.exit_code == 1
     assert str(broken) in result.output
     assert downloads == []
+
+
+def _config_with_std_dev_min(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(REPO_CONFIG.read_text().replace("std_dev_min: 1.0", f"std_dev_min: {value}"))
+    return path
+
+
+def test_override_order_user_then_system_then_shipped(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    user = _config_with_std_dev_min(home / ".firstlight/config/ingestion.yaml", 3.0)
+    system = _config_with_std_dev_min(tmp_path / "etc/ingestion.yaml", 2.0)
+    shipped = _config_with_std_dev_min(tmp_path / "shipped/ingestion.yaml", 1.5)
+    monkeypatch.setattr(config_module, "SYSTEM_CONFIG_PATH", system)
+    monkeypatch.setattr(config_module, "SHIPPED_CONFIG_PATH", shipped)
+
+    assert load_config(use_environment=False).optical.std_dev_min == 3.0
+    user.unlink()
+    assert load_config(use_environment=False).optical.std_dev_min == 2.0
+    system.unlink()
+    assert load_config(use_environment=False).optical.std_dev_min == 1.5
+
+
+def test_explicit_path_beats_every_file(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    _config_with_std_dev_min(home / ".firstlight/config/ingestion.yaml", 3.0)
+    explicit = _config_with_std_dev_min(tmp_path / "mine.yaml", 9.0)
+
+    assert load_config(str(explicit), use_environment=False).optical.std_dev_min == 9.0
