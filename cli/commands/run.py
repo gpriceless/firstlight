@@ -59,6 +59,14 @@ PROFILES = {
 }
 
 
+# The run options that decide which scenes are found and how they are read.
+# A completed stage is reused only when all of them match.
+RUN_INPUT_KEYS = (
+    "area_path", "bbox", "analyze_bbox", "max_cloud", "start_date", "end_date",
+    "event_type", "algorithm", "data_mode",
+)
+
+
 class WorkflowState:
     """Manage workflow state for resume capability."""
 
@@ -342,7 +350,7 @@ def run(
 
     # Initialize workflow state
     state = WorkflowState(output_path)
-    state.state["config"] = {
+    new_config = {
         "area_path": str(area_path) if area_path else None,
         "bbox": bbox,
         "analyze_bbox": analyze_bbox,
@@ -356,6 +364,20 @@ def run(
         "data_mode": data_mode,
         "skip_validate": skip_validate,
     }
+    # Completed stages are skipped, so a directory holding a run with other
+    # inputs would hand that run's scenes to this one. Refuse instead.
+    old_config = state.state.get("config") or {}
+    if state.state.get("completed_stages"):
+        changed = sorted(
+            key for key in RUN_INPUT_KEYS if old_config.get(key) != new_config.get(key)
+        )
+        if changed:
+            raise click.UsageError(
+                f"{output_path} holds a run with different inputs ({', '.join(changed)}). "
+                "Resuming would reuse its scenes for this run. Use a new --output, "
+                f"or remove {state.state_file} to start over."
+            )
+    state.state["config"] = new_config
     state.save()
 
     # Execute pipeline stages
