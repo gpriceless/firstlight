@@ -383,6 +383,29 @@ class ValidationConfig:
 DEFAULT_CONFIG = ValidationConfig()
 
 
+def _read_validation_section(path: Path) -> Dict[str, Any]:
+    """Read one config file and return its ``validation`` section."""
+    with open(path, "r") as f:
+        config_dict = yaml.safe_load(f) or {}
+    if not isinstance(config_dict, dict):
+        raise ValueError(f"expected a mapping, got {type(config_dict).__name__}")
+    section = config_dict.get("validation", config_dict)
+    if not isinstance(section, dict):
+        raise ValueError(f"'validation' must be a mapping, got {type(section).__name__}")
+    return section
+
+
+def _merge(base: Dict[str, Any], over: Dict[str, Any]) -> Dict[str, Any]:
+    """Return ``base`` with ``over`` laid on top, mapping by mapping."""
+    merged = dict(base)
+    for key, value in over.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
 def load_config(
     yaml_path: Optional[str] = None,
     use_environment: bool = True,
@@ -390,16 +413,13 @@ def load_config(
     """
     Load validation configuration.
 
-    The first file found wins: the explicit ``yaml_path``, then
-    ``~/.firstlight/config/ingestion.yaml``, then ``/etc/firstlight/ingestion.yaml``,
-    then the shipped ``config/ingestion.yaml`` beside the package. Built-in
-    defaults apply only when none of them exists. Environment overrides go
-    on top.
-
-    Files are not merged: the winning file is the whole config, and a key
-    it leaves out takes the built-in default, not the shipped value. So a
-    user file that sets one threshold should start as a copy of the shipped
-    one.
+    Files are layered. The shipped ``config/ingestion.yaml`` beside the
+    package is the base, ``/etc/firstlight/ingestion.yaml`` goes on top of it,
+    then ``~/.firstlight/config/ingestion.yaml``, then the explicit
+    ``yaml_path``. A key one file leaves out keeps the value from the file
+    below it, so a user file that sets one threshold changes only that
+    threshold. Built-in defaults fill only keys no file sets. Environment
+    overrides go on top. The files read are logged, highest first.
 
     Args:
         yaml_path: Optional explicit path to YAML config
@@ -413,32 +433,40 @@ def load_config(
         ValidationConfigError: a config file exists but cannot be read or
             parsed. The run stops rather than fall back to defaults.
     """
+    candidates = [
+        Path(USER_CONFIG_PATH).expanduser(),
+        SYSTEM_CONFIG_PATH,
+        SHIPPED_CONFIG_PATH,
+    ]
     if yaml_path:
         path = Path(yaml_path).expanduser()
         if not path.exists():
             raise FileNotFoundError(f"Validation config not found: {path}")
-        candidates = [path]
-    else:
-        candidates = [
-            Path(USER_CONFIG_PATH).expanduser(),
-            SYSTEM_CONFIG_PATH,
-            SHIPPED_CONFIG_PATH,
-        ]
+        candidates.insert(0, path)
 
-    config = None
-    for path in candidates:
-        if not path.exists():
-            continue
+    found = [path for path in candidates if path.exists()]
+    merged: Dict[str, Any] = {}
+    for path in reversed(found):
         try:
-            config = ValidationConfig.from_yaml(str(path))
+            merged = _merge(merged, _read_validation_section(path))
         except Exception as e:
             raise ValidationConfigError(
                 f"Validation config {path} could not be loaded: {e}"
             ) from e
-        logger.info(f"Validation config loaded from {path}")
-        break
 
-    if config is None:
+    if found:
+        try:
+            config = ValidationConfig.from_dict(merged)
+        except Exception as e:
+            raise ValidationConfigError(
+                f"Validation config from {', '.join(str(p) for p in found)} "
+                f"could not be loaded: {e}"
+            ) from e
+        logger.info(
+            "Validation config loaded from "
+            + " over ".join(str(p) for p in found)
+        )
+    else:
         logger.warning(
             "No validation config file found (looked in "
             f"{', '.join(str(p) for p in candidates)}); using built-in defaults"

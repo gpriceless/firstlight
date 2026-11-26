@@ -140,3 +140,59 @@ def test_explicit_path_beats_every_file(tmp_path, monkeypatch):
     explicit = _config_with_std_dev_min(tmp_path / "mine.yaml", 9.0)
 
     assert load_config(str(explicit), use_environment=False).optical.std_dev_min == 9.0
+
+
+def test_user_file_with_one_key_keeps_every_other_shipped_value(tmp_path, monkeypatch, caplog):
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    user = home / ".firstlight/config/ingestion.yaml"
+    user.parent.mkdir(parents=True)
+    user.write_text("validation:\n  optical:\n    thresholds:\n      std_dev_min: 3.0\n")
+    shipped = tmp_path / "shipped/ingestion.yaml"
+    shipped.parent.mkdir()
+    shipped.write_text(
+        REPO_CONFIG.read_text()
+        .replace("non_zero_ratio_min: 0.05", "non_zero_ratio_min: 0.2")
+        .replace("std_dev_min_db: 2.0", "std_dev_min_db: 4.5")
+    )
+    monkeypatch.setattr(config_module, "SYSTEM_CONFIG_PATH", tmp_path / "etc/none.yaml")
+    monkeypatch.setattr(config_module, "SHIPPED_CONFIG_PATH", shipped)
+    caplog.set_level(logging.INFO, logger=config_module.__name__)
+
+    config = load_config(use_environment=False)
+
+    assert config.optical.std_dev_min == 3.0
+    assert config.optical.non_zero_ratio_min == 0.2
+    assert config.sar.std_dev_min_db == 4.5
+    assert config.optional_optical_bands == ["swir1", "swir2", "coastal", "red_edge"]
+    assert f"Validation config loaded from {user} over {shipped}" in caplog.text
+
+
+def test_user_file_falls_through_to_system_before_shipped(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    user = home / ".firstlight/config/ingestion.yaml"
+    user.parent.mkdir(parents=True)
+    user.write_text("validation:\n  optical:\n    thresholds:\n      std_dev_min: 3.0\n")
+    system = tmp_path / "etc/ingestion.yaml"
+    system.parent.mkdir()
+    system.write_text("validation:\n  optical:\n    thresholds:\n      nodata_ratio_max: 0.5\n")
+    monkeypatch.setattr(config_module, "SYSTEM_CONFIG_PATH", system)
+    monkeypatch.setattr(config_module, "SHIPPED_CONFIG_PATH", REPO_CONFIG)
+
+    config = load_config(use_environment=False)
+
+    assert config.optical.std_dev_min == 3.0
+    assert config.optical.nodata_ratio_max == 0.5
+    assert config.optical.std_dev_min_reflectance == 0.0001
+
+
+def test_broken_user_file_stops_even_with_good_shipped(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    user = home / ".firstlight/config/ingestion.yaml"
+    user.parent.mkdir(parents=True)
+    user.write_text("validation:\n  optical: [\n")
+
+    with pytest.raises(ValidationConfigError, match=str(user)):
+        load_config(use_environment=False)
