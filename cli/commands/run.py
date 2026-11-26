@@ -172,7 +172,7 @@ class WorkflowState:
     "end_date",
     type=str,
     default=None,
-    help="End date (YYYY-MM-DD). Default: today.",
+    help="End date (YYYY-MM-DD). Default: today; a resumed run keeps its stored date.",
 )
 @click.option(
     "--event",
@@ -289,9 +289,25 @@ def run(
     if not area_path and not bbox:
         raise click.BadParameter("Either --area or --bbox must be provided")
 
-    # Parse dates
-    end_dt = datetime.now() if not end_date else parse_date(end_date)
-    start_dt = end_dt - timedelta(days=7) if not start_date else parse_date(start_date)
+    # A date left to its default is resolved once, when the run starts, and
+    # stored with it. Resuming reuses the stored date: today's default would
+    # be a different input every day, and every second for the end date.
+    state = WorkflowState(output_path)
+    resumed = (state.state.get("config") or {}) if state.state.get("completed_stages") else {}
+    if end_date:
+        end_dt = parse_date(end_date)
+    elif resumed.get("end_date"):
+        end_dt = datetime.fromisoformat(resumed["end_date"])
+        click.echo(f"  Resuming with the stored end date {end_dt.date()}")
+    else:
+        end_dt = datetime.now()
+    if start_date:
+        start_dt = parse_date(start_date)
+    elif resumed.get("start_date"):
+        start_dt = datetime.fromisoformat(resumed["start_date"])
+        click.echo(f"  Resuming with the stored start date {start_dt.date()}")
+    else:
+        start_dt = end_dt - timedelta(days=7)
 
     # Get profile configuration
     profile_config = PROFILES[profile]
@@ -348,8 +364,6 @@ def run(
         click.echo(f"  {'5' if not skip_validate else '4'}. Export products")
         return
 
-    # Initialize workflow state
-    state = WorkflowState(output_path)
     new_config = {
         "area_path": str(area_path) if area_path else None,
         "bbox": bbox,
